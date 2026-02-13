@@ -1,0 +1,32 @@
+# Secrets and credentials
+*.env
+*.env.local
+.env.local
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+*.iml
+.viminfo
+
+# Local testing output
+test-output/
+*.log
+
+# Helm charts
+charts/*.tgz

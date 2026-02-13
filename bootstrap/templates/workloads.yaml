@@ -1,0 +1,27 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workloads
+  namespace: {{ .Values.argocd.namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+spec:
+  project: workloads
+  source:
+    repoURL: {{ .Values.git.repoUrl }}
+    targetRevision: {{ .Values.git.targetRevision }}
+    path: clusters/{{ .Values.cluster.name }}/workloads
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.argocd.namespace }}
+  syncPolicy:
+    automated:
+      prune: {{ .Values.syncPolicy.automated.prune }}
+      selfHeal: {{ .Values.syncPolicy.automated.selfHeal }}
+    syncOptions:
+    {{- range .Values.syncPolicy.syncOptions }}
+      - {{ . }}
+    {{- end }}

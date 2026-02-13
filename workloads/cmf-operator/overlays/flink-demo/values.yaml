@@ -1,0 +1,6 @@
+# Confluent Manager for Apache Flink - flink-demo Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod annotations for flink-demo cluster identification
+podAnnotations:
+  cluster: flink-demo

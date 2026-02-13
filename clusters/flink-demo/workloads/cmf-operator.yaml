@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cmf-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://packages.confluent.io/helm
+      chart: confluent-manager-for-apache-flink
+      targetRevision: 2.1.0
+      helm:
+        valueFiles:
+          - $values/workloads/cmf-operator/base/values.yaml
+          - $values/workloads/cmf-operator/overlays/flink-demo/values.yaml
+    - repoURL: https://github.com/osowski/homelab-argocd.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: operator
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: confluent-manager-for-apache-flink
+      jsonPointers:
+        - /spec/template/metadata/annotations/rollme
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

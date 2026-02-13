@@ -1,0 +1,11 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: autoscale-demo
+  namespace: kafka
+spec:
+  replicas: 3
+  partitionCount: 9
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka

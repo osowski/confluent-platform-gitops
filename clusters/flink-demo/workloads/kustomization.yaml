@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespaces.yaml
+  - cfk-operator.yaml
+  - confluent-resources.yaml
+  - controlcenter-ingress.yaml
+  - flink-kubernetes-operator.yaml
+  - cmf-operator.yaml
+  - flink-resources.yaml

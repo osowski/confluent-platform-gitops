@@ -1,0 +1,101 @@
+---
+# flink-demo cluster-specific configuration for kube-prometheus-stack
+
+# Alertmanager configuration
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    # External URL for flink-demo cluster
+    externalUrl: https://alertmanager.flink-demo.confluentdemo.local
+
+  # Enable ingress for Alertmanager
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+      argocd.argoproj.io/ignore-healthcheck: "true"
+    hosts:
+      - alertmanager.flink-demo.confluentdemo.local
+    paths:
+      - /
+    pathType: Prefix
+    tls:
+      - secretName: alertmanager-tls
+        hosts:
+          - alertmanager.flink-demo.confluentdemo.local
+
+# Grafana configuration for flink-demo
+grafana:
+  # Override admin password (use sealed-secrets in production)
+  adminPassword: "flink-demo-admin-password"
+
+  # Persistence
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: standard
+    size: 5Gi
+
+  # Enable ingress for Grafana
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+      argocd.argoproj.io/ignore-healthcheck: "true"
+    hosts:
+      - grafana.flink-demo.confluentdemo.local
+    path: /
+    pathType: Prefix
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.flink-demo.confluentdemo.local
+
+# Prometheus configuration for flink-demo
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # External URL
+    externalUrl: https://prometheus.flink-demo.confluentdemo.local
+
+    retention: 15d
+    retentionSize: "9GB"
+
+  # Enable ingress for Prometheus
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+      argocd.argoproj.io/ignore-healthcheck: "true"
+    hosts:
+      - prometheus.flink-demo.confluentdemo.local
+    paths:
+      - /
+    pathType: Prefix
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.flink-demo.confluentdemo.local
+
+# Node Exporter configuration
+nodeExporter:
+  enabled: true

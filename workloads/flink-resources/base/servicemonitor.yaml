@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    release: prometheus
+    monitoring: confluent
+  name: flink-pods
+spec:
+  jobLabel: type
+  podTargetLabels:
+    - app
+    - component
+    - platform.confluent.io/origin
+    - type
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scheme: http
+      scrapeTimeout: 30s
+  selector:
+    matchLabels:
+      platform.confluent.io/origin: manual
+      type: flink-native-kubernetes

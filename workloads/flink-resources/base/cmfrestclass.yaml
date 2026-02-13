@@ -1,0 +1,18 @@
+# REFERENCE: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-cmf-rest-class
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    # CMF service endpoint
+    # CMF is deployed in the operator namespace
+    endpoint: http://cmf-service.operator.svc.cluster.local:80
+
+    # Authentication configuration
+    # Currently using no authentication (will add mTLS in future if needed)
+    # Supported options: "basic", "bearer", "mtls", "oauth"
+    ##authentication:
+    ##  type: none
+

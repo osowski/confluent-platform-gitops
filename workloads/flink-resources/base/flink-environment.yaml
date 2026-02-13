@@ -1,0 +1,32 @@
+# REFERENCE: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-af-environment
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: default-flink-env
+  namespace: flink
+spec:
+  kubernetesNamespace: flink
+
+  # Reference to CMFRestClass for CMF communication
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
+  # Default resource configuration for Flink jobs
+  flinkApplicationDefaults:
+    #metadata:
+    #  labels:
+    #     "owned-by": "team-name"
+    spec:  
+      # Conservative values for homelab environment
+      flinkConfiguration:
+        # JobManager configuration
+        jobmanager.memory.process.size: "1024m"
+        jobmanager.cpu: "1.0"
+
+        # TaskManager configuration
+        taskmanager.memory.process.size: "1024m"
+        taskmanager.cpu: "1.0"
+        taskmanager.numberOfTaskSlots: "2"
+
+        rest.profiling.enabled: "true"

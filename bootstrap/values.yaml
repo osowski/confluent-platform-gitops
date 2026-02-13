@@ -1,0 +1,24 @@
+# Default values for ArgoCD bootstrap
+# These values can be overridden per cluster
+
+# Cluster configuration
+cluster:
+  name: "default"
+  domain: "cluster.local"
+
+# ArgoCD configuration
+argocd:
+  namespace: "argocd"
+
+# Git repository configuration
+git:
+  repoUrl: "https://github.com/osowski/confluent-platform-gitops.git"
+  targetRevision: "HEAD"
+
+# Application sync policies
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  syncOptions:
+    - CreateNamespace=true

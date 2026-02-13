@@ -1,0 +1,14 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  routes:
+    - match: Host(`controlcenter.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: controlcenter
+          port: 9021
+          scheme: http

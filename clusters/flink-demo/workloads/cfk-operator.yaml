@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cfk-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "105"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://packages.confluent.io/helm
+      chart: confluent-for-kubernetes
+      targetRevision: 0.1351.59
+      helm:
+        valueFiles:
+          - $values/workloads/cfk-operator/base/values.yaml
+          - $values/workloads/cfk-operator/overlays/flink-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
