@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-kubernetes-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "116"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://packages.confluent.io/helm
+      chart: flink-kubernetes-operator
+      targetRevision: 1.130.2
+      helm:
+        valueFiles:
+          - $values/workloads/flink-kubernetes-operator/base/values.yaml
+          - $values/workloads/flink-kubernetes-operator/overlays/flink-demo/values.yaml
+    - repoURL: https://github.com/osowski/homelab-argocd.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: operator
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - .spec.versions[].additionalPrinterColumns[].priority
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

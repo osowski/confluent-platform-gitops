@@ -1,0 +1,57 @@
+---
+# Base configuration for kube-prometheus-stack-crds
+# Common settings shared across all clusters
+
+
+# This stack includes only the CRDS for kube-prometheus-stack
+crds:
+  enabled: true
+  upgradeJob:
+    enabled: false # TODO Test & validate this for future use
+
+# Disable all other elements of the kube-prometheus-stack
+global:
+  rbac:
+    create: false
+
+alertmanager:
+  enabled: false
+
+grafana:
+  enabled: false
+
+prometheusOperator:
+  enabled: false
+
+prometheus:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: false
+
+defaultRules:
+  create: false
+
+kubeApiServer:
+  enabled: false
+
+kubelet:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+coreDns:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false

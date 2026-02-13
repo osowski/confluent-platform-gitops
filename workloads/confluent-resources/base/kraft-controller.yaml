@@ -1,0 +1,14 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka
+spec:
+  replicas: 3
+  image:
+    application: docker.io/confluentinc/cp-server:8.1.0
+    init: confluentinc/confluent-init-container:3.1.0
+  dataVolumeCapacity: 10Gi
+  dependencies:
+    metricsClient:
+      url: http://controlcenter.kafka.svc.cluster.local:9090

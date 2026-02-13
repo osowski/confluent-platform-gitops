@@ -1,0 +1,12 @@
+apiVersion: v2
+name: argocd-bootstrap
+description: Bootstrap Helm chart for ArgoCD App of Apps pattern
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - argocd
+  - gitops
+  - kubernetes
+maintainers:
+  - name: osowski

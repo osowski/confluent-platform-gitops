@@ -1,0 +1,15 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  routes:
+    - match: Host(`argocd.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 443 # The port your backend service is listening on for HTTPS
+          scheme: https
+          serversTransport: argocd-server-insecure-transport

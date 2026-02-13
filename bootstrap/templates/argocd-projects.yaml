@@ -1,0 +1,138 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: {{ .Values.argocd.namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Infrastructure platform components (cert-manager, longhorn, monitoring, etc.)
+
+  # Allow sourcing from the main gitops repository
+  sourceRepos:
+    - {{ .Values.git.repoUrl }}
+    - https://prometheus-community.github.io/helm-charts
+    - https://argoproj.github.io/argo-helm
+    - https://charts.longhorn.io
+    - oci://ghcr.io/traefik/helm/traefik
+    - oci://quay.io/jetstack/charts/cert-manager
+
+  # Allow deploying to all namespaces
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+
+  # Infrastructure project can create cluster-scoped resources
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Infrastructure project can create all namespace-scoped resources
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: {{ .Values.argocd.namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Application workloads (user-facing applications and services)
+
+  # Allow sourcing from the main gitops repository
+  sourceRepos:
+    - {{ .Values.git.repoUrl }}
+    - https://packages.confluent.io/helm
+
+  # Allow deploying to all namespaces
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+
+  # Workloads project allows specific cluster-scoped resources (CRDs for CFK operator)
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  # Workloads project allows namespace-scoped resources
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ServiceAccount
+    - group: ''
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: argoproj.io
+      kind: Application
+    - group: platform.confluent.io
+      kind: Kafka
+    - group: platform.confluent.io
+      kind: KRaftController
+    - group: platform.confluent.io
+      kind: SchemaRegistry
+    - group: platform.confluent.io
+      kind: Connect
+    - group: platform.confluent.io
+      kind: KsqlDB
+    - group: platform.confluent.io
+      kind: ControlCenter
+    - group: cert-manager.io
+      kind: Certificate
+    - group: cert-manager.io
+      kind: Issuer
+    - group: traefik.io
+      kind: IngressRoute
+    - group: flink.apache.org
+      kind: FlinkDeployment
+    - group: flink.apache.org
+      kind: FlinkSessionJob
+    - group: platform.confluent.io
+      kind: CMFRestClass
+    - group: platform.confluent.io
+      kind: FlinkEnvironment
+    - group: platform.confluent.io
+      kind: FlinkApplication
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor

@@ -1,0 +1,254 @@
+---
+# Base configuration for kube-prometheus-stack
+# Common settings shared across all clusters
+#
+# This stack includes:
+# - Prometheus Operator
+# - Prometheus
+# - Alertmanager
+# - Grafana
+# - Node Exporter
+# - Kube State Metrics
+# - Various ServiceMonitors and PrometheusRules
+
+# CRDS are explicitly excluded, in favor of kube-prometheus-stack-crds handling them
+crds:
+  enabled: false
+
+# Global settings
+global:
+  rbac:
+    create: true
+
+# Alertmanager configuration
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    # Storage configuration
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    # Resource limits (conservative for homelab)
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    # Retention
+    retention: 120h  # 5 days
+
+    # Replicas (single for homelab)
+    replicas: 1
+
+# Grafana configuration
+grafana:
+  enabled: true
+
+  # Admin credentials (override in overlay or use secrets)
+  adminPassword: changeme
+
+  # Persistence
+  persistence:
+    enabled: true
+    type: pvc
+    size: 5Gi
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Disable ingress (configured per-cluster in overlay)
+  ingress:
+    enabled: false
+
+  # Datasources configured by chart defaults (prometheus.datasources.defaultDatasourceEnabled: true)
+  # No need to override - chart creates Prometheus datasource automatically
+
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+  # Sidecar for automatic dashboard discovery
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+# Prometheus Operator configuration
+prometheusOperator:
+  enabled: true
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Prometheus CRD management
+  prometheusConfigReloader:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+
+  prometheusSpec:
+    # Retention
+    retention: 15d
+    retentionSize: "8GB"
+
+    # Storage configuration
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+    # Scrape configuration
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    # Service Monitor selectors (discover all)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    # Replicas (single for homelab)
+    replicas: 1
+
+    # Disable ingress (configured per-cluster in overlay)
+    # External access via port-forward or ingress in overlay
+    externalUrl: ""
+
+    # Enable features
+    enableAdminAPI: false
+    enableFeatures: []
+
+# Node Exporter configuration
+nodeExporter:
+  enabled: true
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Kube State Metrics configuration
+kubeStateMetrics:
+  enabled: true
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Default ServiceMonitors
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true
+    configReloaders: true
+    general: true
+    k8s: true
+    kubeApiserverAvailability: true
+    kubeApiserverBurnrate: true
+    kubeApiserverHistogram: true
+    kubeApiserverSlos: true
+    kubeControllerManager: true
+    kubelet: true
+    kubeProxy: true
+    kubePrometheusGeneral: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true
+    kubernetesSystem: true
+    kubeSchedulerAlerting: true
+    kubeSchedulerRecording: true
+    kubeStateMetrics: true
+    network: true
+    node: true
+    nodeExporterAlerting: true
+    nodeExporterRecording: true
+    prometheus: true
+    prometheusOperator: true
+
+# Component-specific ServiceMonitors
+kubeApiServer:
+  enabled: true
+
+kubelet:
+  enabled: true
+
+kubeControllerManager:
+  enabled: true
+
+coreDns:
+  enabled: true
+
+kubeEtcd:
+  enabled: true
+
+kubeScheduler:
+  enabled: true
+
+kubeProxy:
+  enabled: true

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+## NOTE: Initial resources modeled after https://github.com/confluentinc/confluent-kubernetes-examples/blob/master/quickstart-deploy/kraft-quickstart/confluent-platform-c3%2B%2B.yaml
+
+namespace: kafka
+
+resources:
+  - connect.yaml
+  - control-center.yaml
+  - kafka-broker.yaml
+  - kraft-controller.yaml
+  # - ksqldb.yaml ## DISABLE ksqldb UNTIL IT IS NECESSARY
+  - schema-registry.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: confluent-platform

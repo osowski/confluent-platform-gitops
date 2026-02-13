@@ -1,0 +1,9 @@
+deployment:
+  kind: DaemonSet
+service:
+  type: LoadBalancer
+nodeSelector: ~
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Equal
+    effect: NoSchedule

@@ -1,0 +1,46 @@
+# Confluent for Kubernetes (CFK) Operator Configuration
+# Base values for operator deployment
+
+# Namespace-scoped mode for security
+namespaced: true
+
+# Pod configuration
+podLabels:
+  app.kubernetes.io/name: confluent-operator
+  app.kubernetes.io/component: operator
+
+# Replica configuration for homelab (single replica)
+replicaCount: 1
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable debug logging (can be overridden per cluster)
+debug: false
+
+# Kubernetes RBAC
+rbac:
+  create: true
+
+# Service account
+serviceAccount:
+  create: true
+  name: confluent-operator
+
+# Image configuration
+image:
+  repository: confluentinc/confluent-operator
+  pullPolicy: IfNotPresent
+  # Tag defaults to chart appVersion
+
+# Operator watches only the kafka namespace where Confluent Platform CRs are deployed
+namespaceList:
+  - flink
+  - kafka
+  - operator

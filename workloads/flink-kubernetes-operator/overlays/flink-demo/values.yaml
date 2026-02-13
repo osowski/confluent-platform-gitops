@@ -1,0 +1,7 @@
+# Flink Kubernetes Operator - flink-demo Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod labels for flink-demo cluster
+operatorPod:
+  labels:
+    cluster: flink-demo

@@ -1,4 +1,4 @@
-# homelab-argocd
+# confluent-platform-gitops
 
 GitOps repository for Confluent Platform deployments running on Kubernetes clusters managed by Argo CD.
 
@@ -9,7 +9,7 @@ This repository contains the declarative configuration for all applications and 
 ## Repository Structure
 
 ```
-homelab-argocd/
+confluent-platform-gitops/
 ├── bootstrap/                      # Helm chart for bootstrapping Argo CD App of Apps
 │   ├── Chart.yaml
 │   ├── values.yaml                 # Default values
@@ -17,10 +17,8 @@ homelab-argocd/
 │       ├── argocd-projects.yaml    # Argo CD Project CRDs (infrastructure, workloads)
 │       ├── infrastructure.yaml     # Infrastructure App of Apps
 │       └── workloads.yaml          # Workloads App of Apps
-├── argocd-projects/                # Standalone Project CRD definitions (reference)
-│   ├── infrastructure-project.yaml
-│   └── workloads-project.yaml
 ├── infrastructure/                 # Platform infrastructure components
+│   ├── argocd/                     # Argo CD self-management (Helm)
 │   ├── argocd-config/              # Argo CD ConfigMap patches (custom health checks)
 │   ├── argocd-ingress/             # Traefik IngressRoute for Argo CD UI
 │   ├── cert-manager/               # TLS certificate management (Helm)
@@ -30,32 +28,37 @@ homelab-argocd/
 │   └── traefik/                    # Ingress controller (Helm)
 ├── workloads/                      # User-facing applications and services
 │   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
-│   ├── confluent-operator/         # Confluent for Kubernetes operator (Helm)
+│   ├── cfk-operator/         # Confluent for Kubernetes operator (Helm)
 │   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
 │   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
 │   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
 │   ├── flink-resources/            # Flink integration resources (Kustomize)
+│   └── namespaces/                 # Namespace definitions
 ├── clusters/                       # Cluster-specific application instances
-│   ├── flink-demo/
-│   │   ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
-│   │   ├── infrastructure/
-│   │   │   ├── kustomization.yaml  # Lists all infrastructure apps
-│   │   │   └── *.yaml              # Infrastructure Application manifests
-│   │   └── workloads/
-│   │       ├── kustomization.yaml  # Lists all workload apps
-│   │       └── *.yaml              # Workload Application manifests
-└── docs/                           # Documentation
-    ├── architecture.md
-    ├── adding-applications.md
-    ├── adding-helm-workloads.md
-    ├── argocd-self-management.md
-    ├── bootstrap-procedure.md
-    ├── changelog.md
-    ├── cluster-onboarding.md
-    ├── code_review_checklist.md
-    ├── confluent-flink.md
-    ├── confluent-platform.md
-    └── project_spec.md
+│   └── flink-demo/
+│       ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
+│       ├── kind-config.yaml        # Kind cluster configuration
+│       ├── infrastructure/
+│       │   ├── kustomization.yaml  # Lists all infrastructure apps
+│       │   └── *.yaml              # Infrastructure Application manifests
+│       └── workloads/
+│           ├── kustomization.yaml  # Lists all workload apps
+│           └── *.yaml              # Workload Application manifests
+├── docs/                           # Documentation
+│   ├── architecture.md
+│   ├── adding-applications.md
+│   ├── adding-helm-workloads.md
+│   ├── argocd-self-management.md
+│   ├── bootstrap-procedure.md
+│   ├── changelog.md
+│   ├── cluster-onboarding.md
+│   ├── code_review_checklist.md
+│   ├── confluent-flink.md
+│   ├── confluent-platform.md
+│   └── getting-started-for-the-uninitiated.md
+└── adrs/                           # Architecture Decision Records
+    ├── 0000-template.md
+    └── 0001-app-of-apps-pattern.md
 ```
 
 ## Quicker Start
@@ -130,14 +133,13 @@ Navigate to `https://<cluster-specific-hostname>` and login with username `admin
 
 ## Current Clusters
 
-- **flink-demo** - Initial demo cluster for Confluent Platform for Apache Flink (flink-demo.confluentdemo.local)
+- **flink-demo** - Demo cluster for Confluent Platform for Apache Flink (flink-demo.confluentdemo.local)
 
 ## Current Applications
 
 ### Infrastructure (Automated Sync)
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
 - **traefik** (wave 10) - Ingress controller for external access
-- **longhorn** (wave 15) - Distributed block storage for persistent volumes (portcullis only)
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **cert-manager** (wave 20) - TLS certificate management
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificates
@@ -145,11 +147,11 @@ Navigate to `https://<cluster-specific-hostname>` and login with username `admin
 - **argocd-config** (wave 85) - Argo CD ConfigMap patches for custom health checks
 
 ### Workloads (Automated Sync)
-- **confluent-operator** (wave 105) - Confluent for Kubernetes (CFK) operator
+- **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator)
+- **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for stream processing
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF)
-- **http-echo** (wave 105) - Validation service
 
 ### Workloads (Manual Sync Required)
 - **confluent-resources** (wave 110) - Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, ksqlDB, Connect)
@@ -166,8 +168,4 @@ Navigate to `https://<cluster-specific-hostname>` and login with username `admin
 
 ## Related Repositories
 
-Originally created in [homelab-argocd](https://github.com/osowski/homelab-argocd) and ported to this repository, as of the `v0.1.0` version of that repository. All future GitOps-specific updates will be made to this repository directly.
-
-Prior peer repositories:
-- [homelab-docs](https://github.com/osowski/homelab-docs) - Shared homelab documentation, architecture overview, and cross-cutting ADRs
-- [homelab-ansible](https://github.com/osowski/homelab-ansible) - Infrastructure provisioning and cluster lifecycle management
+Migrated from [homelab-argocd](https://github.com/osowski/homelab-argocd) repository to focus specifically on Confluent Platform deployments.

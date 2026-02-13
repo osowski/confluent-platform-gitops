@@ -1,0 +1,27 @@
+deployment:
+  kind: DaemonSet
+image:
+  repository: traefik
+  pullPolicy: IfNotPresent
+service:
+  type: NodePort
+ports:
+  web:
+    nodePort: 30000
+  websecure:
+    nodePort: 30001
+nodeSelector:
+  ingress-ready: 'true'
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Equal
+    effect: NoSchedule
+
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: true
+      pathOverride: "ingress/traefik"  # namespace/service-name
+
+## NOTES:
+## NodePort is required for use in kind clusters

@@ -1,0 +1,45 @@
+# PreSync Hook to delete Deployments with immutable selectors
+# This allows Helm to recreate them with the correct selector labels
+#
+# This hook runs BEFORE the main sync, deleting existing Deployments
+# so they can be recreated with updated selectors.
+#
+# To enable this hook, add it to the Application's source path or
+# include it in the Helm chart's templates directory.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: argocd-presync-delete-deployments
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    metadata:
+      name: argocd-presync-delete-deployments
+    spec:
+      serviceAccountName: argocd-server  # Reuse existing SA with permissions
+      restartPolicy: Never
+      containers:
+      - name: delete-deployments
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Deleting Argo CD Deployments to allow recreation with new selectors..."
+
+          # Delete Deployments (will be recreated by Helm)
+          kubectl delete deployment argocd-server -n argocd --ignore-not-found=true
+          kubectl delete deployment argocd-repo-server -n argocd --ignore-not-found=true
+          kubectl delete deployment argocd-redis -n argocd --ignore-not-found=true
+          kubectl delete deployment argocd-applicationset-controller -n argocd --ignore-not-found=true
+          kubectl delete deployment argocd-notifications-controller -n argocd --ignore-not-found=true
+          kubectl delete deployment argocd-dex-server -n argocd --ignore-not-found=true
+
+          # Delete StatefulSet for application-controller
+          kubectl delete statefulset argocd-application-controller -n argocd --ignore-not-found=true
+
+          echo "Deployments deleted successfully. Helm will recreate them with correct selectors."
