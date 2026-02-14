@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Release tagging and version-pinned deployments** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
+  - Release preparation script (`scripts/prepare-release.sh`) automates version pinning across all Application manifests
+  - Script pins `targetRevision` only for sources matching this repository's URL (safe for multi-source Applications with external Helm charts)
+  - Two-commit workflow: changelog and version pinning are separate commits; pinning is reverted before merge to keep `main` on `HEAD`
+  - Documentation: `docs/release-process.md` with complete release and deployment workflows
+  - ADR-0003: Documents the release versioning strategy decision
+  - Updated `docs/bootstrap-procedure.md` and `docs/cluster-onboarding.md` with version-pinning guidance
+
 ### Changed
 - **Repository migration from homelab-argocd**
   - Migrated from [homelab-argocd](https://github.com/osowski/homelab-argocd) to focus on Confluent Platform deployments

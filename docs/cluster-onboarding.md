@@ -121,6 +121,8 @@ spec:
 
 Adjust the domain if different for this cluster.
 
+**Version pinning**: The `targetRevision: HEAD` setting tracks the latest commit. To deploy a specific release instead, change it to a release tag (e.g., `targetRevision: v0.2.0`). See [Release Process](release-process.md) for details.
+
 ## Step 4: Validate Bootstrap Configuration
 
 Validate the bootstrap Application manifest:
@@ -413,5 +415,6 @@ After cluster onboarding:
 
 - **Add applications**: [Adding Applications](adding-applications.md) - Add workloads and infrastructure components
 - **Bootstrap operations**: [Bootstrap Procedure](bootstrap-procedure.md) - Re-bootstrap, upgrade, or troubleshoot
+- **Deploy a specific version**: [Release Process](release-process.md) - Version-pinned deployments
 - **System architecture**: [Architecture](architecture.md) - Understand the overall design
 - **Advanced Helm patterns**: [Adding Helm Workloads](adding-helm-workloads.md) - Complex infrastructure deployments
