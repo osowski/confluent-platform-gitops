@@ -18,7 +18,7 @@ spec:
       valueFiles:
         - $values/infrastructure/kube-prometheus-stack/base/values.yaml
         - $values/infrastructure/kube-prometheus-stack/overlays/flink-demo/values.yaml
-  - repoURL: https://github.com/osowski/homelab-argocd
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
     targetRevision: HEAD
     ref: values
   destination:

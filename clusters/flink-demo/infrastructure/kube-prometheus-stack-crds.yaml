@@ -17,7 +17,7 @@ spec:
     helm:
       valueFiles:
         - $values/infrastructure/kube-prometheus-stack-crds/base/values.yaml
-  - repoURL: https://github.com/osowski/homelab-argocd
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
     targetRevision: HEAD
     ref: values
   destination:

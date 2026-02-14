@@ -10,7 +10,7 @@ metadata:
 spec:
   project: workloads
   source:
-    repoURL: https://github.com/osowski/homelab-argocd.git
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
     path: workloads/confluent-resources/overlays/flink-demo
   destination:
