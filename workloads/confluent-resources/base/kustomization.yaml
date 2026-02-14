@@ -9,6 +9,7 @@ resources:
   - connect.yaml
   - control-center.yaml
   - kafka-broker.yaml
+  - kafkarestclass.yaml
   - kraft-controller.yaml
   # - ksqldb.yaml ## DISABLE ksqldb UNTIL IT IS NECESSARY
   - schema-registry.yaml

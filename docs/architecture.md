@@ -149,6 +149,29 @@ Bootstrap Application (sync-wave 0)
 
 Sync waves ensure infrastructure is deployed before workloads, and components deploy in the correct order (e.g., CRDs before resources that use them, cert-manager before certificates).
 
+### Intra-Application Sync Waves: Confluent Resources
+
+Within the `confluent-resources` application (wave 110), individual CFK resources use sync-wave annotations to enforce the correct startup dependency chain:
+
+```
+KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry (wave 20) → ControlCenter (wave 30)
+                                            → Connect (wave 20)       ↗
+```
+
+| Wave | Resource | CFK Kind | Rationale |
+|------|----------|----------|-----------|
+| `"0"` | kraft-controller.yaml | KRaftController | No dependencies, must start first |
+| `"10"` | kafka-broker.yaml | Kafka | Depends on KRaftController |
+| `"10"` | kafkarestclass.yaml | KafkaRestClass | Configuration resource, deploy with Kafka |
+| `"20"` | schema-registry.yaml | SchemaRegistry | Depends on Kafka |
+| `"20"` | connect.yaml | Connect | Depends on Kafka |
+| `"30"` | control-center.yaml | ControlCenter | Depends on Kafka, SchemaRegistry, Connect |
+| `"30"` | kafkatopic.yaml | KafkaTopic | Depends on Kafka + KafkaRestClass |
+
+ArgoCD deploys each wave sequentially within the application and waits for resources to become healthy before advancing. Custom Lua health checks in `argocd-cm` evaluate CFK resource `status.state` fields (healthy when `"RUNNING"`). Without these health checks, ArgoCD cannot determine CFK resource health and sync waves would not advance.
+
+See [ADR-0002](../adrs/0002-cfk-component-sync-wave-ordering.md) for the full decision record.
+
 ## Sync Policies
 
 ### Automated Sync
