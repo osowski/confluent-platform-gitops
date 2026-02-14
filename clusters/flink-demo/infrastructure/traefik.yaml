@@ -19,7 +19,7 @@ spec:
       valueFiles:
         - $values/infrastructure/traefik/base/values.yaml
         - $values/infrastructure/traefik/overlays/flink-demo/values.yaml
-  - repoURL: https://github.com/osowski/homelab-argocd
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
     targetRevision: HEAD
     ref: values
   destination:

@@ -19,7 +19,7 @@ spec:
       valueFiles:
         - $values/infrastructure/cert-manager/base/values.yaml
         - $values/infrastructure/cert-manager/overlays/flink-demo/values.yaml
-  - repoURL: https://github.com/osowski/homelab-argocd
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
     targetRevision: HEAD
     ref: values
   destination:

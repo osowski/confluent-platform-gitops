@@ -17,7 +17,7 @@ spec:
         valueFiles:
           - $values/workloads/flink-kubernetes-operator/base/values.yaml
           - $values/workloads/flink-kubernetes-operator/overlays/flink-demo/values.yaml
-    - repoURL: https://github.com/osowski/homelab-argocd.git
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
       targetRevision: HEAD
       ref: values
   destination:
