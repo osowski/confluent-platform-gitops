@@ -27,74 +27,84 @@ Both levels must be pinned for a fully version-locked deployment. The release sc
 
 - Clean Git working tree (no uncommitted changes)
 - All changes for the release already merged to `main`
+- Local `main` branch up-to-date with `origin/main`
+- [`yq`](https://github.com/mikefarah/yq) installed (used for structured YAML editing)
 
-### Step-by-Step Workflow
-
-#### 1. Create a release branch
+### Running the Release
 
 ```bash
-git checkout -b release/v0.2.0 main
+./scripts/release.sh v0.2.0
 ```
 
-#### 2. Run the release preparation script
+This single command executes the entire release workflow:
+
+1. Validates prerequisites (version format, clean tree, on `main`, tag doesn't exist, remote is current)
+2. Creates a `release/v0.2.0` branch from `main`
+3. Updates `docs/changelog.md` with a version header and date
+4. Pins `targetRevision` to `v0.2.0` in all Application manifests referencing this repository
+5. Commits changelog and pinning as separate commits
+6. Tags the pinning commit as `v0.2.0`
+7. Reverts the pinning commit (restores `HEAD` on branch)
+8. Merges the release branch into `main` with `--no-ff`
+9. Deletes the release branch
+10. Prompts for confirmation, then pushes `main` and tags to origin
+
+### Dry Run
+
+To preview what would happen without making any changes:
 
 ```bash
+./scripts/release.sh --dry-run v0.2.0
+```
+
+This validates prerequisites, runs `prepare-release.sh --verify` to list which files would be modified, and exits.
+
+### Using prepare-release.sh Directly
+
+The `prepare-release.sh` script handles changelog updates and version pinning. It can be used standalone or is called automatically by `release.sh`:
+
+```bash
+# Verify mode — list files that would be changed
+./scripts/prepare-release.sh --verify v0.2.0
+
+# Direct execution (requires clean working tree, manual git steps after)
 ./scripts/prepare-release.sh v0.2.0
 ```
 
-The script will:
-- Validate the version format, clean working tree, and branch name
-- Update `docs/changelog.md` with a new version header and date
-- Pin `targetRevision` to `v0.2.0` in all cluster Application manifests that reference this repository
-- Pin `targetRevision` in `bootstrap/values.yaml`
-- Print a summary of changes and next steps
+### Error Recovery
 
-#### 3. Commit the changelog update
+If `release.sh` fails mid-workflow, it prints recovery instructions. Since the push step requires explicit confirmation, all prior steps are local and reversible:
 
 ```bash
-git add docs/changelog.md
-git commit -m "Update changelog for v0.2.0"
-```
-
-#### 4. Commit the version pinning
-
-```bash
-git add -A
-git commit -m "Pin targetRevision to v0.2.0"
-```
-
-#### 5. Tag the release
-
-```bash
-git tag v0.2.0
-```
-
-The tag points to the commit where all `targetRevision` fields are pinned to `v0.2.0`.
-
-#### 6. Revert the version pinning
-
-```bash
-git revert HEAD --no-edit
-```
-
-This reverts only the pinning commit (step 4), restoring `targetRevision` back to `HEAD` on the branch. The changelog update (step 3) is preserved.
-
-#### 7. Merge to main and clean up
-
-```bash
+# Return to main and clean up
 git checkout main
-git merge release/v0.2.0
-git branch -d release/v0.2.0
-git push origin main --tags
+git branch -D release/v0.2.0    # delete the release branch
+git tag -d v0.2.0               # delete the tag if it was created
 ```
 
-### What happens after the merge
+<details>
+<summary>What happens under the hood (step-by-step detail)</summary>
 
-On `main`, the merge result contains:
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1 | Validation checks | Version format, `yq` installed, clean tree, on `main`, tag doesn't exist, remote up-to-date |
+| 2 | `git checkout -b release/v0.2.0 main` | Create release branch |
+| 3 | `prepare-release.sh v0.2.0` | Update changelog header; pin `targetRevision` in all cluster manifests and `bootstrap/values.yaml` using `yq` |
+| 4 | `git add docs/changelog.md && git commit` | Commit changelog separately |
+| 5 | `git add -A && git commit` | Commit all version pinning changes |
+| 6 | `git tag v0.2.0` | Tag points to the fully-pinned commit |
+| 7 | `git revert HEAD --no-edit` | Revert pinning, restoring `targetRevision: HEAD` |
+| 8 | `git checkout main && git merge release/v0.2.0 --no-ff` | Merge release into main |
+| 9 | `git branch -d release/v0.2.0` | Clean up release branch |
+| 10 | `git push origin main --tags` | Push (with confirmation prompt) |
+
+After the merge, `main` contains:
 - The changelog update (preserved)
 - `targetRevision` values back to `HEAD` (the pin and revert cancel out)
 
 At the `v0.2.0` tag, all `targetRevision` values point to `v0.2.0`, creating a fully self-consistent snapshot.
+
+</details>
 
 ## Deploying a Specific Version
 
