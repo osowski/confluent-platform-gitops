@@ -353,6 +353,22 @@ kubectl delete appproject workloads -n argocd
 
 **Note**: Deleting the bootstrap Application will delete parent Applications, which will cascade to child Applications. Due to the finalizers, ArgoCD will clean up managed resources. This process may take several minutes.
 
+## Deploying a Specific Version
+
+To deploy a known-good release instead of tracking `HEAD`, set `targetRevision` to a release tag in the bootstrap Application:
+
+```yaml
+spec:
+  source:
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: v0.2.0
+    path: bootstrap
+```
+
+At the tagged commit, all child Application manifests also reference `v0.2.0`, so the entire deployment stack is version-pinned.
+
+For the full version pinning workflow, see [Release Process](release-process.md).
+
 ## Upgrading Bootstrap
 
 To update the bootstrap configuration:
@@ -416,5 +432,6 @@ After successful bootstrap:
 
 - **Add applications to the cluster**: [Adding Applications](adding-applications.md)
 - **Set up additional clusters**: [Cluster Onboarding](cluster-onboarding.md)
+- **Deploy a specific version**: [Release Process](release-process.md)
 - **Review system architecture**: [Architecture](architecture.md)
 - **Learn advanced Helm patterns**: [Adding Helm Workloads](adding-helm-workloads.md)

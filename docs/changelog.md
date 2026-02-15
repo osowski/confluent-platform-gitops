@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Release tagging and version-pinned deployments** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
+  - End-to-end release orchestrator (`scripts/release.sh`) automates the full release workflow in a single command
+  - Release preparation script (`scripts/prepare-release.sh`) automates version pinning across all Application manifests
+  - Script pins `targetRevision` only for sources matching this repository's URL (safe for multi-source Applications with external Helm charts)
+  - Two-commit workflow: changelog and version pinning are separate commits; pinning is reverted before merge to keep `main` on `HEAD`
+  - `--dry-run` flag on `release.sh` and `--verify` flag on `prepare-release.sh` for safe previewing
+  - Confirmation prompt before pushing to remote; all prior steps are local and reversible
+  - Error recovery instructions printed on failure
+  - Documentation: `docs/release-process.md` with complete release and deployment workflows
+  - ADR-0003: Documents the release versioning strategy decision
+  - Updated `docs/bootstrap-procedure.md` and `docs/cluster-onboarding.md` with version-pinning guidance
+
+### Changed
+- **Refactored `prepare-release.sh` to use `yq` for YAML pinning** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
+  - Replaced fragile `sed` patterns with structured `yq` commands for `targetRevision` pinning
+  - `yq` approach is structurally aware, doesn't depend on line ordering or adjacency
+  - Safely handles both single-source (`spec.source`) and multi-source (`spec.sources[]`) Applications
+  - Only pins sources matching this repository's URL (external Helm chart versions unchanged)
+  - Removed release branch validation from `prepare-release.sh` (handled by `release.sh` orchestrator)
+  - Added `--verify` flag for dry-run validation of pinning targets
+
 ### Changed
 - **Repository migration from homelab-argocd**
   - Migrated from [homelab-argocd](https://github.com/osowski/homelab-argocd) to focus on Confluent Platform deployments
