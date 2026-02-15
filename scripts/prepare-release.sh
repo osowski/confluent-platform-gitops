@@ -129,6 +129,18 @@ while IFS= read -r -d '' file; do
         echo "  Pinned (single-source): $file"
       fi
       changed=true
+
+      # Bootstrap Applications (path: bootstrap) need git.targetRevision in valuesObject
+      # so the rendered parent Applications use the pinned version
+      source_path=$(yq '.spec.source.path' "$file")
+      if [[ "$source_path" = "bootstrap" ]]; then
+        if [[ "$VERIFY_MODE" = true ]]; then
+          echo "  Would pin (bootstrap valuesObject): $file"
+        else
+          yq -i '.spec.source.helm.valuesObject.git.targetRevision = env(VERSION)' "$file"
+          echo "  Pinned (bootstrap valuesObject): $file"
+        fi
+      fi
     fi
   fi
 
