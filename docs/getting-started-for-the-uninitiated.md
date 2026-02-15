@@ -24,21 +24,32 @@ brew install colima \
 127.0.0.1  alertmanager.flink-demo.confluentdemo.local
 ```
 
+## Checkout the Latest Release
+
+3. List available release tags and checkout the latest one:
+
+```bash
+git tag --sort=-v:refname
+git checkout <latest-tag>   # e.g., git checkout v0.2.0
+```
+
+Checking out a release tag ensures you are working from a known-good snapshot where all `targetRevision` values are pinned to that version. If you stay on `main`, the deployment will track `HEAD` and may include in-progress changes. See [Release Process](release-process.md) for details.
+
 ## Cluster Setup
 
-3. Start Colima (provides the Docker runtime that kind uses):
+4. Start Colima (provides the Docker runtime that kind uses):
 
 ```bash
 colima start --arch arm64 --memory 16 --cpu 8 --disk 256
 ```
 
-4. Create the kind cluster:
+5. Create the kind cluster:
 
 ```bash
 kind create cluster --config ./clusters/flink-demo/kind-config.yaml --name flink-demo
 ```
 
-5. Select the flink-demo Kubernetes context:
+6. Select the flink-demo Kubernetes context:
 
 ```bash
 kubectx kind-flink-demo
@@ -46,19 +57,19 @@ kubectx kind-flink-demo
 
 ## ArgoCD Installation
 
-6. Create the ArgoCD namespace:
+7. Create the ArgoCD namespace:
 
 ```bash
 kubectl create namespace argocd
 ```
 
-7. Install ArgoCD:
+8. Install ArgoCD:
 
 ```bash
 kubectl apply --namespace argocd --server-side --force-conflicts --filename https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-8. Wait for all ArgoCD pods to be ready:
+9. Wait for all ArgoCD pods to be ready:
 
 ```bash
 kubectl wait pods --namespace argocd --all --for=condition=Ready --timeout=300s
@@ -66,7 +77,7 @@ kubectl wait pods --namespace argocd --all --for=condition=Ready --timeout=300s
 
 ## Bootstrap
 
-9. Apply the cluster bootstrap:
+10. Apply the cluster bootstrap:
 
 ```bash
 kubectl apply --filename ./clusters/flink-demo/bootstrap.yaml
@@ -76,13 +87,13 @@ ArgoCD will create the `infrastructure` and `workloads` parent Applications, whi
 
 ## Access ArgoCD
 
-10. Retrieve the initial admin password:
+11. Retrieve the initial admin password:
 
 ```bash
 kubectl get secret --namespace argocd argocd-initial-admin-secret --output jsonpath='{.data.password}' | base64 -d | pbcopy
 ```
 
-11. Open ArgoCD in your browser:
+12. Open ArgoCD in your browser:
 
 - URL: `https://argocd.flink-demo.confluentdemo.local`
     - **NOTE:** Ensure that this is using `https` as we are using a self-signed cert for ArgoCD ingress.
@@ -95,13 +106,13 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 The `confluent-resources` and `flink-resources` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy.
 
-12. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding.
+13. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding.
 
-13. Click on the `flink-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+14. Click on the `flink-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
 
 ## Access Control Center
 
-14. Open Confluent Control Center in your browser:
+15. Open Confluent Control Center in your browser:
 
 - URL: `https://controlcenter.flink-demo.confluentdemo.local`
 
