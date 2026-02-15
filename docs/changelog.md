@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-14
+
 ### Added
 - **Release tagging and version-pinned deployments** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
   - End-to-end release orchestrator (`scripts/release.sh`) automates the full release workflow in a single command
@@ -222,5 +224,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/osowski/confluent-platform-gitops/releases/tag/v0.1.0
