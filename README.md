@@ -28,7 +28,7 @@ confluent-platform-gitops/
 │   └── traefik/                    # Ingress controller (Helm)
 ├── workloads/                      # User-facing applications and services
 │   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
-│   ├── cfk-operator/         # Confluent for Kubernetes operator (Helm)
+│   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
 │   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
 │   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
 │   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
@@ -45,16 +45,7 @@ confluent-platform-gitops/
 │           ├── kustomization.yaml  # Lists all workload apps
 │           └── *.yaml              # Workload Application manifests
 ├── docs/                           # Documentation
-│   ├── architecture.md
-│   ├── adding-applications.md
-│   ├── adding-helm-workloads.md
-│   ├── argocd-self-management.md
-│   ├── bootstrap-procedure.md
-│   ├── changelog.md
-│   ├── cluster-onboarding.md
-│   ├── code_review_checklist.md
-│   ├── confluent-flink.md
-│   ├── confluent-platform.md
+│   ├── *.md                        # All relevant projct documentation
 │   └── getting-started-for-the-uninitiated.md
 └── adrs/                           # Architecture Decision Records
     ├── 0000-template.md
@@ -86,6 +77,7 @@ If you have experience with GitOps or want to understand how the inner workings 
    ```bash
    git clone https://github.com/osowski/confluent-platform-gitops.git
    cd confluent-platform-gitops
+   git checkout <latest-tagged-version>
    ```
 
 2. Deploy the bootstrap application:
