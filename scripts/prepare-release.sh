@@ -100,11 +100,30 @@ if [[ "$VERIFY_MODE" = true ]]; then
   echo "Would update: $CHANGELOG"
   echo "  Add version header: ## [$BARE_VERSION] - $TODAY"
 else
-  sed -i "s/^## \[Unreleased\]/## [Unreleased]\n\n## [$BARE_VERSION] - $TODAY/" "$CHANGELOG"
+  # Insert new version header after "## [Unreleased]" line
+  # Uses awk for portable multiline insertion (sed newline handling differs between GNU/BSD)
+  awk -v ver="## [$BARE_VERSION] - $TODAY" '
+    /^## \[Unreleased\]/ { print; print ""; print ver; next }
+    { print }
+  ' "$CHANGELOG" > "${CHANGELOG}.tmp" && mv "${CHANGELOG}.tmp" "$CHANGELOG"
 
   # Add version comparison link at bottom of file
-  # Find the [Unreleased] link and update it, then add the new version link
-  sed -i "s|\[Unreleased\]: \(.*\)/compare/\(.*\)\.\.\.HEAD|[Unreleased]: \1/compare/$VERSION...HEAD\n[$BARE_VERSION]: \1/compare/\2...$VERSION|" "$CHANGELOG"
+  # Update the [Unreleased] compare link and insert a new version link after it
+  awk -v tag="$VERSION" -v bare="$BARE_VERSION" '
+    /^\[Unreleased\]:.*\/compare\/.*\.\.\.HEAD/ {
+      # Parse: [Unreleased]: <base_url>/compare/<prev_tag>...HEAD
+      line = $0
+      sub(/\[Unreleased\]: /, "", line)       # Remove prefix
+      split(line, parts, "/compare/")          # Split on /compare/
+      base_url = parts[1]
+      prev_tag = parts[2]
+      sub(/\.\.\.HEAD/, "", prev_tag)          # Remove ...HEAD suffix
+      print "[Unreleased]: " base_url "/compare/" tag "...HEAD"
+      print "[" bare "]: " base_url "/compare/" prev_tag "..." tag
+      next
+    }
+    { print }
+  ' "$CHANGELOG" > "${CHANGELOG}.tmp" && mv "${CHANGELOG}.tmp" "$CHANGELOG"
 
   echo "Updated changelog: $CHANGELOG"
   echo "  Added version header: ## [$BARE_VERSION] - $TODAY"
