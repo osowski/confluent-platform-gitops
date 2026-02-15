@@ -45,7 +45,7 @@ confluent-platform-gitops/
 │           ├── kustomization.yaml  # Lists all workload apps
 │           └── *.yaml              # Workload Application manifests
 ├── docs/                           # Documentation
-│   ├── *.md                        # All relevant projct documentation
+│   ├── *.md                        # All relevant project documentation
 │   └── getting-started-for-the-uninitiated.md
 └── adrs/                           # Architecture Decision Records
     ├── 0000-template.md
