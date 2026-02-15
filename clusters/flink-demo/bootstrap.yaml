@@ -19,6 +19,8 @@ spec:
         cluster:
           name: flink-demo
           domain: confluentdemo.local
+        git:
+          targetRevision: "HEAD"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
