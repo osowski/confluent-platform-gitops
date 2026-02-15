@@ -7,20 +7,20 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "20" # Deploy after cert-manager and storage
+    argocd.argoproj.io/sync-wave: "20"  # Deploy after cert-manager and storage
 spec:
   project: infrastructure
   sources:
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      targetRevision: 81.6.1 # Pin to specific version
-      chart: kube-prometheus-stack
-      helm:
-        valueFiles:
-          - $values/infrastructure/kube-prometheus-stack/base/values.yaml
-          - $values/infrastructure/kube-prometheus-stack/overlays/flink-demo/values.yaml
-    - repoURL: https://github.com/osowski/confluent-platform-gitops
-      targetRevision: v0.2.0
-      ref: values
+  - repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 81.6.1  # Pin to specific version
+    chart: kube-prometheus-stack
+    helm:
+      valueFiles:
+        - $values/infrastructure/kube-prometheus-stack/base/values.yaml
+        - $values/infrastructure/kube-prometheus-stack/overlays/flink-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -28,7 +28,7 @@ spec:
     # automated: disabled # Explicitly NOT auto-sync while under development
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true # Required for CRDs
+      - ServerSideApply=true  # Required for CRDs
     retry:
       limit: 5
       backoff:
