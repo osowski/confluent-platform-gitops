@@ -95,7 +95,7 @@ kubectl get secret --namespace argocd argocd-initial-admin-secret --output jsonp
 
 12. Open ArgoCD in your browser:
 
-- URL: `https://argocd.flink-demo.confluentdemo.local`
+- URL: [`https://argocd.flink-demo.confluentdemo.local`](https://argocd.flink-demo.confluentdemo.local)
     - **NOTE:** Ensure that this is using `https` as we are using a self-signed cert for ArgoCD ingress.
 - Username: `admin`
 - Password: paste from clipboard (copied in the previous step)
@@ -114,7 +114,7 @@ The `confluent-resources` and `flink-resources` Applications are not configured 
 
 15. Open Confluent Control Center in your browser:
 
-- URL: `https://controlcenter.flink-demo.confluentdemo.local`
+- URL: [`https://controlcenter.flink-demo.confluentdemo.local`](https://controlcenter.flink-demo.confluentdemo.local)
 
 ---
 
