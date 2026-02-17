@@ -104,18 +104,60 @@ Security rules are detailed in the [Code Review Checklist](./docs/code_review_ch
 ## Repository Etiquette
 
 ### Branching
-- Always create a feature branch before starting major changes
-- A branch should always be associated with a GitHub Issue
+- **MANDATORY: Use git worktrees for all feature branches** (see Git Worktrees section below)
+- All branches must be associated with a GitHub Issue
 - Never commit directly to `main`
-- Branch names should be in the format of `feature-<github-issue-id>/<description>` or `fix-<github-issue-id>/<description>`
+- Branch names must follow format: `feature-<github-issue-id>/<description>` or `fix-<github-issue-id>/<description>`
 
 ### Git workflow for major changes
-1. Create a new branch: `git checkout -b feature-<github-issue-id>/<feature-name>`
-2. Develop and commit on the feature branch
+**MANDATORY: Use git worktrees for all feature work** to enable parallel development:
+
+1. Create a worktree with a new feature branch:
+   ```bash
+   git worktree add -b feature-<github-issue-id>/<feature-name> ../confluent-platform-gitops-<feature-name>
+   cd ../confluent-platform-gitops-<feature-name>
+   ```
+2. Develop and commit on the feature branch within the worktree
 3. **MANDATORY: Update relevant documentation in `/docs`** (see checklist for which files)
 4. **MANDATORY: Review [Code Review Checklist](./docs/code_review_checklist.md)** before creating PR
 5. Push the branch: `git push -u origin feature-<github-issue-id>/<feature-name>`
 6. Create a PR to merge into `main`
+7. After PR is merged, clean up the worktree:
+   ```bash
+   git worktree remove ../confluent-platform-gitops-<feature-name>
+   ```
+
+### Git Worktrees - Standard Practice
+
+**All feature work MUST use git worktrees.** This is the standard workflow for this repository.
+
+**Why worktrees are mandatory:**
+- Enables multiple Claude sessions on different features in parallel
+- Keeps main worktree clean for reviews and hotfixes
+- Eliminates branch switching and merge conflicts during development
+- Each feature is isolated in its own workspace
+
+**Naming convention:**
+- Format: `../confluent-platform-gitops-<short-feature-description>`
+- Example: `../confluent-platform-gitops-kafka-metrics`
+- Keep names concise but descriptive
+
+**Common commands:**
+```bash
+# Create worktree with new branch (standard workflow)
+git worktree add -b feature-123/kafka-metrics ../confluent-platform-gitops-kafka-metrics
+
+# List all worktrees
+git worktree list
+
+# Remove worktree after PR merged
+git worktree remove ../confluent-platform-gitops-kafka-metrics
+```
+
+**Key constraints:**
+- Cannot checkout the same branch in multiple worktrees
+- All worktrees share git objects (commits, stashes)
+- Must remove worktree before deleting the branch
 
 ### Commits
 - Write clear commit messages describing the changes

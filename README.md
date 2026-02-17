@@ -1,56 +1,10 @@
 # confluent-platform-gitops
 
-GitOps repository for Confluent Platform deployments running on Kubernetes clusters managed by Argo CD.
+[GitOps](https://opengitops.dev/) repository for [Confluent Platform](https://docs.confluent.io/platform/current/overview.html) deployments running on Kubernetes clusters managed by [Argo CD](https://argo-cd.readthedocs.io/en/stable/).
 
 ## Overview
 
 This repository contains the declarative configuration for all applications and infrastructure components deployed to Kubernetes clusters running Confluent Platform. It implements the **App of Apps** pattern for managing Argo CD applications.
-
-## Repository Structure
-
-```
-confluent-platform-gitops/
-├── bootstrap/                      # Helm chart for bootstrapping Argo CD App of Apps
-│   ├── Chart.yaml
-│   ├── values.yaml                 # Default values
-│   └── templates/
-│       ├── argocd-projects.yaml    # Argo CD Project CRDs (infrastructure, workloads)
-│       ├── infrastructure.yaml     # Infrastructure App of Apps
-│       └── workloads.yaml          # Workloads App of Apps
-├── infrastructure/                 # Platform infrastructure components
-│   ├── argocd/                     # Argo CD self-management (Helm)
-│   ├── argocd-config/              # Argo CD ConfigMap patches (custom health checks)
-│   ├── argocd-ingress/             # Traefik IngressRoute for Argo CD UI
-│   ├── cert-manager/               # TLS certificate management (Helm)
-│   ├── cert-manager-resources/     # ClusterIssuer and Certificate resources
-│   ├── kube-prometheus-stack/      # Monitoring stack (Helm)
-│   ├── kube-prometheus-stack-crds/ # Prometheus Operator CRDs (Helm)
-│   └── traefik/                    # Ingress controller (Helm)
-├── workloads/                      # User-facing applications and services
-│   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
-│   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
-│   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
-│   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
-│   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
-│   ├── flink-resources/            # Flink integration resources (Kustomize)
-│   └── namespaces/                 # Namespace definitions
-├── clusters/                       # Cluster-specific application instances
-│   └── flink-demo/
-│       ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
-│       ├── kind-config.yaml        # Kind cluster configuration
-│       ├── infrastructure/
-│       │   ├── kustomization.yaml  # Lists all infrastructure apps
-│       │   └── *.yaml              # Infrastructure Application manifests
-│       └── workloads/
-│           ├── kustomization.yaml  # Lists all workload apps
-│           └── *.yaml              # Workload Application manifests
-├── docs/                           # Documentation
-│   ├── *.md                        # All relevant project documentation
-│   └── getting-started-for-the-uninitiated.md
-└── adrs/                           # Architecture Decision Records
-    ├── 0000-template.md
-    └── 0001-app-of-apps-pattern.md
-```
 
 ## Quicker Start
 
@@ -102,6 +56,52 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 Navigate to `https://<cluster-specific-hostname>` and login with username `admin` and the password from above.
 
+## Repository Structure
+
+```
+confluent-platform-gitops/
+├── bootstrap/                      # Helm chart for bootstrapping Argo CD App of Apps
+│   ├── Chart.yaml
+│   ├── values.yaml                 # Default values
+│   └── templates/
+│       ├── argocd-projects.yaml    # Argo CD Project CRDs (infrastructure, workloads)
+│       ├── infrastructure.yaml     # Infrastructure App of Apps
+│       └── workloads.yaml          # Workloads App of Apps
+├── infrastructure/                 # Platform infrastructure components
+│   ├── argocd/                     # Argo CD self-management (Helm)
+│   ├── argocd-config/              # Argo CD ConfigMap patches (custom health checks)
+│   ├── argocd-ingress/             # Traefik IngressRoute for Argo CD UI
+│   ├── cert-manager/               # TLS certificate management (Helm)
+│   ├── cert-manager-resources/     # ClusterIssuer and Certificate resources
+│   ├── kube-prometheus-stack/      # Monitoring stack (Helm)
+│   ├── kube-prometheus-stack-crds/ # Prometheus Operator CRDs (Helm)
+│   └── traefik/                    # Ingress controller (Helm)
+├── workloads/                      # User-facing applications and services
+│   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
+│   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
+│   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
+│   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
+│   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
+│   ├── flink-resources/            # Flink integration resources (Kustomize)
+│   └── namespaces/                 # Namespace definitions
+├── clusters/                       # Cluster-specific application instances
+│   └── flink-demo/
+│       ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
+│       ├── kind-config.yaml        # Kind cluster configuration
+│       ├── infrastructure/
+│       │   ├── kustomization.yaml  # Lists all infrastructure apps
+│       │   └── *.yaml              # Infrastructure Application manifests
+│       └── workloads/
+│           ├── kustomization.yaml  # Lists all workload apps
+│           └── *.yaml              # Workload Application manifests
+├── docs/                           # Documentation
+│   ├── *.md                        # All relevant project documentation
+│   └── getting-started-for-the-uninitiated.md
+└── adrs/                           # Architecture Decision Records
+    ├── 0000-template.md
+    └── 0001-app-of-apps-pattern.md
+```
+
 ## How It Works
 
 1. **Bootstrap**: The bootstrap Helm chart creates:
@@ -121,6 +121,7 @@ Navigate to `https://<cluster-specific-hostname>` and login with username `admin
 - [Adding Helm Workloads](docs/adding-helm-workloads.md) - Comprehensive guide for Helm-based deployments
 - [Bootstrap Procedure](docs/bootstrap-procedure.md) - Detailed bootstrap deployment steps
 - [Cluster Onboarding](docs/cluster-onboarding.md) - How to onboard new clusters
+- [Feature Roadmap](docs/roadmap.md) - Future roadmap for feature development and repository evolution.
 - [Architecture Decision Records](adrs/) - Record of architectural decisions
 
 ## Current Clusters
