@@ -55,6 +55,7 @@ Platform infrastructure components deployed before workloads.
 - **traefik** (wave 10) - Ingress controller for external access
 - **kube-prometheus-stack** (wave 20) - Monitoring stack with Prometheus, Grafana, Alertmanager
 - **cert-manager** (wave 20) - TLS certificate management
+- **trust-manager** (wave 30) - Automatic distribution of CA certificate trust bundles across namespaces
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificate resources
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI access
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks and configuration

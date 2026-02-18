@@ -1,0 +1,3 @@
+# Base configuration for trust-manager
+crds:
+  enabled: true
