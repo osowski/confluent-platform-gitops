@@ -5,3 +5,13 @@
 operatorPod:
   labels:
     cluster: flink-demo
+
+defaultConfiguration:
+  create: true
+  append: true
+  flink-conf.yaml: |+
+    kubernetes.operator.metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+    kubernetes.operator.metrics.reporter.prom.port: 9999
+
+metrics:
+  port: 9999
