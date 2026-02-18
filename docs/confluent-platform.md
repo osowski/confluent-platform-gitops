@@ -6,6 +6,19 @@ This homelab deployment uses Confluent Platform managed by the Confluent for Kub
 
 ## Architecture
 
+### Component Startup Ordering
+
+CFK components are deployed within the `confluent-resources` application using ArgoCD sync-wave annotations to enforce the correct dependency chain:
+
+```
+KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry (wave 20) → ControlCenter (wave 30)
+                                            → Connect (wave 20)       ↗
+```
+
+ArgoCD deploys each wave sequentially and waits for resources to report `status.state == "RUNNING"` (via custom Lua health checks in `argocd-cm`) before advancing to the next wave. This eliminates unnecessary retry loops and ensures components start in optimal order.
+
+For the full sync-wave table and architectural decision, see [Architecture - Intra-Application Sync Waves](./architecture.md#intra-application-sync-waves-confluent-resources).
+
 ### Components
 
 1. **cfk-operator** (wave 105)

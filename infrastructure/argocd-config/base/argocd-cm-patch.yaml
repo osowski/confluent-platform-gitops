@@ -11,3 +11,78 @@ data:
     hs = {}
     hs.status = "Healthy"
     return hs
+  resource.customizations.health.platform.confluent.io_KRaftController: |
+    hs = {}
+    if obj.status ~= nil and obj.status.state ~= nil then
+      if obj.status.state == "RUNNING" then
+        hs.status = "Healthy"
+        hs.message = "KRaftController is running"
+      else
+        hs.status = "Progressing"
+        hs.message = "KRaftController state: " .. obj.status.state
+      end
+    else
+      hs.status = "Progressing"
+      hs.message = "Waiting for KRaftController status"
+    end
+    return hs
+  resource.customizations.health.platform.confluent.io_Kafka: |
+    hs = {}
+    if obj.status ~= nil and obj.status.state ~= nil then
+      if obj.status.state == "RUNNING" then
+        hs.status = "Healthy"
+        hs.message = "Kafka is running"
+      else
+        hs.status = "Progressing"
+        hs.message = "Kafka state: " .. obj.status.state
+      end
+    else
+      hs.status = "Progressing"
+      hs.message = "Waiting for Kafka status"
+    end
+    return hs
+  resource.customizations.health.platform.confluent.io_SchemaRegistry: |
+    hs = {}
+    if obj.status ~= nil and obj.status.state ~= nil then
+      if obj.status.state == "RUNNING" then
+        hs.status = "Healthy"
+        hs.message = "SchemaRegistry is running"
+      else
+        hs.status = "Progressing"
+        hs.message = "SchemaRegistry state: " .. obj.status.state
+      end
+    else
+      hs.status = "Progressing"
+      hs.message = "Waiting for SchemaRegistry status"
+    end
+    return hs
+  resource.customizations.health.platform.confluent.io_Connect: |
+    hs = {}
+    if obj.status ~= nil and obj.status.state ~= nil then
+      if obj.status.state == "RUNNING" then
+        hs.status = "Healthy"
+        hs.message = "Connect is running"
+      else
+        hs.status = "Progressing"
+        hs.message = "Connect state: " .. obj.status.state
+      end
+    else
+      hs.status = "Progressing"
+      hs.message = "Waiting for Connect status"
+    end
+    return hs
+  resource.customizations.health.platform.confluent.io_ControlCenter: |
+    hs = {}
+    if obj.status ~= nil and obj.status.state ~= nil then
+      if obj.status.state == "RUNNING" then
+        hs.status = "Healthy"
+        hs.message = "ControlCenter is running"
+      else
+        hs.status = "Progressing"
+        hs.message = "ControlCenter state: " .. obj.status.state
+      end
+    else
+      hs.status = "Progressing"
+      hs.message = "Waiting for ControlCenter status"
+    end
+    return hs

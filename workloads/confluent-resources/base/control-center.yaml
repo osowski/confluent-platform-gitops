@@ -3,6 +3,8 @@ kind: ControlCenter
 metadata:
   name: controlcenter
   namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
 spec:
   replicas: 1
   image:

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CFK component sync-wave ordering for optimal startup time** ([#3](https://github.com/osowski/confluent-platform-gitops/issues/3))
+  - Added ArgoCD sync-wave annotations to CFK resource manifests in `workloads/confluent-resources/base/`
+  - Dependency chain: KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry/Connect (wave 20) → ControlCenter/KafkaTopic (wave 30)
+  - Added custom Lua health checks for 5 CFK resource types (KRaftController, Kafka, SchemaRegistry, Connect, ControlCenter) to `argocd-cm` ConfigMap
+  - Health checks evaluate `status.state == "RUNNING"` to gate sync-wave progression
+  - Eliminates unnecessary retry loops by ensuring components start in correct dependency order
+  - ADR-0002 documents the architectural decision
+
 ## [0.2.0] - 2026-02-14
 
 ### Added

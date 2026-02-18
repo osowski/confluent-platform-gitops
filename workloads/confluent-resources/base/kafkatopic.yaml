@@ -3,6 +3,8 @@ kind: KafkaTopic
 metadata:
   name: autoscale-demo
   namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
 spec:
   replicas: 3
   partitionCount: 9
