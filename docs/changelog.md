@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Inlined shared checklist from homelab-docs** ([#18](https://github.com/osowski/confluent-platform-gitops/issues/18))
+  - Copied all shared checklist items from homelab-docs code review checklist into this repo's `docs/code_review_checklist.md`
+  - Added sections: Secrets and Credentials, Input Validation, Authentication and Authorization, Network Security, Defensive Programming, Dependencies, Code Organization, Git and GitHub (Branch Naming, PR Description, Commits), Validation
+  - Merged overlapping items in Idempotency, Documentation, Testing, and Common Pitfalls sections
+  - Removed all external references to homelab-docs checklist — document is now fully self-contained
+
 ### Added
 - **trust-manager for CA certificate distribution** ([#16](https://github.com/osowski/confluent-platform-gitops/issues/16))
   - Added cert-manager's trust-manager as infrastructure application (sync-wave 30)
