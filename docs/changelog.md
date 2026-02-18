@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **trust-manager for CA certificate distribution** ([#16](https://github.com/osowski/confluent-platform-gitops/issues/16))
+  - Added cert-manager's trust-manager as infrastructure application (sync-wave 30)
+  - Enables automatic distribution of trust bundles (CA certificates) across cluster namespaces
+  - Deployed to cert-manager namespace alongside cert-manager
+  - Version v0.20.3 via OCI Helm chart from Jetstack (quay.io/jetstack/charts/trust-manager)
+  - Deployed after cert-manager (wave 20) to ensure CRDs are available
 - **CFK component sync-wave ordering for optimal startup time** ([#3](https://github.com/osowski/confluent-platform-gitops/issues/3))
   - Added ArgoCD sync-wave annotations to CFK resource manifests in `workloads/confluent-resources/base/`
   - Dependency chain: KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry/Connect (wave 20) → ControlCenter/KafkaTopic (wave 30)
