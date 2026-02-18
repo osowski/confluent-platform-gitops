@@ -1,7 +1,7 @@
 deployment:
   kind: DaemonSet
 service:
-  type: LoadBalancer
+  type: NodePort
 nodeSelector: ~
 tolerations:
   - key: node-role.kubernetes.io/control-plane
