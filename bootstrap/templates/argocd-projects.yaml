@@ -110,6 +110,10 @@ spec:
     - group: platform.confluent.io
       kind: Kafka
     - group: platform.confluent.io
+      kind: KafkaRestClass
+    - group: platform.confluent.io
+      kind: KafkaTopic
+    - group: platform.confluent.io
       kind: KRaftController
     - group: platform.confluent.io
       kind: SchemaRegistry
