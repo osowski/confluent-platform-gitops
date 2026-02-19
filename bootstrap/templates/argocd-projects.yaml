@@ -141,3 +141,5 @@ spec:
       kind: FlinkApplication
     - group: monitoring.coreos.com
       kind: ServiceMonitor
+    - group: monitoring.coreos.com
+      kind: PodMonitor
