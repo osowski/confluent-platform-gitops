@@ -4,3 +4,12 @@ kind: Kustomization
 
 resources:
   - transit-config-job.yaml
+
+secretGenerator:
+  # IMPORTANT: This token value must match server.dev.devRootToken in infrastructure/vault/base/values.yaml
+  # Kustomize will generate a Secret with a hash suffix (e.g., vault-root-token-abc123)
+  # The Job references this secret by name without the hash (Kustomize handles the resolution)
+  - name: vault-root-token
+    namespace: vault
+    literals:
+      - token=root
