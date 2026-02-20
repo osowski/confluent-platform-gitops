@@ -19,6 +19,6 @@ spec:
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true
+      selfHeal: false
     syncOptions:
       - CreateNamespace=false  # Namespace should already exist from wave 100
