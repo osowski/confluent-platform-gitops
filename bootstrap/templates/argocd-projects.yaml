@@ -15,6 +15,7 @@ spec:
     - https://prometheus-community.github.io/helm-charts
     - https://argoproj.github.io/argo-helm
     - https://charts.longhorn.io
+    - https://helm.releases.hashicorp.com
     - oci://ghcr.io/traefik/helm/traefik
     - oci://quay.io/jetstack/charts/cert-manager
     - oci://quay.io/jetstack/charts/trust-manager

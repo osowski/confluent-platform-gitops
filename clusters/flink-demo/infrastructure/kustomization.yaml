@@ -10,3 +10,6 @@ resources:
 - kube-prometheus-stack-crds.yaml
 - kube-prometheus-stack.yaml
 - traefik.yaml
+- vault.yaml
+- vault-ingress.yaml
+- vault-config.yaml
