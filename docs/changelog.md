@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deployed to dedicated vault namespace with self-signed TLS certificate
 
 ### Changed
+- **Disabled automated sync and selfHeal for workload Applications** ([#25](https://github.com/osowski/confluent-platform-gitops/issues/25))
+  - Removed automated sync entirely for resource applications: `confluent-resources`, `flink-resources`
+    - Requires manual sync via ArgoCD UI or CLI for deployments
+    - Provides full control over when resources are deployed
+  - Disabled `syncPolicy.automated.selfHeal` for operators: `cfk-operator`, `cmf-operator`, `flink-kubernetes-operator`
+    - Operators still auto-sync but won't revert manual changes
+  - Disabled `syncPolicy.automated.selfHeal` for supporting applications: `controlcenter-ingress`, `observability-resources`
+  - Infrastructure applications retain full automated sync with selfHeal for stability
+  - Allows automatic deployment of platform components on cluster bootstrap while permitting manual control of workload resources during development
 - **Inlined shared checklist from homelab-docs** ([#18](https://github.com/osowski/confluent-platform-gitops/issues/18))
   - Copied all shared checklist items from homelab-docs code review checklist into this repo's `docs/code_review_checklist.md`
   - Added sections: Secrets and Credentials, Input Validation, Authentication and Authorization, Network Security, Defensive Programming, Dependencies, Code Organization, Git and GitHub (Branch Naming, PR Description, Commits), Validation
