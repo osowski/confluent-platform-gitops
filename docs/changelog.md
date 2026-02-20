@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-20
+
 ### Added
 - **AppProject resource audit procedure** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
   - New check item in `docs/code_review_checklist.md`: verify all resource kinds created by a new Application are permitted by the target AppProject's `clusterResourceWhitelist` / `namespaceResourceWhitelist`
@@ -24,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Post-deployment Kubernetes Job (sync-wave 50) configures transit engine and creates CSFLE encryption key
   - Idempotent configuration using ArgoCD PostSync hook with automatic retry logic
   - Deployed to dedicated vault namespace with self-signed TLS certificate
+- **trust-manager for CA certificate distribution** ([#16](https://github.com/osowski/confluent-platform-gitops/issues/16))
+  - Added cert-manager's trust-manager as infrastructure application (sync-wave 30)
+  - Enables automatic distribution of trust bundles (CA certificates) across cluster namespaces
+  - Deployed to cert-manager namespace alongside cert-manager
+  - Version v0.20.3 via OCI Helm chart from Jetstack (quay.io/jetstack/charts/trust-manager)
+  - Deployed after cert-manager (wave 20) to ensure CRDs are available
+- **CFK component sync-wave ordering for optimal startup time** ([#3](https://github.com/osowski/confluent-platform-gitops/issues/3))
+  - Added ArgoCD sync-wave annotations to CFK resource manifests in `workloads/confluent-resources/base/`
+  - Dependency chain: KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry/Connect (wave 20) → ControlCenter/KafkaTopic (wave 30)
+  - Added custom Lua health checks for 5 CFK resource types (KRaftController, Kafka, SchemaRegistry, Connect, ControlCenter) to `argocd-cm` ConfigMap
+  - Health checks evaluate `status.state == "RUNNING"` to gate sync-wave progression
+  - Eliminates unnecessary retry loops by ensuring components start in correct dependency order
+  - ADR-0002 documents the architectural decision
 
 ### Changed
 - **Disabled automated sync and selfHeal for workload Applications** ([#25](https://github.com/osowski/confluent-platform-gitops/issues/25))
@@ -40,21 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added sections: Secrets and Credentials, Input Validation, Authentication and Authorization, Network Security, Defensive Programming, Dependencies, Code Organization, Git and GitHub (Branch Naming, PR Description, Commits), Validation
   - Merged overlapping items in Idempotency, Documentation, Testing, and Common Pitfalls sections
   - Removed all external references to homelab-docs checklist — document is now fully self-contained
-
-### Added
-- **trust-manager for CA certificate distribution** ([#16](https://github.com/osowski/confluent-platform-gitops/issues/16))
-  - Added cert-manager's trust-manager as infrastructure application (sync-wave 30)
-  - Enables automatic distribution of trust bundles (CA certificates) across cluster namespaces
-  - Deployed to cert-manager namespace alongside cert-manager
-  - Version v0.20.3 via OCI Helm chart from Jetstack (quay.io/jetstack/charts/trust-manager)
-  - Deployed after cert-manager (wave 20) to ensure CRDs are available
-- **CFK component sync-wave ordering for optimal startup time** ([#3](https://github.com/osowski/confluent-platform-gitops/issues/3))
-  - Added ArgoCD sync-wave annotations to CFK resource manifests in `workloads/confluent-resources/base/`
-  - Dependency chain: KRaftController (wave 0) → Kafka (wave 10) → SchemaRegistry/Connect (wave 20) → ControlCenter/KafkaTopic (wave 30)
-  - Added custom Lua health checks for 5 CFK resource types (KRaftController, Kafka, SchemaRegistry, Connect, ControlCenter) to `argocd-cm` ConfigMap
-  - Health checks evaluate `status.state == "RUNNING"` to gate sync-wave progression
-  - Eliminates unnecessary retry loops by ensuring components start in correct dependency order
-  - ADR-0002 documents the architectural decision
 
 ## [0.2.0] - 2026-02-14
 
