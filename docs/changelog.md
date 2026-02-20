@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Kubernetes metrics-server for resource metrics** ([#30](https://github.com/osowski/confluent-platform-gitops/issues/30))
+  - Added metrics-server as infrastructure application (sync-wave 5)
+  - Provides Metrics API for kubectl top, HPA, and VPA functionality
+  - Deployed via official Kubernetes SIGs Helm chart (version 3.12.2)
+  - Configured with 2 replicas and PodDisruptionBudget for high availability
+  - Deployed to kube-system namespace
+  - Cluster-specific overlay includes --kubelet-insecure-tls for local/development environments
+
 ## [0.3.0] - 2026-02-20
 
 ## [0.3.0] - 2026-02-20

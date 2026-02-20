@@ -9,6 +9,7 @@ resources:
 - trust-manager.yaml
 - kube-prometheus-stack-crds.yaml
 - kube-prometheus-stack.yaml
+- metrics-server.yaml
 - traefik.yaml
 - vault.yaml
 - vault-ingress.yaml
