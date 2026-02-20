@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Upgraded HashiCorp Vault to v0.31.0**
+  - Updated Vault Helm chart from version 0.28.1 to 0.31.0
+  - Includes bug fixes and improvements from upstream HashiCorp releases
+
 ### Added
 - **Kubernetes metrics-server for resource metrics** ([#30](https://github.com/osowski/confluent-platform-gitops/issues/30))
   - Added metrics-server as infrastructure application (sync-wave 5)
