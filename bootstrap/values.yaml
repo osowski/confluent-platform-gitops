@@ -5,13 +5,16 @@
 cluster:
   name: "default"
   domain: "cluster.local"
+
 # ArgoCD configuration
 argocd:
   namespace: "argocd"
+
 # Git repository configuration
 git:
   repoUrl: "https://github.com/osowski/confluent-platform-gitops.git"
-  targetRevision: "v0.3.0"
+  targetRevision: "HEAD"
+
 # Application sync policies
 syncPolicy:
   automated:

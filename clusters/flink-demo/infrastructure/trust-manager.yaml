@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "30" # Deploy after cert-manager (wave 20)
+    argocd.argoproj.io/sync-wave: "30"  # Deploy after cert-manager (wave 20)
 spec:
   project: infrastructure
   sources:
-    - repoURL: oci://quay.io/jetstack/charts/trust-manager
-      targetRevision: v0.20.3 # Pin to specific version
-      chart: trust-manager
-      helm:
-        ignoreMissingValueFiles: true
-        valueFiles:
-          - $values/infrastructure/trust-manager/base/values.yaml
-          - $values/infrastructure/trust-manager/overlays/flink-demo/values.yaml
-    - repoURL: https://github.com/osowski/confluent-platform-gitops
-      targetRevision: v0.3.0
-      ref: values
+  - repoURL: oci://quay.io/jetstack/charts/trust-manager
+    targetRevision: v0.20.3  # Pin to specific version
+    chart: trust-manager
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/trust-manager/base/values.yaml
+        - $values/infrastructure/trust-manager/overlays/flink-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -30,8 +30,8 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false # cert-manager namespace already created by cert-manager app
-      - ServerSideApply=true # Required for CRDs
+      - CreateNamespace=false  # cert-manager namespace already created by cert-manager app
+      - ServerSideApply=true  # Required for CRDs
     retry:
       limit: 5
       backoff:
