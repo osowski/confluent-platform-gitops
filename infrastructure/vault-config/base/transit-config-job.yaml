@@ -1,0 +1,44 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-transit-config
+  namespace: vault
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      name: vault-transit-config
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: vault-config
+        image: hashicorp/vault:1.18
+        env:
+        - name: VAULT_ADDR
+          value: "http://vault:8200"
+        - name: VAULT_TOKEN
+          value: "root"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for Vault to be ready..."
+          until vault status >/dev/null 2>&1; do
+            echo "Vault not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Vault is ready!"
+
+          echo "Enabling transit secrets engine (idempotent)..."
+          vault secrets enable transit || echo "Transit engine already enabled"
+
+          echo "Creating CSFLE encryption key (idempotent)..."
+          vault write -f transit/keys/csfle || echo "CSFLE key already exists"
+
+          echo "Transit engine configuration complete!"
+          vault secrets list

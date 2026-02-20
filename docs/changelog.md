@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **HashiCorp Vault for secrets management** ([#5](https://github.com/osowski/confluent-platform-gitops/issues/5))
+  - Added Vault as infrastructure application (sync-wave 40) in dev mode for demo cluster
+  - Enables transit secrets engine for Client-Side Field Level Encryption (CSFLE) operations
+  - Deployed via Helm chart from HashiCorp repository (version 0.28.1)
+  - Includes Traefik IngressRoute for Vault UI access (vault.flink-demo.confluentdemo.local, sync-wave 45)
+  - Post-deployment Kubernetes Job (sync-wave 50) configures transit engine and creates CSFLE encryption key
+  - Idempotent configuration using ArgoCD PostSync hook with automatic retry logic
+  - Deployed to dedicated vault namespace with self-signed TLS certificate
+
 ### Changed
 - **Inlined shared checklist from homelab-docs** ([#18](https://github.com/osowski/confluent-platform-gitops/issues/18))
   - Copied all shared checklist items from homelab-docs code review checklist into this repo's `docs/code_review_checklist.md`

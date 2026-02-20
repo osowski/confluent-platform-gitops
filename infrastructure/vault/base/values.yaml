@@ -1,0 +1,14 @@
+---
+# Base Helm values for HashiCorp Vault
+# Used for development/demo environments with dev mode enabled
+
+server:
+  dev:
+    enabled: true
+    devRootToken: "root"
+
+ui:
+  enabled: true
+
+injector:
+  enabled: false
