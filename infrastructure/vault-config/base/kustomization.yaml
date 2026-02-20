@@ -5,10 +5,13 @@ kind: Kustomization
 resources:
   - transit-config-job.yaml
 
+generatorOptions:
+  # Disable hash suffix for dev mode - the secret value is static
+  # In production, use external secrets management instead
+  disableNameSuffixHash: true
+
 secretGenerator:
   # IMPORTANT: This token value must match server.dev.devRootToken in infrastructure/vault/base/values.yaml
-  # Kustomize will generate a Secret with a hash suffix (e.g., vault-root-token-abc123)
-  # The Job references this secret by name without the hash (Kustomize handles the resolution)
   - name: vault-root-token
     namespace: vault
     literals:
