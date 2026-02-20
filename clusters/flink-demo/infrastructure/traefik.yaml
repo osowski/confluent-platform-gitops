@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "10"  # Deploy after cert-manager and storage
+    argocd.argoproj.io/sync-wave: "10" # Deploy after cert-manager and storage
 spec:
   project: infrastructure
   sources:
-  - repoURL: oci://ghcr.io/traefik/helm/traefik
-    targetRevision: 38.0.2  # Pin to specific version
-    chart: traefik
-    helm:
-      ignoreMissingValueFiles: true
-      valueFiles:
-        - $values/infrastructure/traefik/base/values.yaml
-        - $values/infrastructure/traefik/overlays/flink-demo/values.yaml
-  - repoURL: https://github.com/osowski/confluent-platform-gitops
-    targetRevision: HEAD
-    ref: values
+    - repoURL: oci://ghcr.io/traefik/helm/traefik
+      targetRevision: 38.0.2 # Pin to specific version
+      chart: traefik
+      helm:
+        ignoreMissingValueFiles: true
+        valueFiles:
+          - $values/infrastructure/traefik/base/values.yaml
+          - $values/infrastructure/traefik/overlays/flink-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops
+      targetRevision: v0.3.0
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress
@@ -31,7 +31,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true  # Required for CRDs
+      - ServerSideApply=true # Required for CRDs
     retry:
       limit: 5
       backoff:

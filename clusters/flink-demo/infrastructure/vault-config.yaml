@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: v0.3.0
     path: infrastructure/vault-config/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc

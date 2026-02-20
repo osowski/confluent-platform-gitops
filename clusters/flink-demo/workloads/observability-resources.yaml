@@ -4,14 +4,14 @@ metadata:
   name: observability-resources
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "117"  # After Flink operator (wave 116)
+    argocd.argoproj.io/sync-wave: "117" # After Flink operator (wave 116)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: v0.3.0
     path: workloads/observability-resources/base
   destination:
     server: https://kubernetes.default.svc
@@ -21,4 +21,4 @@ spec:
       prune: true
       selfHeal: false
     syncOptions:
-      - CreateNamespace=false  # Namespace should already exist from wave 100
+      - CreateNamespace=false # Namespace should already exist from wave 100
