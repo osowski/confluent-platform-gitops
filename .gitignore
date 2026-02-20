@@ -30,3 +30,6 @@ test-output/
 
 # Helm charts
 charts/*.tgz
+
+# Claude files
+.claude/
