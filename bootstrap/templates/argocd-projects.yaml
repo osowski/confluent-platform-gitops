@@ -16,6 +16,7 @@ spec:
     - https://argoproj.github.io/argo-helm
     - https://charts.longhorn.io
     - https://helm.releases.hashicorp.com
+    - https://kubernetes-sigs.github.io/metrics-server/
     - oci://ghcr.io/traefik/helm/traefik
     - oci://quay.io/jetstack/charts/cert-manager
     - oci://quay.io/jetstack/charts/trust-manager
