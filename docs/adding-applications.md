@@ -509,6 +509,92 @@ Set conservative defaults in base, increase in overlay if needed.
 6. **Test locally** - Validate rendering before pushing
 7. **Use semantic versioning** - For custom applications
 
+## AppProject Resource Audit
+
+Every ArgoCD Application must be assigned to a project (`infrastructure` or `workloads`). Each project defines an explicit allowlist of Kubernetes resource kinds it may create:
+
+- **`clusterResourceWhitelist`** — cluster-scoped resources (StorageClass, ClusterRole, ClusterRoleBinding, PersistentVolume, Namespace, CustomResourceDefinition, etc.)
+- **`namespaceResourceWhitelist`** — namespace-scoped resources (Deployment, Service, ConfigMap, Secret, etc.)
+
+If an application attempts to create a resource kind not in its project's allowlist, ArgoCD will refuse to sync it. **Run this audit before opening a PR** to catch missing entries at review time rather than at deploy time.
+
+The project allowlists live in `bootstrap/templates/argocd-projects.yaml`.
+
+### Step 1: Enumerate resources the application will create
+
+#### Kustomize applications
+
+```bash
+kubectl kustomize workloads/<app>/overlays/<cluster>/ \
+  | grep -E "^(apiVersion|kind):" \
+  | paste - - \
+  | sort -u
+```
+
+#### Helm applications (chart available locally)
+
+```bash
+helm template <release-name> <chart-path> \
+  -f infrastructure/<app>/base/values.yaml \
+  -f infrastructure/<app>/overlays/<cluster>/values.yaml \
+  | grep -E "^(apiVersion|kind):" \
+  | paste - - \
+  | sort -u
+```
+
+#### Helm applications (remote chart — GitHub or OCI)
+
+Pull the chart first, then template it:
+
+```bash
+# Pull from a Helm registry
+helm pull <repo>/<chart> --version <version> --untar --untardir /tmp/chart-review/
+helm template <release-name> /tmp/chart-review/<chart>/ \
+  -f infrastructure/<app>/base/values.yaml \
+  | grep -E "^(apiVersion|kind):" | paste - - | sort -u
+
+# Or inspect chart templates directly on GitHub for the pinned targetRevision
+```
+
+### Step 2: Classify each resource as cluster-scoped or namespace-scoped
+
+Common cluster-scoped kinds (go in `clusterResourceWhitelist`):
+
+| Kind | API Group |
+|------|-----------|
+| `ClusterRole` | `rbac.authorization.k8s.io` |
+| `ClusterRoleBinding` | `rbac.authorization.k8s.io` |
+| `CustomResourceDefinition` | `apiextensions.k8s.io` |
+| `Namespace` | _(core)_ |
+| `PersistentVolume` | _(core)_ |
+| `StorageClass` | `storage.k8s.io` |
+| `ValidatingWebhookConfiguration` | `admissionregistration.k8s.io` |
+| `MutatingWebhookConfiguration` | `admissionregistration.k8s.io` |
+
+Everything else (Deployment, Service, ConfigMap, ServiceAccount, Role, RoleBinding, etc.) is namespace-scoped and goes in `namespaceResourceWhitelist`.
+
+### Step 3: Cross-reference against the target project
+
+Open `bootstrap/templates/argocd-projects.yaml` and locate the project your Application uses (`spec.project`).
+
+- A wildcard entry (`group: '*' / kind: '*'`) permits all resources — no further action needed.
+- An explicit list requires every resource kind from Step 1 to appear as a matching entry.
+
+For each resource not found in the allowlist, add an entry to the appropriate whitelist before merging.
+
+**Example audit table** (from the Vault infrastructure review):
+
+| Kind | Group | Scope | Whitelisted |
+|------|-------|-------|-------------|
+| `ServiceAccount` | _(core)_ | Namespace | ✅ wildcard |
+| `ConfigMap` | _(core)_ | Namespace | ✅ wildcard |
+| `Service` | _(core)_ | Namespace | ✅ wildcard |
+| `StatefulSet` | `apps` | Namespace | ✅ wildcard |
+| `Role` | `rbac.authorization.k8s.io` | Namespace | ✅ wildcard |
+| `RoleBinding` | `rbac.authorization.k8s.io` | Namespace | ✅ wildcard |
+
+> **Note:** The `infrastructure` project currently uses wildcard allowlists. If it ever moves to an explicit allowlist, all resource kinds would need to be added explicitly. The `workloads` project uses an explicit allowlist with specific CRD kinds for CFK, Flink, and cert-manager.
+
 ## Next Steps
 
 - **Advanced Helm patterns**: [Adding Helm Workloads](adding-helm-workloads.md) - Comprehensive guide with real-world examples

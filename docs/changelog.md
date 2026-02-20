@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AppProject resource audit procedure** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
+  - New check item in `docs/code_review_checklist.md`: verify all resource kinds created by a new Application are permitted by the target AppProject's `clusterResourceWhitelist` / `namespaceResourceWhitelist`
+  - New common pitfall entry (#3): "AppProject resource not whitelisted" with link to the audit procedure
+  - New section in `docs/adding-applications.md` — AppProject Resource Audit — covering:
+    - Enumerating resources from Kustomize overlays and Helm charts (local, remote Helm registry, GitHub-sourced charts)
+    - Cluster-scoped vs namespace-scoped classification reference table
+    - Cross-referencing against the project allowlist in `bootstrap/templates/argocd-projects.yaml`
+    - Example audit table from the Vault infrastructure review
 - **HashiCorp Vault for secrets management** ([#5](https://github.com/osowski/confluent-platform-gitops/issues/5))
   - Added Vault as infrastructure application (sync-wave 40) in dev mode for demo cluster
   - Enables transit secrets engine for Client-Side Field Level Encryption (CSFLE) operations
