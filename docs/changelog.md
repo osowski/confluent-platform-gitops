@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-02-20
 
+## [0.3.0] - 2026-02-20
+
 ### Added
 - **AppProject resource audit procedure** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
   - New check item in `docs/code_review_checklist.md`: verify all resource kinds created by a new Application are permitted by the target AppProject's `clusterResourceWhitelist` / `namespaceResourceWhitelist`
@@ -273,6 +275,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/osowski/confluent-platform-gitops/releases/tag/v0.1.0
