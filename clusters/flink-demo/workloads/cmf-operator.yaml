@@ -18,7 +18,7 @@ spec:
           - $values/workloads/cmf-operator/base/values.yaml
           - $values/workloads/cmf-operator/overlays/flink-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: v0.4.0
       ref: values
   destination:
     server: https://kubernetes.default.svc

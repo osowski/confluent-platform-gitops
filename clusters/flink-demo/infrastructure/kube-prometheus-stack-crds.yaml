@@ -7,19 +7,19 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "2"  # Deploy as early as possible so all others have access to CRDs
+    argocd.argoproj.io/sync-wave: "2" # Deploy as early as possible so all others have access to CRDs
 spec:
   project: infrastructure
   sources:
-  - repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 81.6.1  # Pin to specific version
-    chart: kube-prometheus-stack
-    helm:
-      valueFiles:
-        - $values/infrastructure/kube-prometheus-stack-crds/base/values.yaml
-  - repoURL: https://github.com/osowski/confluent-platform-gitops
-    targetRevision: HEAD
-    ref: values
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      targetRevision: 81.6.1 # Pin to specific version
+      chart: kube-prometheus-stack
+      helm:
+        valueFiles:
+          - $values/infrastructure/kube-prometheus-stack-crds/base/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops
+      targetRevision: v0.4.0
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -29,7 +29,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true  # Required for CRDs
+      - ServerSideApply=true # Required for CRDs
     retry:
       limit: 5
       backoff:
