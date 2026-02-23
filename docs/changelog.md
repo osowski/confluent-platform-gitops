@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-02-23
+
 ### Changed
 - **Upgraded HashiCorp Vault to v0.31.0**
   - Updated Vault Helm chart from version 0.28.1 to 0.31.0
@@ -289,7 +291,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/osowski/confluent-platform-gitops/releases/tag/v0.1.0
