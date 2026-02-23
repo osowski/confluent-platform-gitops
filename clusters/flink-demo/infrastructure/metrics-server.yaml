@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "5" # After CRDs (2), before infrastructure (10+)
+    argocd.argoproj.io/sync-wave: "5"  # After CRDs (2), before infrastructure (10+)
 spec:
   project: infrastructure
   sources:
-    - repoURL: https://kubernetes-sigs.github.io/metrics-server/
-      targetRevision: 3.12.2 # Pin to specific version
-      chart: metrics-server
-      helm:
-        ignoreMissingValueFiles: true
-        valueFiles:
-          - $values/infrastructure/metrics-server/base/values.yaml
-          - $values/infrastructure/metrics-server/overlays/flink-demo/values.yaml
-    - repoURL: https://github.com/osowski/confluent-platform-gitops
-      targetRevision: v0.4.0
-      ref: values
+  - repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    targetRevision: 3.12.2  # Pin to specific version
+    chart: metrics-server
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/metrics-server/base/values.yaml
+        - $values/infrastructure/metrics-server/overlays/flink-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
@@ -30,7 +30,7 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false # kube-system already exists
+      - CreateNamespace=false  # kube-system already exists
     retry:
       limit: 5
       backoff:

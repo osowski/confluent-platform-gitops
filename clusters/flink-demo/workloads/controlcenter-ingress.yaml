@@ -7,12 +7,12 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "115" # After Confluent resources (wave 110)
+    argocd.argoproj.io/sync-wave: "115"  # After Confluent resources (wave 110)
 spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: v0.4.0
+    targetRevision: HEAD
     path: workloads/controlcenter-ingress/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
