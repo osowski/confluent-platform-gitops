@@ -18,15 +18,16 @@ spec:
     #  labels:
     #     "owned-by": "team-name"
     spec:  
-      # Conservative values for homelab environment
       flinkConfiguration:
         # JobManager configuration
-        jobmanager.memory.process.size: "1024m"
-        jobmanager.cpu: "1.0"
+        #jobmanager.memory.process.size: "1024m"
+        #jobmanager.cpu: "1.0"
 
         # TaskManager configuration
-        taskmanager.memory.process.size: "1024m"
-        taskmanager.cpu: "1.0"
-        taskmanager.numberOfTaskSlots: "2"
+        #taskmanager.memory.process.size: "1024m"
+        #taskmanager.cpu: "1.0"
+        #taskmanager.numberOfTaskSlots: "2"
 
+        metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+        metrics.reporter.prom.port: "9249-9250"
         rest.profiling.enabled: "true"
