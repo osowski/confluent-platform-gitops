@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Flink ServiceMonitor job label alignment with jmx-monitoring-stacks dashboards** ([#36](https://github.com/osowski/confluent-platform-gitops/issues/36))
+  - Removed `jobLabel: type` from the Flink `ServiceMonitor`; Prometheus was assigning `job="flink-native-kubernetes"` which did not match the `job="flink"` selector hardcoded in upstream Flink Grafana dashboards
+  - Added `relabelings` entry to the metrics endpoint to hardcode `job="flink"`, aligning with the [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) dashboard convention
+  - Updated embedded Grafana dashboard JSON in `grafana-dashboard.yaml` to use `job="flink"` in all PromQL expressions
+
 ## [0.4.0] - 2026-02-23
 
 ### Changed

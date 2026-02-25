@@ -212,6 +212,28 @@ GROUP BY product_id;
 
 ## Monitoring
 
+### Prometheus / Grafana (ServiceMonitor)
+
+Flink pod metrics are scraped by Prometheus via a `ServiceMonitor` and a headless `Service` defined in `workloads/flink-resources/base/`:
+
+| File | Purpose |
+|------|---------|
+| `service.yaml` | Exposes Flink pods on port 9249 (`metrics`), selected by `type: flink-native-kubernetes` |
+| `servicemonitor.yaml` | Configures Prometheus scraping; sets `job="flink"` via `relabelings` |
+| `grafana-dashboard.yaml` | ConfigMap with embedded Grafana dashboard; loaded automatically via `grafana_dashboard: "1"` label |
+
+#### Label conventions
+
+The `ServiceMonitor` uses a `relabelings` entry to hardcode `job="flink"` on all scraped metrics. This intentionally aligns with the label convention used by the upstream [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) Flink dashboards (`flink-jobmanager.json`, `flink-taskmanager.json`), which filter on `job="flink"` in every PromQL expression.
+
+Pod labels (`app`, `component`, `type`, `platform.confluent.io/origin`) are propagated to metrics via `podTargetLabels`. The `app` label is used in dashboard variable queries as the environment selector (`app="$env"`).
+
+> **Note**: If you import the upstream jmx-monitoring-stacks dashboards directly, their `env` label variable queries must be updated to use `app` instead, as this stack does not add an `env` label to scraped metrics.
+
+#### Operator metrics
+
+The Flink Kubernetes Operator itself is monitored via a separate `PodMonitor` defined in `workloads/flink-kubernetes-operator/podmonitor-operator.yaml`, targeting pods with `app.kubernetes.io/name: flink-kubernetes-operator`.
+
 ### CMF UI (Future)
 
 CMF provides a web interface for managing Flink applications:
@@ -334,11 +356,9 @@ Sensitive configuration should use Kubernetes Secrets:
 ## Next Steps
 
 1. **Deploy sample application**: Create a simple FlinkApplication to validate the setup
-2. **Configure monitoring**: Add ServiceMonitors for Prometheus integration
-3. **Add CMF ingress**: Create IngressRoute for CMF UI access
-4. **Enable authentication**: Configure Kafka security (SASL/PLAIN or mTLS)
-5. **Tune resources**: Adjust memory and CPU based on workload requirements
-6. **Add to flink-demo cluster**: Replicate configuration for flink-demo cluster
+2. **Enable authentication**: Configure Kafka security (SASL/PLAIN or mTLS)
+3. **Tune resources**: Adjust memory and CPU based on workload requirements
+4. **Add to flink-demo cluster**: Replicate configuration for flink-demo cluster
 
 ## References
 
@@ -347,3 +367,4 @@ Sensitive configuration should use Kubernetes Secrets:
 - [Flink Kubernetes Operator](https://nightlies.apache.org/flink/flink-kubernetes-operator-docs-main/)
 - [CMF Installation Guide](https://docs.confluent.io/platform/current/flink/installation/helm.html)
 - [Flink SQL Reference](https://docs.confluent.io/platform/current/flink/reference/sql-reference.html)
+- [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) — upstream Flink Grafana dashboards this stack aligns with

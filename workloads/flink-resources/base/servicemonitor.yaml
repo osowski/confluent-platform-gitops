@@ -6,7 +6,6 @@ metadata:
     monitoring: confluent
   name: flink-pods
 spec:
-  jobLabel: type
   podTargetLabels:
     - app
     - component
@@ -17,6 +16,9 @@ spec:
       interval: 60s
       scheme: http
       scrapeTimeout: 30s
+      relabelings:
+        - targetLabel: job
+          replacement: flink
   selector:
     matchLabels:
       platform.confluent.io/origin: manual
