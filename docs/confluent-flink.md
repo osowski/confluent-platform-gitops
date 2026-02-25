@@ -356,10 +356,9 @@ Sensitive configuration should use Kubernetes Secrets:
 ## Next Steps
 
 1. **Deploy sample application**: Create a simple FlinkApplication to validate the setup
-2. **Add CMF ingress**: Create IngressRoute for CMF UI access
-4. **Enable authentication**: Configure Kafka security (SASL/PLAIN or mTLS)
-5. **Tune resources**: Adjust memory and CPU based on workload requirements
-6. **Add to flink-demo cluster**: Replicate configuration for flink-demo cluster
+2. **Enable authentication**: Configure Kafka security (SASL/PLAIN or mTLS)
+3. **Tune resources**: Adjust memory and CPU based on workload requirements
+4. **Add to flink-demo cluster**: Replicate configuration for flink-demo cluster
 
 ## References
 
