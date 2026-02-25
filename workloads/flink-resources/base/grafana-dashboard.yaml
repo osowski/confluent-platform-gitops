@@ -138,7 +138,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(flink_jobmanager_numRunningJobs{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "sum(flink_jobmanager_numRunningJobs{job=\"flink\", app=\"$env\"})",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -223,7 +223,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(flink_jobmanager_taskSlotsTotal{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "sum(flink_jobmanager_taskSlotsTotal{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "",
               "range": true,
@@ -308,7 +308,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(flink_jobmanager_taskSlotsAvailable{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "sum(flink_jobmanager_taskSlotsAvailable{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "",
               "range": true,
@@ -389,7 +389,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "last_over_time(sum(flink_jobmanager_numRegisteredTaskManagers{job=\"flink-native-kubernetes\", app=\"$env\"})[2m:30s])",
+              "expr": "last_over_time(sum(flink_jobmanager_numRegisteredTaskManagers{job=\"flink\", app=\"$env\"})[2m:30s])",
               "interval": "",
               "legendFormat": "",
               "range": true,
@@ -470,7 +470,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(flink_jobmanager_numPendingTaskManagers{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "sum(flink_jobmanager_numPendingTaskManagers{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "",
               "range": true,
@@ -551,7 +551,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "sum(flink_taskmanager_job_task_isBackPressured{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "sum(flink_taskmanager_job_task_isBackPressured{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "",
               "range": true,
@@ -655,7 +655,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "(flink_jobmanager_Status_JVM_Memory_Heap_Used{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "(flink_jobmanager_Status_JVM_Memory_Heap_Used{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "Heap:{{pod}}",
               "range": true,
@@ -667,7 +667,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "(flink_jobmanager_Status_JVM_Memory_NonHeap_Used{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "(flink_jobmanager_Status_JVM_Memory_NonHeap_Used{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "NonHeap:{{pod}}",
               "range": true,
@@ -771,7 +771,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "(flink_jobmanager_Status_JVM_Memory_Heap_Max{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "(flink_jobmanager_Status_JVM_Memory_Heap_Max{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "Heap:{{pod}}",
               "range": true,
@@ -783,7 +783,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "(flink_jobmanager_Status_JVM_Memory_NonHeap_Max{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "(flink_jobmanager_Status_JVM_Memory_NonHeap_Max{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "Nonheap:{{pod}}",
               "range": true,
@@ -882,7 +882,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "(flink_jobmanager_Status_JVM_Threads_Count{job=\"flink-native-kubernetes\", app=\"$env\"})",
+              "expr": "(flink_jobmanager_Status_JVM_Threads_Count{job=\"flink\", app=\"$env\"})",
               "interval": "",
               "legendFormat": "{{pod}}",
               "range": true,
@@ -1007,7 +1007,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_Status_JVM_CPU_Load{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_Status_JVM_CPU_Load{job=\"flink\", app=\"$env\"}",
               "interval": "",
               "legendFormat": "{{pod}}",
               "range": true,
@@ -1019,7 +1019,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_jobmanager_Status_JVM_CPU_Load{job=\"flink-native-kubernetes\", app=\"$env\"}\n",
+              "expr": "flink_jobmanager_Status_JVM_CPU_Load{job=\"flink\", app=\"$env\"}\n",
               "hide": false,
               "instant": false,
               "legendFormat": "{{pod}}",
@@ -1234,7 +1234,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "last_over_time((sum(flink_jobmanager_numRegisteredTaskManagers{job=\"flink-native-kubernetes\", app=\"$env\"}) by (app))[2m:30s])",
+              "expr": "last_over_time((sum(flink_jobmanager_numRegisteredTaskManagers{job=\"flink\", app=\"$env\"}) by (app))[2m:30s])",
               "interval": "",
               "legendFormat": "{{app}}",
               "range": true,
@@ -1348,7 +1348,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_numRecordsInPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_numRecordsInPerSecond{job=\"flink\", app=\"$env\"}",
               "interval": "",
               "legendFormat": "{{job_name}}, task: {{task_id}}",
               "range": true,
@@ -1360,7 +1360,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_operator_numRecordsInPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_operator_numRecordsInPerSecond{job=\"flink\", app=\"$env\"}",
               "hide": false,
               "instant": false,
               "legendFormat": "{{job_name}}, op: {{operator_id}}",
@@ -1463,7 +1463,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_numBytesInPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_numBytesInPerSecond{job=\"flink\", app=\"$env\"}",
               "interval": "",
               "legendFormat": "{{job_name}}, task: {{task_id}}",
               "range": true,
@@ -1475,7 +1475,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_operator_numBytesInPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_operator_numBytesInPerSecond{job=\"flink\", app=\"$env\"}",
               "hide": false,
               "instant": false,
               "legendFormat": "{{job_name}}, op: {{operator_id}}",
@@ -1577,7 +1577,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_numRecordsOutPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_numRecordsOutPerSecond{job=\"flink\", app=\"$env\"}",
               "interval": "",
               "legendFormat": "{{job_name}}, task: {{task_id}}",
               "range": true,
@@ -1589,7 +1589,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_operator_numRecordsOutPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_operator_numRecordsOutPerSecond{job=\"flink\", app=\"$env\"}",
               "hide": false,
               "instant": false,
               "legendFormat": "{{job_name}}, op: {{operator_id}}",
@@ -1692,7 +1692,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_numBytesOutPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_numBytesOutPerSecond{job=\"flink\", app=\"$env\"}",
               "interval": "",
               "legendFormat": "{{job_name}}, task: {{task_id}}",
               "range": true,
@@ -1704,7 +1704,7 @@ data:
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "flink_taskmanager_job_task_operator_numBytesOutPerSecond{job=\"flink-native-kubernetes\", app=\"$env\"}",
+              "expr": "flink_taskmanager_job_task_operator_numBytesOutPerSecond{job=\"flink\", app=\"$env\"}",
               "hide": false,
               "instant": false,
               "legendFormat": "{{job_name}}, op: {{operator_id}}",
