@@ -75,31 +75,41 @@ confluent-platform-gitops/
 │   ├── cert-manager-resources/     # ClusterIssuer and Certificate resources
 │   ├── kube-prometheus-stack/      # Monitoring stack (Helm)
 │   ├── kube-prometheus-stack-crds/ # Prometheus Operator CRDs (Helm)
-│   └── traefik/                    # Ingress controller (Helm)
+│   ├── traefik/                    # Ingress controller (Helm)
+│   ├── trust-manager/              # cert-manager trust distribution (Helm)
+│   ├── vault/                      # HashiCorp Vault secrets management (Helm)
+│   ├── vault-config/               # Vault transit engine configuration
+│   └── vault-ingress/              # Traefik IngressRoute for Vault UI
 ├── workloads/                      # User-facing applications and services
-│   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
 │   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
+│   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
 │   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
 │   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
 │   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
 │   ├── flink-resources/            # Flink integration resources (Kustomize)
-│   └── namespaces/                 # Namespace definitions
+│   ├── namespaces/                 # Namespace definitions
+│   └── observability-resources/    # PodMonitors and Grafana dashboards
 ├── clusters/                       # Cluster-specific application instances
 │   └── flink-demo/
 │       ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
 │       ├── kind-config.yaml        # Kind cluster configuration
 │       ├── infrastructure/
 │       │   ├── kustomization.yaml  # Lists all infrastructure apps
-│       │   └── *.yaml              # Infrastructure Application manifests
+│       │   └── *.yaml              # Infrastructure Application manifests (12 apps)
 │       └── workloads/
 │           ├── kustomization.yaml  # Lists all workload apps
-│           └── *.yaml              # Workload Application manifests
+│           └── *.yaml              # Workload Application manifests (9 apps)
+├── scripts/                        # Automation scripts
+│   ├── prepare-release.sh          # Prepare changelog and version updates
+│   └── release.sh                  # Create and push git tags for releases
 ├── docs/                           # Documentation
 │   ├── *.md                        # All relevant project documentation
 │   └── getting-started-for-the-uninitiated.md
 └── adrs/                           # Architecture Decision Records
     ├── 0000-template.md
-    └── 0001-app-of-apps-pattern.md
+    ├── 0001-app-of-apps-pattern.md
+    ├── 0002-cfk-component-sync-wave-ordering.md
+    └── 0003-release-versioning-strategy.md
 ```
 
 ## How It Works
@@ -135,6 +145,10 @@ confluent-platform-gitops/
 - **traefik** (wave 10) - Ingress controller for external access
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **cert-manager** (wave 20) - TLS certificate management
+- **trust-manager** (wave 30) - cert-manager trust distribution for CA bundles
+- **vault** (wave 40) - HashiCorp Vault secrets management (dev mode)
+- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
+- **vault-config** (wave 50) - Vault transit engine configuration
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificates
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for Argo CD UI
 - **argocd-config** (wave 85) - Argo CD ConfigMap patches for custom health checks
@@ -144,6 +158,7 @@ confluent-platform-gitops/
 - **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for stream processing
+- **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF)
 
 ### Workloads (Manual Sync Required)

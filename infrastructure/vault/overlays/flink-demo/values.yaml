@@ -1,0 +1,3 @@
+---
+# flink-demo cluster-specific overrides for Vault
+# Dev mode defaults from base are sufficient for this cluster

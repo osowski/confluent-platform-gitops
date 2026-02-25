@@ -13,13 +13,13 @@ data:
     return hs
   resource.customizations.health.platform.confluent.io_KRaftController: |
     hs = {}
-    if obj.status ~= nil and obj.status.state ~= nil then
-      if obj.status.state == "RUNNING" then
+    if obj.status ~= nil and obj.status.phase ~= nil then
+      if obj.status.phase == "RUNNING" then
         hs.status = "Healthy"
         hs.message = "KRaftController is running"
       else
         hs.status = "Progressing"
-        hs.message = "KRaftController state: " .. obj.status.state
+        hs.message = "KRaftController phase: " .. obj.status.phase
       end
     else
       hs.status = "Progressing"
@@ -28,13 +28,13 @@ data:
     return hs
   resource.customizations.health.platform.confluent.io_Kafka: |
     hs = {}
-    if obj.status ~= nil and obj.status.state ~= nil then
-      if obj.status.state == "RUNNING" then
+    if obj.status ~= nil and obj.status.phase ~= nil then
+      if obj.status.phase == "RUNNING" then
         hs.status = "Healthy"
         hs.message = "Kafka is running"
       else
         hs.status = "Progressing"
-        hs.message = "Kafka state: " .. obj.status.state
+        hs.message = "Kafka phase: " .. obj.status.phase
       end
     else
       hs.status = "Progressing"
@@ -43,13 +43,13 @@ data:
     return hs
   resource.customizations.health.platform.confluent.io_SchemaRegistry: |
     hs = {}
-    if obj.status ~= nil and obj.status.state ~= nil then
-      if obj.status.state == "RUNNING" then
+    if obj.status ~= nil and obj.status.phase ~= nil then
+      if obj.status.phase == "RUNNING" then
         hs.status = "Healthy"
         hs.message = "SchemaRegistry is running"
       else
         hs.status = "Progressing"
-        hs.message = "SchemaRegistry state: " .. obj.status.state
+        hs.message = "SchemaRegistry phase: " .. obj.status.phase
       end
     else
       hs.status = "Progressing"
@@ -58,13 +58,13 @@ data:
     return hs
   resource.customizations.health.platform.confluent.io_Connect: |
     hs = {}
-    if obj.status ~= nil and obj.status.state ~= nil then
-      if obj.status.state == "RUNNING" then
+    if obj.status ~= nil and obj.status.phase ~= nil then
+      if obj.status.phase == "RUNNING" then
         hs.status = "Healthy"
         hs.message = "Connect is running"
       else
         hs.status = "Progressing"
-        hs.message = "Connect state: " .. obj.status.state
+        hs.message = "Connect phase: " .. obj.status.phase
       end
     else
       hs.status = "Progressing"
@@ -73,13 +73,13 @@ data:
     return hs
   resource.customizations.health.platform.confluent.io_ControlCenter: |
     hs = {}
-    if obj.status ~= nil and obj.status.state ~= nil then
-      if obj.status.state == "RUNNING" then
+    if obj.status ~= nil and obj.status.phase ~= nil then
+      if obj.status.phase == "RUNNING" then
         hs.status = "Healthy"
         hs.message = "ControlCenter is running"
       else
         hs.status = "Progressing"
-        hs.message = "ControlCenter state: " .. obj.status.state
+        hs.message = "ControlCenter phase: " .. obj.status.phase
       end
     else
       hs.status = "Progressing"

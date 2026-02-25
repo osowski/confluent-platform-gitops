@@ -1,0 +1,13 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault-server
+  namespace: vault
+spec:
+  routes:
+    - match: Host(`vault.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: vault
+          port: 8200

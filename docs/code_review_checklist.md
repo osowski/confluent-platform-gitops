@@ -79,6 +79,7 @@ This checklist contains all checks for the confluent-platform-gitops repository 
 - [ ] Sync policy includes `automated`, `prune`, and `selfHeal` where appropriate
 - [ ] `ServerSideApply=true` is set for applications managing CRDs
 - [ ] Application is added to the cluster's `kustomization.yaml`
+- [ ] **AppProject resource audit**: All Kubernetes resource kinds the application will create are permitted by the target AppProject's `clusterResourceWhitelist` and `namespaceResourceWhitelist` — see [AppProject Resource Audit](adding-applications.md#appproject-resource-audit)
 
 ### Idempotency
 
@@ -173,17 +174,18 @@ These specific issues have been caught in previous code reviews:
 
 1. **Missing `kustomization.yaml` entry** - New applications must be added to `clusters/<cluster>/<layer>/kustomization.yaml` or the parent Application will not discover them
 2. **Wrong ArgoCD Project** - Infrastructure components (cluster-scoped resources) must use the `infrastructure` project; workloads use `workloads`
-3. **Sync wave ordering** - CRDs must deploy before resources that use them (e.g., cert-manager before ClusterIssuer, CFK operator before Confluent resources)
-4. **Multi-source `$values` reference** - The Git source must use `ref: values` for the `$values` prefix to resolve in Helm value file paths
-5. **Documentation not updated** - Always update `/docs` for major features
-6. **Branch naming wrong** - Must follow `feature-<id>/` or `fix-<id>/` pattern
-7. **PR description inaccurate** - Ensure specs match actual implementation
-8. **Missing `ServerSideApply=true`** - Required for applications that manage CRDs to avoid field ownership conflicts
-9. **Hardcoded cluster values in base** - Base manifests should use placeholders or be cluster-agnostic; cluster-specific values belong in overlays
-10. **MicroK8s ingress controller is Traefik, not NGINX** - Since MicroK8s v1.28+, the default ingress controller is Traefik (service: `traefik` in namespace `ingress`), not NGINX
-11. **Hardcoded secrets** - API keys, tokens, passwords committed to Git (use environment variables or external secret management)
-12. **Missing GitHub Issue link** - PR doesn't include explicit markdown link to issue: `[#123](https://github.com/owner/repo/issues/123)`
-13. **No ADR for architectural decisions** - Significant design choices made without documenting rationale
-14. **Assumptions not validated** - Code assumes files exist, services are running, or variables are set without checking
-15. **No idempotency** - Re-running operations causes errors or duplicate resources
-16. **External dependencies added without discussion** - New libraries or tools added without considering long-term maintenance burden
+3. **AppProject resource not whitelisted** - Every Kubernetes resource kind a new Application creates must be present in the target project's `clusterResourceWhitelist` (cluster-scoped) or `namespaceResourceWhitelist` (namespace-scoped). Missing entries cause sync errors at deploy time. Always run the [AppProject Resource Audit](adding-applications.md#appproject-resource-audit) before opening a PR.
+4. **Sync wave ordering** - CRDs must deploy before resources that use them (e.g., cert-manager before ClusterIssuer, CFK operator before Confluent resources)
+5. **Multi-source `$values` reference** - The Git source must use `ref: values` for the `$values` prefix to resolve in Helm value file paths
+6. **Documentation not updated** - Always update `/docs` for major features
+7. **Branch naming wrong** - Must follow `feature-<id>/` or `fix-<id>/` pattern
+8. **PR description inaccurate** - Ensure specs match actual implementation
+9. **Missing `ServerSideApply=true`** - Required for applications that manage CRDs to avoid field ownership conflicts
+10. **Hardcoded cluster values in base** - Base manifests should use placeholders or be cluster-agnostic; cluster-specific values belong in overlays
+11. **MicroK8s ingress controller is Traefik, not NGINX** - Since MicroK8s v1.28+, the default ingress controller is Traefik (service: `traefik` in namespace `ingress`), not NGINX
+12. **Hardcoded secrets** - API keys, tokens, passwords committed to Git (use environment variables or external secret management)
+13. **Missing GitHub Issue link** - PR doesn't include explicit markdown link to issue: `[#123](https://github.com/owner/repo/issues/123)`
+14. **No ADR for architectural decisions** - Significant design choices made without documenting rationale
+15. **Assumptions not validated** - Code assumes files exist, services are running, or variables are set without checking
+16. **No idempotency** - Re-running operations causes errors or duplicate resources
+17. **External dependencies added without discussion** - New libraries or tools added without considering long-term maintenance burden

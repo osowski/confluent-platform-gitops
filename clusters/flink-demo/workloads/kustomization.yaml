@@ -7,5 +7,6 @@ resources:
   - confluent-resources.yaml
   - controlcenter-ingress.yaml
   - flink-kubernetes-operator.yaml
+  - observability-resources.yaml
   - cmf-operator.yaml
   - flink-resources.yaml

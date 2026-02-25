@@ -15,8 +15,11 @@ spec:
     - https://prometheus-community.github.io/helm-charts
     - https://argoproj.github.io/argo-helm
     - https://charts.longhorn.io
+    - https://helm.releases.hashicorp.com
+    - https://kubernetes-sigs.github.io/metrics-server/
     - oci://ghcr.io/traefik/helm/traefik
     - oci://quay.io/jetstack/charts/cert-manager
+    - oci://quay.io/jetstack/charts/trust-manager
 
   # Allow deploying to all namespaces
   destinations:
@@ -109,6 +112,10 @@ spec:
     - group: platform.confluent.io
       kind: Kafka
     - group: platform.confluent.io
+      kind: KafkaRestClass
+    - group: platform.confluent.io
+      kind: KafkaTopic
+    - group: platform.confluent.io
       kind: KRaftController
     - group: platform.confluent.io
       kind: SchemaRegistry
@@ -136,3 +143,5 @@ spec:
       kind: FlinkApplication
     - group: monitoring.coreos.com
       kind: ServiceMonitor
+    - group: monitoring.coreos.com
+      kind: PodMonitor

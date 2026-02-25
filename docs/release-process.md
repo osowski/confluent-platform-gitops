@@ -1,6 +1,17 @@
 # Release Process
 
-This document describes how to create versioned releases and how users deploy specific versions.
+This document describes how to create and publish versioned releases for the confluent-platform-gitops repository, and how to deploy specific versions. This serves both as a skill guide for Claude Code automation and as human-readable documentation.
+
+## When to Use This Process
+
+**For Claude Code:** Use this skill when the user requests:
+- "Create a release"
+- "Tag a new version"
+- "Publish version X.Y.Z"
+- "Cut a release"
+- Any similar release-related request
+
+**For humans:** Follow this process when you're ready to publish a new stable version with all changes merged to `main`.
 
 ## Version Scheme
 
@@ -26,18 +37,52 @@ All three levels must be pinned for a fully version-locked deployment. The relea
 
 ### Prerequisites
 
-- Clean Git working tree (no uncommitted changes)
-- All changes for the release already merged to `main`
-- Local `main` branch up-to-date with `origin/main`
-- [`yq`](https://github.com/mikefarah/yq) installed (used for structured YAML editing)
+Before running the release:
 
-### Running the Release
+1. **All changes merged**: Ensure all changes for the release are merged to `main`
+2. **Local `main` up-to-date**: Local `main` branch must be up-to-date with `origin/main`
+3. **Clean working tree**: Git working tree must be clean (no uncommitted changes)
+   - If there are untracked files: Create a temporary directory and move them aside before starting (see Step 1 in workflow below)
+4. **`yq` installed**: [`yq`](https://github.com/mikefarah/yq) is required for structured YAML editing
+
+### Release Workflow
+
+The release process consists of five steps. For most cases, you can skip to "Quick Start" below to run the automated script. For Claude Code automation or manual execution, follow these detailed steps:
+
+#### Step 1: Handle Untracked Files
+
+If there are untracked files in the working directory:
+
+1. Create a temporary directory:
+   ```bash
+   mkdir -p /tmp/release-stash-v{VERSION}
+   ```
+2. Move all untracked files to this directory
+3. Verify working tree is clean:
+   ```bash
+   git status --porcelain
+   ```
+
+#### Step 2: Determine Version Number
+
+If the version hasn't been specified:
+
+- Check `docs/changelog.md` for the latest released version
+- Examine the "Unreleased" section to determine the appropriate version bump
+- Suggest the version following [Semantic Versioning](https://semver.org/):
+  - **Major** (`vX.0.0`): Breaking changes to repository structure, bootstrap pattern, or deployment workflow
+  - **Minor** (`v0.X.0`): New applications, features, or non-breaking configuration changes
+  - **Patch** (`v0.0.X`): Bug fixes, documentation corrections, minor configuration tweaks
+
+#### Step 3: Run Release Script
+
+Execute the release automation:
 
 ```bash
-./scripts/release.sh v0.2.0
+./scripts/release.sh v{VERSION}
 ```
 
-This single command executes the entire release workflow:
+The script performs these steps automatically:
 
 1. Validates prerequisites (version format, clean tree, on `main`, tag doesn't exist, remote is current)
 2. Creates a `release/v0.2.0` branch from `main`
@@ -48,7 +93,39 @@ This single command executes the entire release workflow:
 7. Reverts the pinning commit (restores `HEAD` on branch)
 8. Merges the release branch into `main` with `--no-ff`
 9. Deletes the release branch
-10. Prompts for confirmation, then pushes `main` and tags to origin
+10. Prompts for confirmation before pushing
+
+**Note:** The script will prompt for confirmation before pushing. In non-interactive mode (like Claude Code's Bash tool), this prompt will cause the script to exit before pushing, requiring manual push in Step 4.
+
+#### Step 4: Push to Origin
+
+After the release script completes, manually push the changes:
+
+```bash
+git push-external origin main && git push-external origin v{VERSION}
+```
+
+**Important:** Always use `git push-external` instead of `git push` for external repositories due to Confluent's Airlock security controls.
+
+#### Step 5: Restore Untracked Files
+
+If files were moved aside in Step 1:
+
+1. Move them back to their original locations
+2. Verify with:
+   ```bash
+   git status
+   ```
+
+### Quick Start
+
+For manual execution with interactive prompts:
+
+```bash
+./scripts/release.sh v0.2.0
+```
+
+This single command executes the entire release workflow (steps 1-10 listed above) and prompts for confirmation before pushing.
 
 ### Dry Run
 
@@ -72,6 +149,36 @@ The `prepare-release.sh` script handles changelog updates and version pinning. I
 ./scripts/prepare-release.sh v0.2.0
 ```
 
+### Example: Complete Release
+
+**User request:** "Create a release for v0.4.0"
+
+**Actions performed:**
+
+1. Check for untracked files, move them aside if present:
+   ```bash
+   mkdir -p /tmp/release-stash-v0.4.0
+   mv docs/release-skill.md rules.md /tmp/release-stash-v0.4.0/
+   ```
+
+2. Run the release script:
+   ```bash
+   ./scripts/release.sh v0.4.0
+   ```
+
+3. Push the release:
+   ```bash
+   git push-external origin main && git push-external origin v0.4.0
+   ```
+
+4. Restore untracked files:
+   ```bash
+   mv /tmp/release-stash-v0.4.0/* .
+   git status  # verify files are back
+   ```
+
+5. Confirm completion with summary
+
 ### Error Recovery
 
 If `release.sh` fails mid-workflow, it prints recovery instructions. Since the push step requires explicit confirmation, all prior steps are local and reversible:
@@ -82,6 +189,14 @@ git checkout main
 git branch -D release/v0.2.0    # delete the release branch
 git tag -d v0.2.0               # delete the tag if it was created
 ```
+
+If you moved untracked files aside in Step 1, restore them:
+
+```bash
+mv /tmp/release-stash-v0.2.0/* .
+```
+
+No remote changes are made until the push step, so all operations are reversible.
 
 <details>
 <summary>What happens under the hood (step-by-step detail)</summary>

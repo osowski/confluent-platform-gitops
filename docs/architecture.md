@@ -52,10 +52,14 @@ Platform infrastructure components deployed before workloads.
 
 **Deployed components:**
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs deployed early for availability
+- **metrics-server** (wave 5) - Kubernetes Metrics Server for resource metrics and HPA support
 - **traefik** (wave 10) - Ingress controller for external access
 - **kube-prometheus-stack** (wave 20) - Monitoring stack with Prometheus, Grafana, Alertmanager
 - **cert-manager** (wave 20) - TLS certificate management
 - **trust-manager** (wave 30) - Automatic distribution of CA certificate trust bundles across namespaces
+- **vault** (wave 40) - HashiCorp Vault for secrets management and encryption services
+- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI access
+- **vault-config** (wave 50) - Post-deployment Job to configure transit encryption engine
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificate resources
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI access
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks and configuration
@@ -133,6 +137,10 @@ Bootstrap Application (sync-wave 0)
 │   │       ├── longhorn (sync-wave 15)
 │   │       ├── kube-prometheus-stack (sync-wave 20)
 │   │       ├── cert-manager (sync-wave 20)
+│   │       ├── trust-manager (sync-wave 30)
+│   │       ├── vault (sync-wave 40)
+│   │       ├── vault-ingress (sync-wave 45)
+│   │       ├── vault-config (sync-wave 50)
 │   │       ├── cert-manager-resources (sync-wave 75)
 │   │       ├── argocd-ingress (sync-wave 80)
 │   │       └── argocd-config (sync-wave 85)
@@ -200,6 +208,10 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 15 | longhorn | Distributed block storage for persistent volumes |
 | 20 | kube-prometheus-stack | Monitoring stack (Prometheus, Grafana, Alertmanager) |
 | 20 | cert-manager | TLS certificate management |
+| 30 | trust-manager | Automatic distribution of CA certificate trust bundles |
+| 40 | vault | HashiCorp Vault for secrets management and encryption |
+| 45 | vault-ingress | Traefik IngressRoute for Vault UI access |
+| 50 | vault-config | Post-deployment Job to configure transit encryption engine |
 | 75 | cert-manager-resources | Self-signed ClusterIssuer and certificate resources |
 | 80 | argocd-ingress | Traefik IngressRoute for ArgoCD UI access |
 | 85 | argocd-config | ArgoCD ConfigMap patches for custom health checks |

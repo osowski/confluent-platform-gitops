@@ -1,23 +1,24 @@
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: controlcenter-ingress
+  name: observability-resources
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "117"  # After Flink operator (wave 116)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
-  annotations:
-    argocd.argoproj.io/sync-wave: "115"  # After Confluent resources (wave 110)
 spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: workloads/controlcenter-ingress/overlays/flink-demo
+    path: workloads/observability-resources/base
   destination:
     server: https://kubernetes.default.svc
-    namespace: kafka
+    namespace: operator
   syncPolicy:
     automated:
       prune: true
       selfHeal: false
+    syncOptions:
+      - CreateNamespace=false  # Namespace should already exist from wave 100

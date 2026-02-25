@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  project: infrastructure
+  sources:
+  - repoURL: https://helm.releases.hashicorp.com
+    targetRevision: 0.31.0
+    chart: vault
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/vault/base/values.yaml
+        - $values/infrastructure/vault/overlays/flink-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops
+    targetRevision: HEAD
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

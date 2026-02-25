@@ -194,13 +194,15 @@ echo ""
 read -r -p "Push to origin? [y/N] " confirm
 case "$confirm" in
   [yY]|[yY][eE][sS])
-    git push origin main --tags
-    info "Pushed main and tags to origin"
+    git push-external origin main
+    git push-external origin "$VERSION"
+    info "Pushed main and tag $VERSION to origin"
     ;;
   *)
     echo ""
     echo "Push skipped. To push manually:"
-    echo "  git push origin main --tags"
+    echo "  git push-external origin main"
+    echo "  git push-external origin $VERSION"
     exit 0
     ;;
 esac

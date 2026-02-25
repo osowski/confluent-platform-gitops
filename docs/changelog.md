@@ -13,14 +13,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `relabelings` entry to the metrics endpoint to hardcode `job="flink"`, aligning with the [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) dashboard convention
   - Updated embedded Grafana dashboard JSON in `grafana-dashboard.yaml` to use `job="flink"` in all PromQL expressions
 
+## [0.4.0] - 2026-02-23
+
 ### Changed
-- **Inlined shared checklist from homelab-docs** ([#18](https://github.com/osowski/confluent-platform-gitops/issues/18))
-  - Copied all shared checklist items from homelab-docs code review checklist into this repo's `docs/code_review_checklist.md`
-  - Added sections: Secrets and Credentials, Input Validation, Authentication and Authorization, Network Security, Defensive Programming, Dependencies, Code Organization, Git and GitHub (Branch Naming, PR Description, Commits), Validation
-  - Merged overlapping items in Idempotency, Documentation, Testing, and Common Pitfalls sections
-  - Removed all external references to homelab-docs checklist — document is now fully self-contained
+- **Upgraded HashiCorp Vault to v0.31.0**
+  - Updated Vault Helm chart from version 0.28.1 to 0.31.0
+  - Includes bug fixes and improvements from upstream HashiCorp releases
 
 ### Added
+- **Kubernetes metrics-server for resource metrics** ([#30](https://github.com/osowski/confluent-platform-gitops/issues/30))
+  - Added metrics-server as infrastructure application (sync-wave 5)
+  - Provides Metrics API for kubectl top, HPA, and VPA functionality
+  - Deployed via official Kubernetes SIGs Helm chart (version 3.12.2)
+  - Configured with 2 replicas and PodDisruptionBudget for high availability
+  - Deployed to kube-system namespace
+  - Cluster-specific overlay includes --kubelet-insecure-tls for local/development environments
+
+## [0.3.0] - 2026-02-20
+
+## [0.3.0] - 2026-02-20
+
+### Added
+- **AppProject resource audit procedure** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
+  - New check item in `docs/code_review_checklist.md`: verify all resource kinds created by a new Application are permitted by the target AppProject's `clusterResourceWhitelist` / `namespaceResourceWhitelist`
+  - New common pitfall entry (#3): "AppProject resource not whitelisted" with link to the audit procedure
+  - New section in `docs/adding-applications.md` — AppProject Resource Audit — covering:
+    - Enumerating resources from Kustomize overlays and Helm charts (local, remote Helm registry, GitHub-sourced charts)
+    - Cluster-scoped vs namespace-scoped classification reference table
+    - Cross-referencing against the project allowlist in `bootstrap/templates/argocd-projects.yaml`
+    - Example audit table from the Vault infrastructure review
+- **HashiCorp Vault for secrets management** ([#5](https://github.com/osowski/confluent-platform-gitops/issues/5))
+  - Added Vault as infrastructure application (sync-wave 40) in dev mode for demo cluster
+  - Enables transit secrets engine for Client-Side Field Level Encryption (CSFLE) operations
+  - Deployed via Helm chart from HashiCorp repository (version 0.28.1)
+  - Includes Traefik IngressRoute for Vault UI access (vault.flink-demo.confluentdemo.local, sync-wave 45)
+  - Post-deployment Kubernetes Job (sync-wave 50) configures transit engine and creates CSFLE encryption key
+  - Idempotent configuration using ArgoCD PostSync hook with automatic retry logic
+  - Deployed to dedicated vault namespace with self-signed TLS certificate
 - **trust-manager for CA certificate distribution** ([#16](https://github.com/osowski/confluent-platform-gitops/issues/16))
   - Added cert-manager's trust-manager as infrastructure application (sync-wave 30)
   - Enables automatic distribution of trust bundles (CA certificates) across cluster namespaces
@@ -34,6 +63,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Health checks evaluate `status.state == "RUNNING"` to gate sync-wave progression
   - Eliminates unnecessary retry loops by ensuring components start in correct dependency order
   - ADR-0002 documents the architectural decision
+
+### Changed
+- **Disabled automated sync and selfHeal for workload Applications** ([#25](https://github.com/osowski/confluent-platform-gitops/issues/25))
+  - Removed automated sync entirely for resource applications: `confluent-resources`, `flink-resources`
+    - Requires manual sync via ArgoCD UI or CLI for deployments
+    - Provides full control over when resources are deployed
+  - Disabled `syncPolicy.automated.selfHeal` for operators: `cfk-operator`, `cmf-operator`, `flink-kubernetes-operator`
+    - Operators still auto-sync but won't revert manual changes
+  - Disabled `syncPolicy.automated.selfHeal` for supporting applications: `controlcenter-ingress`, `observability-resources`
+  - Infrastructure applications retain full automated sync with selfHeal for stability
+  - Allows automatic deployment of platform components on cluster bootstrap while permitting manual control of workload resources during development
+- **Inlined shared checklist from homelab-docs** ([#18](https://github.com/osowski/confluent-platform-gitops/issues/18))
+  - Copied all shared checklist items from homelab-docs code review checklist into this repo's `docs/code_review_checklist.md`
+  - Added sections: Secrets and Credentials, Input Validation, Authentication and Authorization, Network Security, Defensive Programming, Dependencies, Code Organization, Git and GitHub (Branch Naming, PR Description, Commits), Validation
+  - Merged overlapping items in Idempotency, Documentation, Testing, and Common Pitfalls sections
+  - Removed all external references to homelab-docs checklist — document is now fully self-contained
 
 ## [0.2.0] - 2026-02-14
 
@@ -252,6 +297,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/osowski/confluent-platform-gitops/releases/tag/v0.1.0
