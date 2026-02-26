@@ -207,11 +207,73 @@ kubectl get pvc -n confluent
 
 ### Prometheus Integration
 
-The CFK operator exposes metrics that can be scraped by Prometheus. To enable monitoring:
+CFK components expose JMX metrics via the Prometheus JMX Exporter on port 7778. A `PodMonitor` resource automatically discovers and scrapes metrics from all running CFK pods.
 
-1. Create ServiceMonitor resources for Kafka, KRaft, and Schema Registry
-2. Configure Prometheus to scrape the `confluent` namespace
-3. Import Confluent Platform Grafana dashboards
+#### PodMonitor Configuration
+
+The `confluent-platform` PodMonitor is deployed alongside CFK resources in the `kafka` namespace:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: confluent-platform
+  namespace: kafka
+spec:
+  jobLabel: platform.confluent.io/type
+  podTargetLabels:
+    - app
+    - clusterId
+    - platform.confluent.io/type
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 60s
+  selector:
+    matchExpressions:
+      - key: confluent-platform
+        operator: Exists
+```
+
+**How it works:**
+- **Selector**: Matches all pods with the `confluent-platform` label (automatically applied by CFK)
+- **jobLabel**: Sets Prometheus `job` label per component type (e.g., `job="kafka"`, `job="schemaregistry"`) using the `platform.confluent.io/type` pod label
+- **podTargetLabels**: Propagates pod labels into scraped metrics for dashboard filtering
+- **Coverage**: Single `PodMonitor` covers all CFK components—Kafka, KRaft Controller, Schema Registry, Connect, Control Center
+
+#### Verifying Metrics Collection
+
+Check that Prometheus is scraping CFK metrics:
+
+```bash
+# Port-forward to Prometheus
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
+
+# Open Prometheus UI: http://localhost:9090
+# Navigate to Status > Targets
+# Look for targets with job labels: kafka, kraftcontroller, schemaregistry, connect, controlcenter
+```
+
+Query sample metrics in Prometheus:
+```promql
+# Kafka broker metrics
+kafka_server_replicamanager_leadercount{job="kafka"}
+
+# Schema Registry metrics
+kafka_schema_registry_registered_count{job="schemaregistry"}
+
+# Controller metrics
+kafka_controller_kafkacontroller_activecontrollercount{job="kraftcontroller"}
+```
+
+#### Grafana Dashboards
+
+Import Confluent Platform dashboards from the [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) repository:
+
+- **Kafka Cluster**: Dashboard for broker health, throughput, partition metrics
+- **Schema Registry**: Schema counts, request rates, error metrics
+- **Connect**: Connector and task status, throughput
+
+Dashboards filter on `job` label matching component type (e.g., `job="kafka"`), which aligns with the `jobLabel` configuration in the `PodMonitor`.
 
 ## Configuration
 

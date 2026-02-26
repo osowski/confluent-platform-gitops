@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PodMonitor for CFK components in confluent-resources** ([#37](https://github.com/osowski/confluent-platform-gitops/issues/37))
+  - Added `PodMonitor` resource to enable Prometheus metrics scraping from all Confluent for Kubernetes (CFK) managed components
+  - Single `PodMonitor` covers Kafka, KRaft Controller, Schema Registry, Connect, and Control Center via `confluent-platform` label selector
+  - Configured `jobLabel: platform.confluent.io/type` to set per-component Prometheus job labels (e.g., `job="kafka"`, `job="schemaregistry"`), aligning with [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) Grafana dashboard conventions
+  - Metrics exposed on port 7778 via Prometheus JMX Exporter
+  - Updated `docs/confluent-platform.md` with PodMonitor configuration details, verification steps, and Grafana dashboard integration guidance
+
 ### Fixed
 - **Flink ServiceMonitor job label alignment with jmx-monitoring-stacks dashboards** ([#36](https://github.com/osowski/confluent-platform-gitops/issues/36))
   - Removed `jobLabel: type` from the Flink `ServiceMonitor`; Prometheus was assigning `job="flink-native-kubernetes"` which did not match the `job="flink"` selector hardcoded in upstream Flink Grafana dashboards
