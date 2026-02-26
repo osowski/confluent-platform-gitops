@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    release: prometheus
+    monitoring: confluent
+  name: confluent-platform
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  jobLabel: platform.confluent.io/type
+  podTargetLabels:
+    - app
+    - clusterId
+    - confluent-platform
+    - platform.confluent.io/type
+    - type
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 60s
+      scheme: http
+      scrapeTimeout: 30s
+  selector:
+    matchExpressions:
+      - key: confluent-platform
+        operator: Exists

@@ -12,6 +12,7 @@ resources:
   - kafkarestclass.yaml
   - kraft-controller.yaml
   # - ksqldb.yaml ## DISABLE ksqldb UNTIL IT IS NECESSARY
+  - podmonitor-cfk.yaml
   - schema-registry.yaml
 
 commonLabels:
