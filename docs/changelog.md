@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automation script: validate-cluster.sh** ([#45](https://github.com/osowski/confluent-platform-gitops/issues/45))
+  - Comprehensive validation suite for cluster configuration: `./scripts/validate-cluster.sh <cluster-name> [--verbose]`
+  - Validates YAML syntax, Kustomize builds, Helm templates, sync waves, AppProjects, and common misconfigurations
 - **Automation script: update-repo-urls.sh** ([#44](https://github.com/osowski/confluent-platform-gitops/issues/44))
   - Update all repository URLs after forking with single command: `./scripts/update-repo-urls.sh <new-url> [--dry-run]`
-  - Validates URLs, updates manifests, verifies changes; supports dry-run preview mode
+  - Uses yq for YAML-aware replacement, validates URLs, updates manifests, verifies changes; supports dry-run preview mode
 - **Automation script: new-cluster.sh** ([#43](https://github.com/osowski/confluent-platform-gitops/issues/43))
   - Scaffold new cluster directory structure with single command: `./scripts/new-cluster.sh <cluster-name> <domain>`
   - Generates complete application stack (20 apps), bootstrap.yaml, and README with overlay creation guide; supports interactive mode
