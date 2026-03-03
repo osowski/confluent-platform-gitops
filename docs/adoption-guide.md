@@ -298,28 +298,7 @@ The following automation scripts would streamline common adoption tasks. These a
 
 ### High Priority Scripts
 
-#### 1. `scripts/validate-cluster.sh` - Comprehensive Validation Suite
-**Problem:** Pre-deployment validation requires manual checks across multiple tools
-
-**Solution:** Automated validation of manifests, values, and configuration
-
-**Usage:**
-```bash
-./scripts/validate-cluster.sh flink-demo
-```
-
-**What it would do:**
-- Validate YAML syntax (yamllint)
-- Test Kustomize builds (kubectl kustomize)
-- Test Helm template rendering (helm template)
-- Check sync wave ordering
-- Verify AppProject resource allowlists
-- Check for common misconfigurations (missing namespaces, invalid references)
-- Output validation report with errors/warnings
-
-**Tracking:** [GitHub Issue #45](https://github.com/osowski/confluent-platform-gitops/issues/45)
-
-#### 2. `scripts/new-application.sh` - Scaffold Application Structure
+#### 1. `scripts/new-application.sh` - Scaffold Application Structure
 **Problem:** Creating base + overlay structure for new applications is repetitive
 
 **Solution:** Generate application scaffolding with best practices
@@ -342,21 +321,21 @@ The following automation scripts would streamline common adoption tasks. These a
 
 ### Medium Priority Scripts
 
-#### 4. `scripts/test-local.sh` - Automated Local Deployment
+#### 2. `scripts/test-local.sh` - Automated Local Deployment
 **Usage:** `./scripts/test-local.sh [cluster-name]`
 
 **What it would do:** Automate full local deployment flow (Colima start, KIND cluster creation, ArgoCD install, bootstrap apply, wait for sync)
 
 **Tracking:** [GitHub Issue #47](https://github.com/osowski/confluent-platform-gitops/issues/47)
 
-#### 5. `scripts/diff-versions.sh` - Compare Configuration Versions
+#### 3. `scripts/diff-versions.sh` - Compare Configuration Versions
 **Usage:** `./scripts/diff-versions.sh v0.3.0 v0.4.0`
 
 **What it would do:** Show configuration changes between releases or commits (application additions, value changes, version upgrades)
 
 **Tracking:** [GitHub Issue #48](https://github.com/osowski/confluent-platform-gitops/issues/48)
 
-#### 6. `Makefile` - Common Task Shortcuts
+#### 4. `Makefile` - Common Task Shortcuts
 **Usage:** `make validate`, `make test-local`, `make new-cluster`
 
 **What it would do:** Provide task runner with common targets (wraps scripts above, adds convenience targets)
@@ -365,12 +344,12 @@ The following automation scripts would streamline common adoption tasks. These a
 
 ### Low Priority Enhancements
 
-#### 7. Pre-commit Hooks
+#### 5. Pre-commit Hooks
 **What it would do:** Run validation on `git commit` (YAML syntax, secret scanning, kustomize build)
 
 **Tracking:** [GitHub Issue #50](https://github.com/osowski/confluent-platform-gitops/issues/50)
 
-#### 8. GitHub Actions Workflows
+#### 6. GitHub Actions Workflows
 **What it would do:** Automated PR validation, release automation, E2E testing in CI/CD
 
 **Tracking:** [GitHub Issue #51](https://github.com/osowski/confluent-platform-gitops/issues/51)
