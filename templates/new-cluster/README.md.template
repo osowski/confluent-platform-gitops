@@ -1,0 +1,71 @@
+# $CLUSTER_NAME Cluster
+
+## Overview
+
+- **Cluster Name:** $CLUSTER_NAME
+- **Domain:** $DOMAIN
+- **Bootstrap:** `bootstrap.yaml`
+
+## Quick Start
+
+### Prerequisites
+
+- Kubernetes cluster with ArgoCD installed
+- `kubectl` configured with cluster access
+
+### Deploy Bootstrap
+
+```bash
+kubectl apply -f clusters/$CLUSTER_NAME/bootstrap.yaml
+```
+
+### Verify Deployment
+
+```bash
+# Check bootstrap application
+kubectl get application bootstrap -n argocd
+
+# Check parent applications
+kubectl get applications -n argocd
+
+# Watch sync progress
+kubectl get applications -n argocd -w
+```
+
+## Applications
+
+### Infrastructure
+
+Infrastructure applications are defined in `infrastructure/kustomization.yaml`.
+
+TODO: Add infrastructure applications
+
+### Workloads
+
+Workload applications are defined in `workloads/kustomization.yaml`.
+
+TODO: Add workload applications
+
+## Access
+
+### ArgoCD UI
+
+```bash
+# Get cluster-specific hostname (after argocd-ingress is deployed)
+kubectl get ingressroute -n argocd argocd-server -o yaml | yq '.spec.routes[0].match'
+
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+Navigate to `https://argocd.$CLUSTER_NAME.$DOMAIN` and login with username `admin`.
+
+## Customization
+
+This cluster was created using `scripts/new-cluster.sh`. Customize by:
+
+1. Adding applications to `infrastructure/kustomization.yaml`
+2. Adding applications to `workloads/kustomization.yaml`
+3. Creating cluster-specific overlays in `infrastructure/` and `workloads/`
+
+See [Cluster Onboarding](../../docs/cluster-onboarding.md) for detailed guidance.

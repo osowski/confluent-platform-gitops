@@ -115,174 +115,58 @@ get_repo_url() {
     fi
 }
 
-# Create bootstrap.yaml
-create_bootstrap() {
+# Replace template placeholders in a file using envsubst
+replace_placeholders() {
+    local file="$1"
+    local cluster_name="$2"
+    local domain="$3"
+    local repo_url="$4"
+
+    # Validate inputs
+    if [ ! -f "$file" ]; then
+        error "File not found: $file"
+        return 1
+    fi
+
+    # Use envsubst to replace placeholders
+    # Create temp file, replace placeholders, then move to original
+    local temp_file="${file}.tmp"
+    CLUSTER_NAME="$cluster_name" DOMAIN="$domain" REPO_URL="$repo_url" \
+        envsubst < "$file" > "$temp_file"
+    mv "$temp_file" "$file"
+}
+
+# Create cluster files from templates
+create_from_templates() {
     local cluster_name="$1"
     local domain="$2"
     local repo_url="$3"
-    local file="clusters/$cluster_name/bootstrap.yaml"
+    local template_dir="templates/new-cluster"
+    local target_dir="clusters/$cluster_name"
 
-    cat > "$file" <<EOF
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: bootstrap
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-spec:
-  project: default
-  source:
-    repoURL: $repo_url
-    targetRevision: HEAD
-    path: bootstrap
-    helm:
-      valuesObject:
-        cluster:
-          name: $cluster_name
-          domain: $domain
-        git:
-          targetRevision: "HEAD"
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-EOF
+    # Check template directory exists
+    if [ ! -d "$template_dir" ]; then
+        error "Template directory not found: $template_dir"
+        return 1
+    fi
 
-    success "Created $file"
-}
+    # Copy bootstrap.yaml template
+    cp "$template_dir/bootstrap.yaml.template" "$target_dir/bootstrap.yaml"
+    replace_placeholders "$target_dir/bootstrap.yaml" "$cluster_name" "$domain" "$repo_url"
+    success "Created $target_dir/bootstrap.yaml"
 
-# Create infrastructure kustomization.yaml
-create_infrastructure_kustomization() {
-    local cluster_name="$1"
-    local file="clusters/$cluster_name/infrastructure/kustomization.yaml"
+    # Copy infrastructure kustomization template
+    cp "$template_dir/infrastructure/kustomization.yaml.template" "$target_dir/infrastructure/kustomization.yaml"
+    success "Created $target_dir/infrastructure/kustomization.yaml"
 
-    cat > "$file" <<'EOF'
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
+    # Copy workloads kustomization template
+    cp "$template_dir/workloads/kustomization.yaml.template" "$target_dir/workloads/kustomization.yaml"
+    success "Created $target_dir/workloads/kustomization.yaml"
 
-resources: []
-# Add infrastructure applications here as they are created
-# Examples:
-# - traefik.yaml
-# - kube-prometheus-stack.yaml
-# - cert-manager.yaml
-# - vault.yaml
-EOF
-
-    success "Created $file"
-}
-
-# Create workloads kustomization.yaml
-create_workloads_kustomization() {
-    local cluster_name="$1"
-    local file="clusters/$cluster_name/workloads/kustomization.yaml"
-
-    cat > "$file" <<'EOF'
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources: []
-# Add workload applications here as they are created
-# Examples:
-# - namespaces.yaml
-# - cfk-operator.yaml
-# - confluent-resources.yaml
-# - flink-kubernetes-operator.yaml
-EOF
-
-    success "Created $file"
-}
-
-# Create cluster README.md
-create_readme() {
-    local cluster_name="$1"
-    local domain="${2:-}"
-    local file="clusters/$cluster_name/README.md"
-
-    cat > "$file" <<EOF
-# $cluster_name Cluster
-
-## Overview
-
-- **Cluster Name:** $cluster_name
-- **Domain:** $domain
-- **Bootstrap:** \`bootstrap.yaml\`
-
-## Quick Start
-
-### Prerequisites
-
-- Kubernetes cluster with ArgoCD installed
-- \`kubectl\` configured with cluster access
-
-### Deploy Bootstrap
-
-\`\`\`bash
-kubectl apply -f clusters/$cluster_name/bootstrap.yaml
-\`\`\`
-
-### Verify Deployment
-
-\`\`\`bash
-# Check bootstrap application
-kubectl get application bootstrap -n argocd
-
-# Check parent applications
-kubectl get applications -n argocd
-
-# Watch sync progress
-kubectl get applications -n argocd -w
-\`\`\`
-
-## Applications
-
-### Infrastructure
-
-Infrastructure applications are defined in \`infrastructure/kustomization.yaml\`.
-
-TODO: Add infrastructure applications
-
-### Workloads
-
-Workload applications are defined in \`workloads/kustomization.yaml\`.
-
-TODO: Add workload applications
-
-## Access
-
-### ArgoCD UI
-
-\`\`\`bash
-# Get cluster-specific hostname (after argocd-ingress is deployed)
-kubectl get ingressroute -n argocd argocd-server -o yaml | yq '.spec.routes[0].match'
-
-# Get admin password
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-\`\`\`
-
-Navigate to \`https://argocd.$cluster_name.$domain\` and login with username \`admin\`.
-
-## Customization
-
-This cluster was created using \`scripts/new-cluster.sh\`. Customize by:
-
-1. Adding applications to \`infrastructure/kustomization.yaml\`
-2. Adding applications to \`workloads/kustomization.yaml\`
-3. Creating cluster-specific overlays in \`infrastructure/\` and \`workloads/\`
-
-See [Cluster Onboarding](../../docs/cluster-onboarding.md) for detailed guidance.
-EOF
-
-    success "Created $file"
+    # Copy README template
+    cp "$template_dir/README.md.template" "$target_dir/README.md"
+    replace_placeholders "$target_dir/README.md" "$cluster_name" "$domain" "$repo_url"
+    success "Created $target_dir/README.md"
 }
 
 # Interactive mode
@@ -382,11 +266,11 @@ main() {
     mkdir -p "clusters/$CLUSTER_NAME/workloads"
     success "Created directories"
 
-    # Create files
-    create_bootstrap "$CLUSTER_NAME" "$DOMAIN" "$REPO_URL"
-    create_infrastructure_kustomization "$CLUSTER_NAME"
-    create_workloads_kustomization "$CLUSTER_NAME"
-    create_readme "$CLUSTER_NAME" "$DOMAIN"
+    # Create files from templates
+    if ! create_from_templates "$CLUSTER_NAME" "$DOMAIN" "$REPO_URL"; then
+        error "Failed to create files from templates"
+        exit 1
+    fi
 
     echo ""
     success "Cluster $CLUSTER_NAME created successfully!"
