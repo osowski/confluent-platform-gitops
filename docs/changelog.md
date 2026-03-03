@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automation script: new-cluster.sh** ([#43](https://github.com/osowski/confluent-platform-gitops/issues/43))
+  - Scaffold new cluster directory structure with single command: `./scripts/new-cluster.sh <cluster-name> <domain>`
+  - Generates bootstrap.yaml, kustomization templates, and README with validation; supports interactive mode
 - **Adoption guide for repository usage and fork customization** ([#15](https://github.com/osowski/confluent-platform-gitops/issues/15))
   - New `docs/adoption-guide.md` provides strategic routing hub for users adopting this repository
   - Five adoption paths: local development, deploy to cluster, customize infrastructure, add/modify workloads, fork customization
