@@ -14,6 +14,9 @@ This repository provides a production-ready GitOps framework for deploying **Con
 
 ## Decision Tree: Choose Your Path
 
+> [!NOTE]
+> **Quick selection:** Most first-time users should start with [**Path 1** (local testing)](#path-1-local-development--testing) or [**Path 5** (fork setup)](#path-5-fork-customization-guide). Production deployments typically follow **Path 5 → Path 2**.
+
 ```
 START: What do you want to do?
 │
@@ -41,11 +44,10 @@ START: What do you want to do?
    └─> PATH 5: Fork Customization Guide
 ```
 
-**Quick selection:** Most first-time users should start with **Path 1** (local testing) or **Path 5** (fork setup). Production deployments typically follow **Path 5 → Path 2**.
-
 ## Path 1: Local Development & Testing
 
-**When to use:** Learning GitOps, testing before forking, demos, development environments
+> [!TIP]
+> **When to use:** Learning GitOps, testing before forking, demos, development environments
 
 **What you get:** Full Confluent Platform + Flink + monitoring stack running locally via KIND (Kubernetes in Docker)
 
@@ -65,15 +67,10 @@ START: What do you want to do?
 - Verification steps at each stage
 - Troubleshooting common local deployment issues
 
-**Local testing benefits:**
-- No cloud costs - runs entirely on your machine
-- Fast iteration cycle for testing configuration changes
-- Safe environment for experimentation
-- Validates manifests before deploying to production clusters
-
 ## Path 2: Deploy to Existing Cluster
 
-**When to use:** Production/staging environments, testing repository before forking, cluster already has or needs ArgoCD
+> [!TIP]
+> **When to use:** Production/staging environments, testing repository before forking, cluster already has or needs ArgoCD
 
 **Prerequisites:**
 - Kubernetes cluster 1.25+ with kubectl access
@@ -83,7 +80,7 @@ START: What do you want to do?
 
 **High-level steps:**
 1. Install ArgoCD if not present
-2. Fork repository (if customizing - see Path 5)
+2. Fork repository (if customizing - see [Path 5](#path-5-fork-customization-guide))
 3. Create cluster directory structure in `clusters/<cluster-name>/`
 4. Create and validate bootstrap Application manifest
 5. Commit cluster configuration to Git
@@ -91,7 +88,8 @@ START: What do you want to do?
 7. Configure DNS/ingress for application access
 8. Add applications as needed (Path 3 or Path 4)
 
-**IMPORTANT:** Cluster onboarding is typically done **AFTER** forking for organizational use, unless the cluster is intended for contribution back to the upstream repository.
+> [!IMPORTANT]
+> Cluster onboarding is typically done **AFTER** forking for organizational use, unless the cluster is intended for contribution back to the upstream repository.
 
 **Detailed procedures:**
 - **Complete cluster onboarding:** [Cluster Onboarding](cluster-onboarding.md)
@@ -105,11 +103,13 @@ START: What do you want to do?
   - Re-bootstrapping procedures
   - Troubleshooting bootstrap failures
 
-**Version pinning:** By default, `targetRevision: HEAD` tracks the latest commit. For production deployments, pin to a release tag (e.g., `targetRevision: v0.4.0`). See [Release Process](release-process.md) for version-pinned deployment guidance.
+> [!IMPORTANT]
+> **Version pinning:** By default, `targetRevision: HEAD` tracks the latest commit. For production deployments, pin to a release tag (e.g., `targetRevision: v0.4.0`). See [Release Process](release-process.md) for version-pinned deployment guidance.
 
 ## Path 3: Customize Infrastructure Components
 
-**When to use:** Different infrastructure stack preferences, need to add/remove components, modify configurations (resource limits, replicas, feature flags)
+> [!TIP]
+> **When to use:** Different infrastructure stack preferences, need to add/remove components, modify configurations (resource limits, replicas, feature flags)
 
 **What you can customize:**
 - Add new infrastructure components (service mesh, backup solutions, logging)
@@ -117,7 +117,7 @@ START: What do you want to do?
 - Modify resource allocations (CPU, memory, storage)
 - Change configuration options (monitoring retention, TLS settings, ingress rules)
 
-**Pattern overview:** Infrastructure uses Helm with multi-source pattern
+**Pattern overview:** Infrastructure generally uses Helm with multi-source pattern
 - **Base values:** `infrastructure/<component>/base/values.yaml` - Shared defaults
 - **Overlay values:** `infrastructure/<component>/overlays/<cluster>/values.yaml` - Cluster-specific overrides
 - **ArgoCD Application:** `clusters/<cluster>/infrastructure/<component>.yaml` - Deployment configuration
@@ -151,7 +151,8 @@ START: What do you want to do?
 
 ## Path 4: Add/Modify Workloads
 
-**When to use:** Deploy custom applications, modify Confluent topology (topics, connectors, schemas), add Flink jobs, integrate new services with Kafka
+> [!TIP]
+> **When to use:** Deploy custom applications, modify Confluent topology (topics, connectors, schemas), add Flink jobs, integrate new services with Kafka
 
 **What you can customize:**
 - Add custom applications and services
@@ -159,7 +160,7 @@ START: What do you want to do?
 - Deploy Flink applications (FlinkDeployment, FlinkSessionJob, FlinkApplication)
 - Integrate workloads with existing infrastructure
 
-**Pattern overview:** Workloads use Kustomize with base + overlay pattern
+**Pattern overview:** Workloads generally use Kustomize with base + overlay pattern
 - **Base manifests:** `workloads/<app>/base/` - Generic Kubernetes manifests
 - **Cluster overlays:** `workloads/<app>/overlays/<cluster>/` - Cluster-specific patches
 - **ArgoCD Application:** `clusters/<cluster>/workloads/<app>.yaml` - Deployment configuration
@@ -192,19 +193,20 @@ START: What do you want to do?
 **Common workload customizations:**
 - Add Kafka topics (modify `confluent-resources`)
 - Deploy custom microservices (new application)
-- Add Flink streaming jobs (new `FlinkDeployment`)
+- Add Flink streaming jobs (new `FlinkApplication`)
 
 ## Path 5: Fork Customization Guide
 
-**When to fork vs. use directly:**
-- **Fork when:** Organizational use, custom infrastructure needs, different naming conventions, need to track your own changes
-- **Use directly when:** Contributing improvements back, using for learning/demos, infrastructure matches your needs exactly
-
-**This is the most important section for organizational adoption.**
+> [!TIP]
+> **When to fork vs. use directly:**
+> - **Fork when:** Organizational use, custom infrastructure needs, different naming conventions, need to track your own changes
+> - **Use directly when:** Contributing improvements back, using for learning/demos, infrastructure matches your needs exactly
+>
+> **This is the most important section for organizational adoption.**
 
 ### Step 1: Fork the Repository
 
-1. Fork on GitHub: Visit [osowski/confluent-platform-gitops](https://github.com/osowski/confluent-platform-gitops) and click "Fork"
+1. Visit [osowski/confluent-platform-gitops](https://github.com/osowski/confluent-platform-gitops) and click "Fork"
 2. Clone your fork:
    ```bash
    git clone https://github.com/<your-org>/confluent-platform-gitops.git
@@ -268,57 +270,10 @@ Customize cluster-specific settings for your environment:
 4. **Then** perform cluster onboarding with your fork's URL
 5. Deploy bootstrap: `kubectl apply -f clusters/<cluster>/bootstrap.yaml`
 
-**Exception:** Only onboard to the upstream repository if the cluster is intended for contribution back (e.g., demo clusters, testing improvements).
+> [!IMPORTANT]
+> **Exception:** Only onboard to the upstream repository if the cluster is intended for contribution back (e.g., demo clusters, testing improvements).
 
 **Detailed onboarding:** Follow [Cluster Onboarding](cluster-onboarding.md) with your fork's repository URL.
-
-### Step 5: Tracking Upstream Changes
-
-Your fork can track upstream improvements while maintaining customizations.
-
-**Strategies:**
-1. **Merge strategy** (recommended for ongoing tracking):
-   ```bash
-   git fetch upstream
-   git checkout main
-   git merge upstream/main
-   # Resolve conflicts, prioritizing your customizations
-   git push origin main
-   ```
-
-2. **Cherry-pick strategy** (selective updates):
-   ```bash
-   git fetch upstream
-   git log upstream/main  # Find commits to cherry-pick
-   git cherry-pick <commit-hash>
-   git push origin main
-   ```
-
-3. **Rebase strategy** (clean history, higher conflict potential):
-   ```bash
-   git fetch upstream
-   git rebase upstream/main
-   # Resolve conflicts
-   git push origin main --force-with-lease
-   ```
-
-**Recommendation:** Use merge strategy for safety; reserve cherry-pick for specific features.
-
-### Step 6: Contributing Back to Upstream
-
-If you develop improvements that benefit the community:
-
-1. Create feature branch: `git checkout -b feature-<id>/<description>`
-2. Develop and test changes
-3. Push to your fork: `git push origin feature-<id>/<description>`
-4. Create PR to `osowski/confluent-platform-gitops:main`
-5. Follow PR checklist in [Code Review Checklist](code_review_checklist.md)
-
-**Contribution guidelines:**
-- Generic improvements (not org-specific)
-- Includes documentation updates
-- Passes validation tests
-- Clear commit messages
 
 ## Common Customization Scenarios
 
@@ -525,36 +480,3 @@ Quick navigation to troubleshooting sections in detailed guides:
 2. Review ArgoCD logs: `kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server`
 3. Inspect pod status: `kubectl get pods -A`
 4. Review events: `kubectl get events -A --sort-by='.lastTimestamp'`
-
-## Next Steps & Resources
-
-### Documentation Deep-Dives
-
-- **[Architecture](architecture.md)** - System design, GitOps flow, directory structure, sync wave strategy
-- **[Bootstrap Procedure](bootstrap-procedure.md)** - Bootstrap deployment, re-bootstrapping, version pinning
-- **[Adding Applications](adding-applications.md)** - Kustomize and Helm application patterns, sync waves, AppProject audits
-- **[Adding Helm Workloads](adding-helm-workloads.md)** - Comprehensive Helm deployment guide with real-world examples
-- **[Release Process](release-process.md)** - Version-pinned deployments, release workflow
-
-### Component-Specific Guides
-
-- **[Confluent Platform](confluent-platform.md)** - KRaft, Kafka, Schema Registry, Connect, Control Center configuration
-- **[Confluent Flink](confluent-flink.md)** - Flink Kubernetes Operator, CMF, Kafka integration, streaming jobs
-- **[Getting Started for the Uninitiated](getting-started-for-the-uninitiated.md)** - Hands-on local deployment walkthrough
-
-### Community & Contributions
-
-- **GitHub Repository:** [osowski/confluent-platform-gitops](https://github.com/osowski/confluent-platform-gitops)
-- **Issues:** Report bugs or request features
-- **Pull Requests:** Contribute improvements following [Code Review Checklist](code_review_checklist.md)
-- **Discussions:** Ask questions, share patterns, discuss architecture decisions
-
-### Related Repositories
-
-- **[homelab-argocd](https://github.com/osowski/homelab-argocd)** - Original multi-purpose GitOps repository (deprecated, migrated to this repo)
-- **Confluent Documentation:**
-  - [Confluent for Kubernetes](https://docs.confluent.io/operator/current/overview.html)
-  - [Confluent Manager for Apache Flink](https://docs.confluent.io/platform/current/flink/index.html)
-- **ArgoCD Documentation:** [ArgoCD User Guide](https://argo-cd.readthedocs.io/en/stable/user-guide/)
-
-**Ready to get started?** Return to the [Decision Tree](#decision-tree-choose-your-path) and select your path.
