@@ -191,43 +191,6 @@ verify_replacement() {
     return 0
 }
 
-# Create git commit
-commit_changes() {
-    local new_url="$1"
-
-    if [ -z "$(git status --porcelain)" ]; then
-        info "No changes to commit"
-        return 0
-    fi
-
-    info "Creating git commit..."
-
-    # Add all modified files
-    git add clusters/ bootstrap/values.yaml
-
-    # Create commit
-    git commit -m "$(cat <<EOF
-chore: update repository URLs to fork
-
-Updated all ArgoCD Application manifests and bootstrap configuration
-to reference forked repository instead of upstream.
-
-New repository: $new_url
-
-This change is required after forking the repository to ensure ArgoCD
-pulls manifests from the fork rather than the upstream repository.
-
-Files updated:
-$(git diff --cached --name-only | sed 's/^/- /')
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-EOF
-)"
-
-    success "Changes committed"
-    info "To push: git push origin \$(git branch --show-current)"
-}
-
 # Main function
 main() {
     # Check if running from repository root
@@ -347,24 +310,14 @@ main() {
     fi
 
     echo ""
-
-    # Create commit
-    read -rp "Create git commit with changes? [y/N] " commit_confirm
-
-    if [[ "$commit_confirm" =~ ^[Yy]$ ]]; then
-        commit_changes "$NEW_URL"
-    else
-        info "Skipped commit creation"
-        info "Changes are staged. Commit manually with: git commit"
-    fi
-
-    echo ""
     success "Repository URLs updated successfully!"
     echo ""
     echo "Next steps:"
-    echo "  1. Review changes: git diff HEAD"
-    echo "  2. Push changes: git push origin \$(git branch --show-current)"
-    echo "  3. Deploy to cluster: kubectl apply -f clusters/<cluster>/bootstrap.yaml"
+    echo "  1. Review changes: git status"
+    echo "  2. Stage changes: git add clusters/ bootstrap/values.yaml"
+    echo "  3. Commit changes: git commit -m 'chore: update repository URLs to fork'"
+    echo "  4. Push changes: git push origin \$(git branch --show-current)"
+    echo "  5. Deploy to cluster: kubectl apply -f clusters/<cluster>/bootstrap.yaml"
 }
 
 main "$@"
