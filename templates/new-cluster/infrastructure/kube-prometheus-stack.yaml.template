@@ -18,6 +18,7 @@ spec:
       valueFiles:
         - $values/infrastructure/kube-prometheus-stack/base/values.yaml
         - $values/infrastructure/kube-prometheus-stack/overlays/$CLUSTER_NAME/values.yaml
+      ignoreMissingValueFiles: true
   - repoURL: https://github.com/osowski/confluent-platform-gitops
     targetRevision: HEAD
     ref: values

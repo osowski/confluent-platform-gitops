@@ -17,6 +17,7 @@ spec:
         valueFiles:
           - $values/workloads/flink-kubernetes-operator/base/values.yaml
           - $values/workloads/flink-kubernetes-operator/overlays/$CLUSTER_NAME/values.yaml
+        ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
       targetRevision: HEAD
       ref: values

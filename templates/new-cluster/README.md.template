@@ -67,6 +67,243 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources
 
+## Creating Cluster-Specific Overlays
+
+Most applications work with base configuration. Create overlays only when you need cluster-specific customization.
+
+### Understanding Base + Overlay Pattern
+
+- **Base values:** Shared configuration in `infrastructure/<app>/base/` or `workloads/<app>/base/`
+- **Overlay values:** Cluster-specific overrides in `infrastructure/<app>/overlays/$CLUSTER_NAME/` or `workloads/<app>/overlays/$CLUSTER_NAME/`
+- **Missing overlays:** Applications will use base values if overlay files don't exist (thanks to `ignoreMissingValueFiles: true`)
+
+### When to Create Overlays
+
+| Overlay Type | When Needed | Examples |
+|--------------|-------------|----------|
+| **Ingress Hostnames** | Required for UI access | argocd-ingress, vault-ingress, controlcenter-ingress |
+| **Environment-Specific** | KIND vs cloud differences | traefik (DaemonSet+NodePort for KIND), metrics-server (insecure TLS) |
+| **Resource Limits** | Production tuning | kube-prometheus-stack, cfk-operator |
+| **Debug Settings** | Development clusters | cfk-operator debug mode |
+
+### Required Overlays for Ingress Access
+
+**ArgoCD Ingress** (if using ArgoCD UI):
+
+```bash
+mkdir -p infrastructure/argocd-ingress/overlays/$CLUSTER_NAME
+cat > infrastructure/argocd-ingress/overlays/$CLUSTER_NAME/ingressroute-patch.yaml <<'EOF'
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  routes:
+    - match: Host(\`argocd.$CLUSTER_NAME.$DOMAIN\`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: argocd-server
+          port: 80
+  tls:
+    secretName: argocd-tls
+EOF
+
+cat > infrastructure/argocd-ingress/overlays/$CLUSTER_NAME/kustomization.yaml <<'EOF'
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: ingressroute-patch.yaml
+EOF
+```
+
+**Vault Ingress** (if using Vault UI):
+
+```bash
+mkdir -p infrastructure/vault-ingress/overlays/$CLUSTER_NAME
+cat > infrastructure/vault-ingress/overlays/$CLUSTER_NAME/ingressroute-patch.yaml <<'EOF'
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault-server
+  namespace: vault
+spec:
+  routes:
+    - match: Host(\`vault.$CLUSTER_NAME.$DOMAIN\`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: vault
+          port: 8200
+  tls:
+    secretName: vault-tls
+EOF
+
+cat > infrastructure/vault-ingress/overlays/$CLUSTER_NAME/kustomization.yaml <<'EOF'
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: ingressroute-patch.yaml
+EOF
+```
+
+**Control Center Ingress** (if using Confluent Control Center UI):
+
+```bash
+mkdir -p workloads/controlcenter-ingress/overlays/$CLUSTER_NAME
+cat > workloads/controlcenter-ingress/overlays/$CLUSTER_NAME/ingressroute-patch.yaml <<'EOF'
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  routes:
+    - match: Host(\`controlcenter.$CLUSTER_NAME.$DOMAIN\`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: controlcenter
+          port: 9021
+  tls:
+    secretName: controlcenter-tls
+EOF
+
+cat > workloads/controlcenter-ingress/overlays/$CLUSTER_NAME/kustomization.yaml <<'EOF'
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: ingressroute-patch.yaml
+EOF
+```
+
+### Optional Environment-Specific Overlays
+
+**Traefik for KIND Clusters** (local development):
+
+```bash
+mkdir -p infrastructure/traefik/overlays/$CLUSTER_NAME
+cat > infrastructure/traefik/overlays/$CLUSTER_NAME/values.yaml <<'EOF'
+# KIND-specific configuration: DaemonSet + NodePort
+deployment:
+  kind: DaemonSet
+
+service:
+  type: NodePort
+
+# Enable insecure TLS for self-signed certificates
+additionalArguments:
+  - "--serversTransport.insecureSkipVerify=true"
+EOF
+```
+
+**Traefik for Cloud Clusters** (production):
+
+```bash
+mkdir -p infrastructure/traefik/overlays/$CLUSTER_NAME
+cat > infrastructure/traefik/overlays/$CLUSTER_NAME/values.yaml <<'EOF'
+# Cloud-specific configuration: Deployment + LoadBalancer
+deployment:
+  kind: Deployment
+  replicas: 2
+
+service:
+  type: LoadBalancer
+  annotations:
+    # Add cloud provider annotations as needed
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+# Production TLS settings
+additionalArguments:
+  - "--entrypoints.websecure.http.tls=true"
+EOF
+```
+
+**Metrics Server for KIND Clusters** (insecure TLS):
+
+```bash
+mkdir -p infrastructure/metrics-server/overlays/$CLUSTER_NAME
+cat > infrastructure/metrics-server/overlays/$CLUSTER_NAME/values.yaml <<'EOF'
+# KIND-specific: Allow insecure TLS for self-signed kubelet certificates
+args:
+  - --kubelet-insecure-tls
+EOF
+```
+
+### Optional Production Tuning Overlays
+
+**Kube-Prometheus-Stack** (resource limits, retention):
+
+```bash
+mkdir -p infrastructure/kube-prometheus-stack/overlays/$CLUSTER_NAME
+cat > infrastructure/kube-prometheus-stack/overlays/$CLUSTER_NAME/values.yaml <<'EOF'
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+
+grafana:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+EOF
+```
+
+**CFK Operator** (debug mode for development):
+
+```bash
+mkdir -p workloads/cfk-operator/overlays/$CLUSTER_NAME
+cat > workloads/cfk-operator/overlays/$CLUSTER_NAME/values.yaml <<'EOF'
+debug: true
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+EOF
+```
+
+### Verifying Overlay Configuration
+
+After creating overlays, verify the configuration:
+
+```bash
+# Check that Application manifests reference overlays correctly
+grep -r "overlays/$CLUSTER_NAME" infrastructure/ workloads/
+
+# Validate Kustomize builds (for Kustomize-based apps)
+kustomize build infrastructure/argocd-ingress/overlays/$CLUSTER_NAME
+
+# Validate Helm values (for Helm-based apps)
+# Values are validated during ArgoCD sync
+```
+
 ## Access
 
 ### ArgoCD UI
