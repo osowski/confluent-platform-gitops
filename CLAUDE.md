@@ -40,7 +40,6 @@ Refer to these documentation files for details. Claude may read them as needed:
 - [Project Spec](./docs/project_spec.md) - Full requirements, scope, and technical details
 - [Architecture](./docs/architecture.md) - System design and data flow
 - [Changelog](./docs/changelog.md) - Version history
-   - TODO needs more detail/attention
 - [Code Review Checklist](./docs/code_review_checklist.md) - **MANDATORY checklist before creating PRs**
 - [Architecture Decision Records](./adrs/) - Sub-directory containing all architecture decision records
 
@@ -82,7 +81,7 @@ Only load task-specific docs when needed. This file is intentionally concise —
 
 ### Security - MUST FOLLOW
 
-Security rules are detailed in the [Code Review Checklist](./docs/code_review_checklist.md) and [confluent-platform-gitops security guidelines](https://github.com/osowski/confluent-platform-gitops/blob/main/docs/guides/code-review-checklist.md). Key principles:
+Security rules are detailed in the [Code Review Checklist](./docs/code_review_checklist.md). Key principles:
 
 - NEVER expose API keys or tokens
 - ALWAYS manage secrets externally (not committed to this repository)
@@ -104,38 +103,75 @@ Security rules are detailed in the [Code Review Checklist](./docs/code_review_ch
 ## Repository Etiquette
 
 ### Branching
-- **MANDATORY: Use git worktrees for all feature branches** (see Git Worktrees section below)
+- **RECOMMENDED: Use worktree isolation for feature work** - Use `claude --worktree` or manual git worktrees (see Worktree Isolation section below)
 - All branches must be associated with a GitHub Issue
 - Never commit directly to `main`
 - Branch names must follow format: `feature-<github-issue-id>/<description>` or `fix-<github-issue-id>/<description>`
 
-### Git workflow for major changes
-**MANDATORY: Use git worktrees for all feature work** to enable parallel development:
+### Workflow for major changes
+**RECOMMENDED: Use worktree isolation** to enable parallel development and keep work isolated:
 
-1. Create a worktree with a new feature branch:
+1. **Option A (Recommended): Use Claude Code with worktree**
+   ```bash
+   claude --worktree
+   ```
+   This automatically creates an isolated worktree environment, manages branch creation, and handles cleanup.
+
+2. **Option B (Manual): Use git worktree directly**
    ```bash
    git worktree add -b feature-<github-issue-id>/<feature-name> ../confluent-platform-gitops-<feature-name>
    cd ../confluent-platform-gitops-<feature-name>
    ```
-2. Develop and commit on the feature branch within the worktree
-3. **MANDATORY: Update relevant documentation in `/docs`** (see checklist for which files)
-4. **MANDATORY: Review [Code Review Checklist](./docs/code_review_checklist.md)** before creating PR
-5. Push the branch: `git push -u origin feature-<github-issue-id>/<feature-name>`
-6. Create a PR to merge into `main`
-7. After PR is merged, clean up the worktree:
+
+3. Develop and commit on the feature branch within the worktree
+4. **MANDATORY: Update relevant documentation in `/docs`** (see checklist for which files)
+5. **MANDATORY: Review [Code Review Checklist](./docs/code_review_checklist.md)** before creating PR
+6. Push the branch: `git push -u origin feature-<github-issue-id>/<feature-name>`
+7. Create a PR to merge into `main`
+8. After PR is merged, cleanup is handled automatically by Claude Code or manually remove worktree:
    ```bash
    git worktree remove ../confluent-platform-gitops-<feature-name>
    ```
 
-### Git Worktrees - Standard Practice
+### Worktree Isolation - Recommended Practice
 
-**All feature work MUST use git worktrees.** This is the standard workflow for this repository.
+**Worktree isolation is strongly recommended for feature work.** This approach enables better parallel development and workspace management.
 
-**Why worktrees are mandatory:**
-- Enables multiple Claude sessions on different features in parallel
-- Keeps main worktree clean for reviews and hotfixes
-- Eliminates branch switching and merge conflicts during development
-- Each feature is isolated in its own workspace
+#### Using `claude --worktree` (Recommended)
+
+The simplest way to work with worktrees is using Claude Code's built-in support:
+
+```bash
+# Start Claude Code in a new worktree
+claude --worktree
+
+# Optionally specify a name
+claude --worktree --name my-feature
+```
+
+Claude Code handles:
+- Automatic worktree creation in `.claude/worktrees/`
+- Branch creation and management
+- Session isolation
+- Cleanup prompts when exiting
+
+**Renaming the branch to match convention (worktree sessions only):**
+
+When working inside a `claude --worktree` session (not a regular `claude` session), rename the auto-generated branch to follow the required format:
+
+```bash
+# ONLY when inside a worktree session created by `claude --worktree`
+git branch -m feature-<github-issue-id>/<feature-name>
+
+# Example:
+git branch -m feature-123/kafka-metrics
+```
+
+This should be done early in the session and must be done before pushing to ensure the remote branch follows the naming convention. Do NOT rename branches in regular `claude` sessions working on `main` or existing branches.
+
+#### Using git worktree (Manual Alternative)
+
+For manual control or scripting, you can use git worktree directly:
 
 **Naming convention:**
 - Format: `../confluent-platform-gitops-<short-feature-description>`
@@ -144,7 +180,7 @@ Security rules are detailed in the [Code Review Checklist](./docs/code_review_ch
 
 **Common commands:**
 ```bash
-# Create worktree with new branch (standard workflow)
+# Create worktree with new branch
 git worktree add -b feature-123/kafka-metrics ../confluent-platform-gitops-kafka-metrics
 
 # List all worktrees
@@ -181,4 +217,4 @@ Project status is tracked through GitHub Issues.
    - Issues of this type can be created by Claude or myself.
 - Issues labeled `manual` should be ignored by Claude, as these are only meant for human interaction.
 
-Interaction with GitHub Issues locally can be performed via the GitHub CLI.
+Interaction with GitHub Issues and Pull Requests locally can be performed via the GitHub CLI.
