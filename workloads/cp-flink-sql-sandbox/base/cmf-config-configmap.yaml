@@ -1,0 +1,94 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmf-catalog-config
+data:
+  catalog.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaCatalog",
+      "metadata": {
+        "name": "kafka-cat"
+      },
+      "spec": {
+        "srInstance": {
+          "connectionConfig": {
+            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
+          }
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmf-database-config
+data:
+  database.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaDatabase",
+      "metadata": {
+        "name": "main-kafka-cluster"
+      },
+      "spec": {
+        "kafkaCluster": {
+          "connectionConfig": {
+            "bootstrap.servers": "kafka.kafka.svc.cluster.local:9092"
+          }
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmf-compute-pool-config
+data:
+  compute-pool.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "ComputePool",
+      "metadata": {
+        "name": "pool"
+      },
+      "spec": {
+        "flinkVersion": "1.19",
+        "image": "confluentinc/cp-flink-sql:1.19-cp5",
+        "maxCfu": 100,
+        "state": {
+          "backend": "filesystem",
+          "checkpoints": {
+            "dir": "s3://warehouse/checkpoints/",
+            "interval": "10 sec",
+            "minPauseBetween": "5 sec",
+            "retainedNum": 10
+          },
+          "savepoints": {
+            "dir": "s3://warehouse/savepoints/"
+          }
+        },
+        "highAvailability": {
+          "storageDir": "s3://warehouse/"
+        },
+        "pod": {
+          "restartPolicy": "Always",
+          "securityContext": {
+            "runAsUser": 9999
+          }
+        },
+        "flinkConfiguration": {
+          "s3.endpoint": "http://s3proxy.flink.svc.cluster.local:8000",
+          "s3.access-key": "admin",
+          "s3.secret-key": "password",
+          "s3.path.style.access": "true",
+          "jobmanager.memory.process.size": "1024m",
+          "jobmanager.cpu": "1.0",
+          "taskmanager.memory.process.size": "1024m",
+          "taskmanager.cpu": "1.0",
+          "taskmanager.numberOfTaskSlots": "2"
+        },
+        "kubernetesNamespace": "flink"
+      }
+    }

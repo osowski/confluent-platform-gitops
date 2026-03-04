@@ -1,0 +1,82 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: myevent-value
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  data:
+    format: avro
+    subject: myevent-value
+    schema: |
+      {
+        "type": "record",
+        "name": "myevent",
+        "fields": [
+          {
+            "name": "id",
+            "type": "string"
+          },
+          {
+            "name": "value",
+            "type": "int"
+          },
+          {
+            "name": "event_time",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "category",
+            "type": ["null", "string"],
+            "default": null
+          }
+        ]
+      }
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: myaggregated-value
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  data:
+    format: avro
+    subject: myaggregated-value
+    schema: |
+      {
+        "type": "record",
+        "name": "myaggregated",
+        "fields": [
+          {
+            "name": "window_start",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "category",
+            "type": ["null", "string"],
+            "default": null
+          },
+          {
+            "name": "total_value",
+            "type": "int"
+          },
+          {
+            "name": "event_count",
+            "type": "long"
+          }
+        ]
+      }
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka

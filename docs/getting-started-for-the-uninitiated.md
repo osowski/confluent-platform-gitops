@@ -17,11 +17,14 @@ brew install colima \
 2. Add the following entries to `/etc/hosts` (all pointing to `127.0.0.1`):
 
 ```
+127.0.0.1  alertmanager.flink-demo.confluentdemo.local
 127.0.0.1  argocd.flink-demo.confluentdemo.local
+127.0.0.1  cmf.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  prometheus.flink-demo.confluentdemo.local
-127.0.0.1  alertmanager.flink-demo.confluentdemo.local
+127.0.0.1  s3proxy.flink-demo.confluentdemo.local
+127.0.0.1  vault.flink-demo.confluentdemo.local
 ```
 
 ## Checkout the Latest Release

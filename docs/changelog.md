@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CP Flink SQL Sandbox application for flink-demo cluster** ([#57](https://github.com/osowski/confluent-platform-gitops/issues/57))
+  - New `cp-flink-sql-sandbox` application enables running [cp-flink-sql demo](https://github.com/rjmfernandes/cp-flink-sql) out of the box
+  - Deploys Kafka topics (`myevent`, `myaggregated`) with registered Avro schemas
+  - Configures Flink catalog and database for automatic topic/schema recognition
+  - Creates compute pool with S3 checkpoint/savepoint storage
+  - New `s3proxy` application provides S3-compatible storage backend
+  - New `cmf-ingress` application exposes CMF API via Ingress
+  - Includes README with endpoints and getting started instructions
+- **flink-demo cluster README** ([#57](https://github.com/osowski/confluent-platform-gitops/issues/57))
+  - Comprehensive cluster documentation at `clusters/flink-demo/README.md`
+  - Integrates prerequisites, DNS configuration, deployment steps, and troubleshooting
+  - Documents all endpoints including new CMF and S3proxy Ingress FQDNs
+  - Updated `/etc/hosts` entries in getting-started guide to include `cmf.flink-demo.confluentdemo.local` and `s3proxy.flink-demo.confluentdemo.local`
 - **Automation script: validate-cluster.sh** ([#45](https://github.com/osowski/confluent-platform-gitops/issues/45))
   - Comprehensive validation suite for cluster configuration: `./scripts/validate-cluster.sh <cluster-name> [--verbose]`
   - Validates YAML syntax, Kustomize builds, Helm templates, sync waves, AppProjects, and common misconfigurations

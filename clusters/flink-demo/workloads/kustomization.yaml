@@ -10,3 +10,6 @@ resources:
   - observability-resources.yaml
   - cmf-operator.yaml
   - flink-resources.yaml
+  - s3proxy.yaml
+  - cmf-ingress.yaml
+  - cp-flink-sql-sandbox.yaml
