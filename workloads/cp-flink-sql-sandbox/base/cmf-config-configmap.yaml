@@ -54,6 +54,7 @@ data:
         "name": "pool"
       },
       "spec": {
+        "type": "DEDICATED",
         "flinkVersion": "1.19",
         "image": "confluentinc/cp-flink-sql:1.19-cp5",
         "maxCfu": 100,
