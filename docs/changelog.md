@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `docs/confluent-platform.md` with PodMonitor configuration details, verification steps, and Grafana dashboard integration guidance
 
 ### Fixed
+- **Missing Schema resource permission in workloads AppProject**
+  - Added `platform.confluent.io/Schema` to workloads AppProject's namespaceResourceWhitelist
+  - Fixes "resource platform.confluent.io:Schema is not permitted in project workloads" error
+  - Required for cp-flink-sql-sandbox application to deploy Schema resources
 - **s3proxy sync-wave mismatch causing deployment blocking** ([#59](https://github.com/osowski/confluent-platform-gitops/issues/59))
   - Updated s3proxy Deployment and Service sync-wave from "20" to "15" to match PVC sync-wave
   - Prevents Deployment from blocking indefinitely when trying to mount PVC before it's fully bound

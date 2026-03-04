@@ -120,6 +120,8 @@ spec:
     - group: platform.confluent.io
       kind: SchemaRegistry
     - group: platform.confluent.io
+      kind: Schema
+    - group: platform.confluent.io
       kind: Connect
     - group: platform.confluent.io
       kind: KsqlDB
