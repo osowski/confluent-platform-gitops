@@ -59,6 +59,19 @@ sudo vim /etc/hosts
 sudo nano /etc/hosts
 ```
 
+> [!WARNING]
+> If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries as well. Some HTTP clients (including the Confluent CLI) prefer IPv6 and will timeout trying `::1` before falling back to IPv4. Add these additional entries to `/etc/hosts` if needed:
+> ```
+> ::1  argocd.flink-demo.confluentdemo.local
+> ::1  vault.flink-demo.confluentdemo.local
+> ::1  controlcenter.flink-demo.confluentdemo.local
+> ::1  grafana.flink-demo.confluentdemo.local
+> ::1  prometheus.flink-demo.confluentdemo.local
+> ::1  alertmanager.flink-demo.confluentdemo.local
+> ::1  cmf.flink-demo.confluentdemo.local
+> ::1  s3proxy.flink-demo.confluentdemo.local
+> ```
+
 ## Quick Start
 
 ### 1. Checkout a Release

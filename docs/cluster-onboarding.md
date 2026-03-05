@@ -210,6 +210,9 @@ Or update `/etc/hosts` for local testing:
 <LoadBalancer-IP>  echo.<cluster-name>.confluentdemo.local
 ```
 
+> [!WARNING]
+> If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries as well. Some HTTP clients prefer IPv6 and will timeout before falling back to IPv4. Add the corresponding `::1` entry to `/etc/hosts` if needed.
+
 ### Test Application
 
 ```bash
