@@ -12,14 +12,14 @@ The Flink deployment consists of three ArgoCD Applications:
 
 1. **flink-kubernetes-operator** (sync-wave 116)
    - Manages Flink deployments and jobs on Kubernetes
-   - Helm chart: `confluentinc/flink-kubernetes-operator` v1.130.0
+   - Helm chart: `confluentinc/flink-kubernetes-operator` v1.130.2
    - Resources: 2 CPU, 3 GB RAM
    - Namespace: `confluent`
 
 2. **cmf-operator** (sync-wave 118)
    - Confluent Manager for Apache Flink (CMF)
    - Central management interface for Flink applications
-   - Helm chart: `confluentinc/confluent-manager-for-apache-flink` v2.1.0
+   - Helm chart: `confluentinc/confluent-manager-for-apache-flink` v2.2.0
    - Resources: 2 CPU, 1 GB RAM, 10 GB storage (PVC)
    - Database: SQLite with persistent volume
    - License: Trial license auto-generated
@@ -318,7 +318,7 @@ kubectl logs -n confluent <taskmanager-pod-name>
 1. Verify Kafka broker running: `kubectl get kafka -n confluent`
 2. Test connectivity:
    ```bash
-   kubectl run -it --rm kafka-test --image=confluentinc/cp-kafka:8.1.0 --restart=Never -- \
+   kubectl run -it --rm kafka-test --image=confluentinc/cp-kafka:8.2.0 --restart=Never -- \
      kafka-broker-api-versions --bootstrap-server kafka.confluent.svc.cluster.local:9092
    ```
 3. Check FlinkEnvironment Kafka configuration

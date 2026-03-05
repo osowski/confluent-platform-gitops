@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Updated Confluent Platform and Flink components to latest versions** ([#63](https://github.com/osowski/confluent-platform-gitops/issues/63))
+  - Confluent Manager for Apache Flink (CMF): 2.1.0 → 2.2.0
+  - Confluent Platform images: 8.1.0 → 8.2.0
+  - Confluent init container: 3.1.0 → 3.1.1
+  - Control Center next-gen: 2.2.0 → 2.4.0
+  - Prometheus/AlertManager enterprise: 2.2.0 → 2.4.0
+  - Flink image: 1.19.1-cp1 → 1.20.3-cp1
+  - Confluent CLI: latest → 4.53.0 (pinned version)
+  - Updated documentation references in `docs/confluent-flink.md`
+
 ### Added
 - **CP Flink SQL Sandbox application for flink-demo cluster** ([#57](https://github.com/osowski/confluent-platform-gitops/issues/57))
   - New `cp-flink-sql-sandbox` application enables running [cp-flink-sql demo](https://github.com/rjmfernandes/cp-flink-sql) out of the box

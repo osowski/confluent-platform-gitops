@@ -8,8 +8,8 @@ metadata:
 spec:
   replicas: 1
   image:
-    application: confluentinc/cp-enterprise-control-center-next-gen:2.2.0
-    init: confluentinc/confluent-init-container:3.1.0
+    application: confluentinc/cp-enterprise-control-center-next-gen:2.4.0
+    init: confluentinc/confluent-init-container:3.1.1
   configOverrides:
     server:
       - confluent.controlcenter.ksql.enable=false
@@ -34,8 +34,8 @@ spec:
       url: http://controlcenter.kafka.svc.cluster.local:9093
   services:
     prometheus:
-      image: confluentinc/cp-enterprise-prometheus:2.2.0
+      image: confluentinc/cp-enterprise-prometheus:2.4.0
       pvc:
         dataVolumeCapacity: 10Gi
     alertmanager:
-      image: confluentinc/cp-enterprise-alertmanager:2.2.0
+      image: confluentinc/cp-enterprise-alertmanager:2.4.0

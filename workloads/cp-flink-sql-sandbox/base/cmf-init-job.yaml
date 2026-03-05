@@ -41,7 +41,7 @@ spec:
           echo "Schema Registry is ready!"
       containers:
       - name: create-catalog-and-database
-        image: confluentinc/confluent-cli:latest
+        image: confluentinc/confluent-cli:4.53.0
         env:
         - name: CMF_URL
           value: "http://cmf-service.operator.svc.cluster.local:80"
