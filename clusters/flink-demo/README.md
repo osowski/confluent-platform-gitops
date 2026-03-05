@@ -14,207 +14,19 @@ The `flink-demo` cluster demonstrates a complete Confluent Platform deployment i
 
 **Domain**: `*.flink-demo.confluentdemo.local`
 
-## Prerequisites
+## Getting Started
 
-### Required Tools
+> [!TIP]
+> **New to this repository?** Start with the [Getting Started for the Uninitiated](../../docs/getting-started-for-the-uninitiated.md) guide for complete step-by-step setup instructions including:
+> - Prerequisites and tool installation
+> - DNS configuration (`/etc/hosts` setup with IPv6 timeout workaround)
+> - Cluster creation and ArgoCD installation
+> - Bootstrap and initial deployment
+> - Accessing ArgoCD UI
 
-Install via Homebrew (macOS):
+The sections below provide cluster-specific reference information and advanced configuration.
 
-```bash
-brew install \
-    colima \
-    kind \
-    kubectl \
-    kubectx \
-    yq
-```
-
-**Tool descriptions:**
-- `colima` - Container runtime for macOS (provides Docker environment for kind)
-- `kind` - Kubernetes in Docker (creates local Kubernetes cluster)
-- `kubectl` - Kubernetes CLI for cluster management
-- `kubectx` - Context switcher for kubectl (simplifies multi-cluster workflows)
-- `yq` - YAML processor (used by validation scripts)
-
-### DNS Configuration
-
-Add the following entries to `/etc/hosts` (all pointing to `127.0.0.1`):
-
-```
-127.0.0.1  argocd.flink-demo.confluentdemo.local
-127.0.0.1  vault.flink-demo.confluentdemo.local
-127.0.0.1  controlcenter.flink-demo.confluentdemo.local
-127.0.0.1  grafana.flink-demo.confluentdemo.local
-127.0.0.1  prometheus.flink-demo.confluentdemo.local
-127.0.0.1  alertmanager.flink-demo.confluentdemo.local
-127.0.0.1  cmf.flink-demo.confluentdemo.local
-127.0.0.1  s3proxy.flink-demo.confluentdemo.local
-```
-
-**To edit /etc/hosts:**
-
-```bash
-sudo vim /etc/hosts
-# or
-sudo nano /etc/hosts
-```
-
-> [!WARNING]
-> If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries as well. Some HTTP clients (including the Confluent CLI) prefer IPv6 and will timeout trying `::1` before falling back to IPv4. Add these additional entries to `/etc/hosts` if needed:
-> ```
-> ::1  argocd.flink-demo.confluentdemo.local
-> ::1  vault.flink-demo.confluentdemo.local
-> ::1  controlcenter.flink-demo.confluentdemo.local
-> ::1  grafana.flink-demo.confluentdemo.local
-> ::1  prometheus.flink-demo.confluentdemo.local
-> ::1  alertmanager.flink-demo.confluentdemo.local
-> ::1  cmf.flink-demo.confluentdemo.local
-> ::1  s3proxy.flink-demo.confluentdemo.local
-> ```
-
-## Quick Start
-
-### 1. Checkout a Release
-
-**Important**: Check out a tagged release for stable deployment. Staying on `main` tracks HEAD with in-progress changes.
-
-```bash
-# List available releases
-git tag --sort=-v:refname
-
-# Checkout latest stable release
-git checkout <latest-tag>   # e.g., git checkout v0.4.0
-```
-
-See [Release Process](../../docs/release-process.md) for versioning details.
-
-### 2. Start Container Runtime
-
-Start Colima with sufficient resources for the demo cluster:
-
-```bash
-colima start --arch arm64 --memory 16 --cpu 8 --disk 256
-```
-
-**Resource allocation notes:**
-- Memory: 16GB recommended for full stack (minimum 12GB)
-- CPU: 8 cores recommended (minimum 6)
-- Disk: 256GB allocated to container storage
-
-**For Intel/AMD systems**, use:
-```bash
-colima start --arch x86_64 --memory 16 --cpu 8 --disk 256
-```
-
-### 3. Create Kubernetes Cluster
-
-Create the kind cluster using the provided configuration:
-
-```bash
-kind create cluster --config ./clusters/flink-demo/kind-config.yaml --name flink-demo
-```
-
-The [kind-config.yaml](./kind-config.yaml) configures:
-- Extra port mappings for ingress (80/443 → 30080/30443)
-- Node labels for workload placement
-- Resource quotas and pod security
-
-### 4. Set Kubernetes Context
-
-Select the flink-demo cluster context:
-
-```bash
-kubectx kind-flink-demo
-```
-
-Verify context:
-```bash
-kubectl config current-context
-# Should output: kind-flink-demo
-```
-
-### 5. Install ArgoCD
-
-Create the ArgoCD namespace:
-
-```bash
-kubectl create namespace argocd
-```
-
-Install ArgoCD using the official upstream manifest:
-
-```bash
-kubectl apply --namespace argocd --server-side --force-conflicts \
-  --filename https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
-
-Wait for ArgoCD pods to be ready:
-
-```bash
-kubectl wait pods --namespace argocd --all --for=condition=Ready --timeout=300s
-```
-
-### 6. Bootstrap the Cluster
-
-Apply the cluster bootstrap manifest:
-
-```bash
-kubectl apply --filename ./clusters/flink-demo/bootstrap.yaml
-```
-
-**What happens next:**
-1. ArgoCD creates `infrastructure` and `workloads` parent Applications
-2. Parent Applications discover all Application manifests in `clusters/flink-demo/`
-3. Child Applications deploy infrastructure components (sync waves 1-99)
-4. Child Applications deploy workload components (sync waves 100+)
-
-**Deployment order** (via sync waves):
-- Wave 2: Prometheus Operator CRDs
-- Wave 5: Metrics Server
-- Wave 10: Traefik ingress controller
-- Wave 20: Prometheus, cert-manager
-- Wave 30: Trust Manager
-- Wave 40: Vault
-- Wave 50: Vault configuration
-- Wave 75: Certificate resources
-- Wave 80: ArgoCD ingress
-- Wave 85: ArgoCD config
-- Wave 100: Namespaces
-- Wave 105: CFK operator
-- Wave 106: S3proxy
-- Wave 110: CMF ingress
-- Wave 115: Control Center ingress
-- Wave 116: Flink Kubernetes Operator
-- Wave 117: Observability resources
-- Wave 118: CMF operator
-- Wave 120: Flink resources
-
-### 7. Access ArgoCD UI
-
-Retrieve the initial admin password:
-
-```bash
-kubectl get secret --namespace argocd argocd-initial-admin-secret \
-  --output jsonpath='{.data.password}' | base64 -d | pbcopy
-```
-
-**Alternative without clipboard:**
-```bash
-kubectl get secret --namespace argocd argocd-initial-admin-secret \
-  --output jsonpath='{.data.password}' | base64 -d
-```
-
-Open ArgoCD in your browser:
-
-- **URL**: https://argocd.flink-demo.confluentdemo.local
-- **Username**: `admin`
-- **Password**: paste from clipboard
-
-**Note**: ArgoCD uses a self-signed certificate. Accept the security warning in your browser.
-
-You should see the `bootstrap`, `infrastructure-apps`, and `workloads-apps` Applications syncing.
-
-### 8. Deploy Confluent and Flink Resources
+## Deploy Confluent and Flink Resources
 
 The `confluent-resources` and `flink-resources` Applications require manual sync to ensure operators and namespaces are fully ready.
 
@@ -254,7 +66,7 @@ To enable the CP Flink SQL demo environment:
 
 This deploys topics, schemas, and Flink catalog/compute pool for running Flink SQL queries. See [CP Flink SQL Sandbox](#cp-flink-sql-sandbox) below.
 
-### 9. Verify Deployment
+## Verify Deployment
 
 Check all Applications are healthy:
 
