@@ -217,7 +217,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 85 | argocd-config | ArgoCD ConfigMap patches for custom health checks |
 | 100 | workloads (parent) | Workloads App of Apps |
 | 105 | cfk-operator | Confluent for Kubernetes operator (CRDs and webhooks) |
-| 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center) |
+| 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
 | 115 | controlcenter-ingress | Traefik IngressRoute for Confluent Control Center UI access |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
@@ -225,6 +225,31 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).
+
+## External Access Patterns
+
+### Kafka External Access (flink-demo cluster)
+
+The `flink-demo` cluster uses Kafka NodePort listeners to enable external client access in local kind environments. This configuration is cluster-specific and deployed via Kustomize overlay.
+
+**Architecture:**
+- **kind port mapping**: `31000-31002:31000-31002` (3 brokers)
+- **CFK listener configuration**: NodePort listener on port 9094 with nodePortOffset 31000
+- **Advertised hostname**: `kafka.flink-demo.confluentdemo.local`
+- **Bootstrap connection string**: `kafka.flink-demo.confluentdemo.local:31000`
+
+**DNS Resolution:**
+Clients must resolve the advertised hostname to localhost. Add to `/etc/hosts`:
+```
+127.0.0.1 kafka.flink-demo.confluentdemo.local
+```
+
+**Implementation:**
+- **Base**: `workloads/confluent-resources/base/kafka-broker.yaml` contains cluster-agnostic Kafka configuration
+- **Overlay**: `workloads/confluent-resources/overlays/flink-demo/kafka-broker-patch.yaml` adds NodePort listener via strategic merge patch
+- **kind cluster**: `clusters/flink-demo/kind-config.yaml` defines extraPortMappings for NodePort range
+
+This pattern keeps the base Kafka configuration reusable across clusters while allowing cluster-specific external access configuration.
 
 ## RBAC Boundaries
 

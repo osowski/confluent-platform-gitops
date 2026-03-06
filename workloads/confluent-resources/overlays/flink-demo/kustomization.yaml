@@ -5,3 +5,13 @@ namespace: kafka
 
 bases:
   - ../../base
+
+patches:
+  - path: kafka-broker-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+  - path: schema-registry-ingress-patch.yaml
+    target:
+      kind: IngressRoute
+      name: schema-registry

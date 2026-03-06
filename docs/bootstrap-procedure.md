@@ -419,6 +419,9 @@ After successful bootstrap:
    # Test with curl
    ```
 
+   > [!WARNING]
+   > If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries to `/etc/hosts` as well. Some HTTP clients prefer IPv6 and will timeout trying `::1` before falling back to IPv4.
+
 4. **Configure ArgoCD notifications** (optional):
    - Slack, email, or webhook notifications for sync events
 

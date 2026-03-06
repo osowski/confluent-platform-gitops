@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myevent-value-avro-schema
+  namespace: flink
+data:
+  schema: |
+    {
+    "fields": [
+      {
+        "name": "id",
+        "type": "string",
+        "doc": "Unique identifier for the event"
+      },
+      {
+        "name": "value",
+        "type": "int",
+        "doc": "Some integer value to aggregate"
+      },
+      {
+        "name": "event_time",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        },
+        "doc": "Timestamp of the event in milliseconds since the epoch"
+      },
+      {
+        "name": "category",
+        "type": ["null", "string"],
+        "default": null,
+        "doc": "Optional category for grouping"
+      }
+    ],
+    "type": "record",
+    "name": "MyEvent",
+    "namespace": "com.example.avro"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myaggregated-value-avro-schema
+  namespace: flink
+data:
+  schema: |
+    {
+    "type": "record",
+    "name": "MyAggregated",
+    "namespace": "com.example.flink.aggregated",
+    "fields": [
+      {
+        "name": "window_start",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        },
+        "doc": "Start timestamp of the aggregation window in milliseconds since the epoch"
+      },
+      {
+        "name": "category",
+        "type": [
+          "null",
+          "string"
+        ],
+        "doc": "Category for the aggregated data (can be null if source category is null)"
+      },
+      {
+        "name": "total_value",
+        "type": "int",
+        "doc": "Sum of the 'value' field within the window"
+      },
+      {
+        "name": "event_count",
+        "type": "long",
+        "doc": "Count of events within the window"
+      }
+    ]
+    }
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: myevent-value
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: myevent-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: myaggregated-value
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: myaggregated-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD

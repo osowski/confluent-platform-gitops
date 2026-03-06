@@ -177,6 +177,7 @@ confluent-platform-gitops/
 
 ### Workloads (Manual Sync Required)
 - **confluent-resources** (wave 110) - Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, ksqlDB, Connect)
+- **cp-flink-sql-sandbox** (wave 115) - Sandbox setup for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) Flink SQL exercises
 - **flink-resources** (wave 120) - Flink integration resources (CMFRestClass, FlinkEnvironment)
 
 > **Note**: Applications marked as "Manual Sync Required" do not have automated sync policies. These must be manually synced via Argo CD UI or CLI to allow review of configuration changes before deployment.

@@ -1,0 +1,23 @@
+# FlinkEnvironment CR for env1
+# This declarative resource replaces the imperative environment creation
+# previously done in the compute pool Job
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: env1
+  namespace: flink
+spec:
+  kubernetesNamespace: flink
+
+  # Reference to CMFRestClass for CMF communication
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
+  # Default resource configuration for Flink applications
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+        metrics.reporter.prom.port: "9249-9250"
+        rest.profiling.enabled: "true"

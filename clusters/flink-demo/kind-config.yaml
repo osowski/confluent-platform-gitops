@@ -9,11 +9,29 @@ nodes:
           kubeletExtraArgs:
             node-labels: "ingress-ready=true"
     extraPortMappings:
+      ## TODO UPDATE DOCS TO REFLECT THIS FLINK-DEMO ARCHITECTURE CHANGE
+      # Traefik HTTP/HTTPS
       - containerPort: 30000
         hostPort: 80
         protocol: TCP
       - containerPort: 30001
         hostPort: 443
+        protocol: TCP
+      # Kafka Bootstrap
+      - containerPort: 31000
+        hostPort: 31000
+        protocol: TCP
+      # Kafka Broker 0
+      - containerPort: 31001
+        hostPort: 31001
+        protocol: TCP
+      # Kafka Broker 1
+      - containerPort: 31002
+        hostPort: 31002
+        protocol: TCP
+      # Kafka Broker 2
+      - containerPort: 31003
+        hostPort: 31003
         protocol: TCP
   - role: worker
   - role: worker

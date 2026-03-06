@@ -14,6 +14,7 @@ resources:
   # - ksqldb.yaml ## DISABLE ksqldb UNTIL IT IS NECESSARY
   - podmonitor-cfk.yaml
   - schema-registry.yaml
+  - schema-registry-ingress.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: confluent-platform

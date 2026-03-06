@@ -6,6 +6,7 @@ namespace: flink
 resources:
   - cmfrestclass.yaml
   - flink-environment.yaml
+  - flink-environment-env1.yaml
   - flink-application.yaml
   - service.yaml
   - servicemonitor.yaml

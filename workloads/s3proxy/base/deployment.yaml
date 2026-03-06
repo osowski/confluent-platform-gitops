@@ -1,0 +1,64 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3proxy
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+  labels:
+    app: s3proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3proxy
+  template:
+    metadata:
+      labels:
+        app: s3proxy
+    spec:
+      containers:
+      - name: s3proxy
+        image: andrewgaul/s3proxy:3.0.0
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        env:
+        - name: S3PROXY_AUTHORIZATION
+          value: "aws-v2-or-v4"
+        - name: S3PROXY_IDENTITY
+          value: "admin"
+        - name: S3PROXY_CREDENTIAL
+          value: "password"
+        - name: S3PROXY_ENDPOINT
+          value: "http://0.0.0.0:8000"
+        - name: JCLOUDS_PROVIDER
+          value: "filesystem"
+        - name: JCLOUDS_FILESYSTEM_BASEDIR
+          value: "/data"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: s3proxy-data
