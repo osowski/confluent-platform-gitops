@@ -26,7 +26,7 @@ Once this application is synced in ArgoCD, you can proceed directly to the "Let'
 
 ### Endpoints
 
-Access the following services via Ingress (not port-forward):
+Access the following services via Ingress (not port-forward; when deployed in the `flink-demo` cluster):
 
 - **CMF API**: `http://cmf.flink-demo.confluentdemo.local`
 - **S3proxy**: `http://s3proxy.flink-demo.confluentdemo.local`
@@ -35,6 +35,12 @@ Access the following services via Ingress (not port-forward):
 ### Running Flink SQL Queries
 
 Use the CMF API endpoint to execute Flink SQL statements as documented in the parent repository.
+
+> [!TIP] **Important differences from the upstream repo:**
+> - Use Ingress endpoints instead of port-forwarding
+> - CMF API: `http://cmf.flink-demo.confluentdemo.local`
+> - S3proxy: `http://s3proxy.flink-demo.confluentdemo.local`
+> - Kafka bootstrap: `kafka.flink-demo.confluentdemo.local:31000`
 
 ## Reference
 

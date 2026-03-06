@@ -7,7 +7,7 @@ Demo cluster for Confluent Platform with Apache Flink integration, showcasing Gi
 The `flink-demo` cluster demonstrates a complete Confluent Platform deployment including:
 
 - **Kafka Cluster**: KRaft-based Kafka with Schema Registry, Control Center, ksqlDB, and Connect
-- **Flink Integration**: Flink Kubernetes Operator with CMF for SQL-based stream processing
+- **Flink Integration**: Flink Kubernetes Operator with CMF for SQL-based stream processing and out-of-box support for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) exercises.
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
 - **Security**: HashiCorp Vault for secrets management, cert-manager for TLS certificates
 - **Networking**: Traefik ingress controller with local DNS resolution
@@ -165,7 +165,7 @@ To connect via Cyberduck GUI, download and import the [S3_flink-demo.cyberduckpr
 
 ## CP Flink SQL Sandbox
 
-The cluster includes an optional **cp-flink-sql-sandbox** application that provides a complete environment for running Flink SQL demos.
+The cluster includes an optional **cp-flink-sql-sandbox** application that provides a complete environment for running Flink SQL demos from the [https://github.com/rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) repository.
 
 **What's included:**
 - **Topics**: `myevent` (source), `myaggregated` (sink)
@@ -177,12 +177,7 @@ The cluster includes an optional **cp-flink-sql-sandbox** application that provi
 
 After syncing the `cp-flink-sql-sandbox` Application, you can immediately proceed to the "Let's Play" section of the [cp-flink-sql repository](https://github.com/rjmfernandes/cp-flink-sql?tab=readme-ov-file#lets-play).
 
-**Important differences from the upstream repo:**
-- Use Ingress endpoints instead of port-forwarding
-- CMF API: `http://cmf.flink-demo.confluentdemo.local`
-- S3proxy: `http://s3proxy.flink-demo.confluentdemo.local`
-
-See [cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/base/README.md) for details.
+See **[cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.md)** for details.
 
 ## Cluster Configuration
 
