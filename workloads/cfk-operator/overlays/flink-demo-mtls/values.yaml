@@ -1,0 +1,5 @@
+# flink-demo cluster-specific overrides for CFK operator
+# Minimal overrides - most configuration is in base
+
+# Enable debug logging for homelab troubleshooting
+debug: true

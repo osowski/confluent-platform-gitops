@@ -1,0 +1,23 @@
+---
+# Kafka external listener configuration for flink-demo cluster
+# This NodePort listener enables external access via kind's port mapping:
+# - kind extraMappings: 31000-31002:31000-31002 (for 3 brokers)
+# - Bootstrap connection: kafka.flink-demo-mtls.confluentdemo.local:31000
+# - Requires /etc/hosts entry: 127.0.0.1 kafka.flink-demo-mtls.confluentdemo.local
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  listeners:
+    custom:
+      - name: external-nodeport
+        port: 9094
+        externalAccess:
+          type: nodePort
+          nodePort:
+            host: kafka.flink-demo-mtls.confluentdemo.local
+            nodePortOffset: 31000
+        tls:
+          enabled: false

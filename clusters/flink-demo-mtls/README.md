@@ -1,18 +1,21 @@
-# flink-demo Cluster
+# flink-demo-mtls Cluster
 
-Demo cluster for Confluent Platform with Apache Flink integration, showcasing GitOps-based deployment using ArgoCD, Confluent for Kubernetes (CFK), and Confluent Manager for Apache Flink (CMF).
+Demo cluster for Confluent Platform with Apache Flink integration and **comprehensive mTLS authentication**, showcasing GitOps-based deployment using ArgoCD, Confluent for Kubernetes (CFK), and Confluent Manager for Apache Flink (CMF).
 
 ## Overview
 
-The `flink-demo` cluster demonstrates a complete Confluent Platform deployment including:
+The `flink-demo-mtls` cluster demonstrates a complete Confluent Platform deployment including:
 
 - **Kafka Cluster**: KRaft-based Kafka with Schema Registry, Control Center, ksqlDB, and Connect
 - **Flink Integration**: Flink Kubernetes Operator with CMF for SQL-based stream processing and out-of-box support for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) exercises.
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
-- **Security**: HashiCorp Vault for secrets management, cert-manager for TLS certificates
+- **Security**: HashiCorp Vault for secrets management, cert-manager for TLS certificates, **mTLS authentication for CMF and Flink components**
 - **Networking**: Traefik ingress controller with local DNS resolution
 
-**Domain**: `*.flink-demo.confluentdemo.local`
+**Domain**: `*.flink-demo-mtls.confluentdemo.local`
+
+> [!NOTE]
+> **mTLS Security Focus**: This cluster variant demonstrates production-grade mTLS authentication patterns. For a simpler setup without mTLS, see the [`flink-demo`](../flink-demo/README.md) cluster.
 
 ## Getting Started
 
@@ -102,14 +105,14 @@ kubectl get pods --namespace flink
 
 Web UI for managing Confluent Platform:
 
-- **URL**: https://controlcenter.flink-demo.confluentdemo.local
+- **URL**: https://controlcenter.flink-demo-mtls.confluentdemo.local
 - **Features**: Cluster monitoring, topic management, schema registry, Connect connectors, ksqlDB queries
 
 ### Grafana
 
 Metrics dashboards for monitoring:
 
-- **URL**: http://grafana.flink-demo.confluentdemo.local
+- **URL**: http://grafana.flink-demo-mtls.confluentdemo.local
 - **Username**: `admin`
 - **Password**: `prom-operator`
 
@@ -124,21 +127,21 @@ Metrics dashboards for monitoring:
 
 Raw metrics and query interface:
 
-- **URL**: http://prometheus.flink-demo.confluentdemo.local
+- **URL**: http://prometheus.flink-demo-mtls.confluentdemo.local
 - **Features**: PromQL queries, target health, alerting rules
 
 ### Alertmanager
 
 Alert management and routing:
 
-- **URL**: http://alertmanager.flink-demo.confluentdemo.local
+- **URL**: http://alertmanager.flink-demo-mtls.confluentdemo.local
 - **Features**: Active alerts, silences, notification routing
 
 ### Vault
 
 Secrets management (dev mode):
 
-- **URL**: http://vault.flink-demo.confluentdemo.local
+- **URL**: http://vault.flink-demo-mtls.confluentdemo.local
 - **Token**: `root`
 - **Warning**: Dev mode - data is not persisted across restarts
 
@@ -146,22 +149,26 @@ Secrets management (dev mode):
 
 Confluent Manager for Apache Flink REST API:
 
-- **URL**: http://cmf.flink-demo.confluentdemo.local
+- **URL**: https://cmf.flink-demo-mtls.confluentdemo.local
+- **Authentication**: mTLS (client certificate required)
 - **Features**: Flink SQL statement execution, catalog/database/compute pool management
 - **Documentation**: [CMF REST API](https://docs.confluent.io/platform/current/flink/index.html)
+
+> [!NOTE]
+> **mTLS Authentication**: This cluster uses mTLS for CMF API access. Client certificates are automatically configured for internal components. See [mTLS Configuration](#mtls-configuration) for details.
 
 ### S3proxy
 
 S3-compatible object storage for Flink checkpoints and savepoints:
 
-- **URL**: http://s3proxy.flink-demo.confluentdemo.local
+- **URL**: http://s3proxy.flink-demo-mtls.confluentdemo.local
 - **Credentials**: Access Key `admin`, Secret Key `password`
 - **Bucket**: `warehouse`
 - **Purpose**: Backend storage for Flink state management
 
 **Cyberduck Connection Profile:**
 
-To connect via Cyberduck GUI, download and import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile. Double-click the file or manually install it to your Cyberduck Profiles directory.
+To connect via Cyberduck GUI, download and import the S3 connection profile. Double-click the file or manually install it to your Cyberduck Profiles directory.
 
 ## CP Flink SQL Sandbox
 
@@ -178,6 +185,59 @@ The cluster includes an optional **cp-flink-sql-sandbox** application that provi
 After syncing the `cp-flink-sql-sandbox` Application, you can immediately proceed to the "Let's Play" section of the [cp-flink-sql repository](https://github.com/rjmfernandes/cp-flink-sql?tab=readme-ov-file#lets-play).
 
 See **[cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.md)** for details.
+
+## mTLS Configuration
+
+This cluster variant demonstrates comprehensive mTLS authentication for Confluent Flink components.
+
+### Current Implementation (Phase 2)
+
+**CMF mTLS Authentication:**
+- CMF service requires client certificates for API access
+- Confluent Flink CLI commands use mTLS for authentication
+- CFK operator authenticates to CMF using client certificates
+- Certificate lifecycle managed by cert-manager
+- CA distribution via trust-manager
+
+**Certificate Infrastructure:**
+- Root CA: Self-signed, 10-year validity
+- Server certificates: CMF service (90-day validity, auto-renewal)
+- Client certificates: Flink CLI and CFK operator (90-day validity, auto-renewal)
+- Trust bundles: Distributed to `operator` and `flink` namespaces
+
+### Future Enhancements (Planned)
+
+- **Phase 3**: Kafka broker mTLS (inter-broker and client authentication)
+- **Phase 4**: Schema Registry mTLS
+- **Phase 5**: Complete component mTLS (Control Center, Connect, ksqlDB)
+
+See [Issue #71](https://github.com/osowski/confluent-platform-gitops/issues/71) for implementation roadmap.
+
+### Verifying mTLS
+
+Check certificate status:
+
+```bash
+# Check CMF server certificate
+kubectl get certificate cmf-server-tls -n operator
+
+# Check client certificate
+kubectl get certificate cmf-client-tls -n flink
+
+# Check trust bundle distribution
+kubectl get configmap cmf-ca-bundle -n flink
+kubectl get configmap cmf-ca-bundle -n operator
+```
+
+View CMF connection with mTLS:
+
+```bash
+# Check CMF service endpoint
+kubectl get svc cmf-service -n operator
+
+# Verify CMF pods are using TLS
+kubectl logs -n operator -l app.kubernetes.io/name=confluent-manager-for-apache-flink | grep -i tls
+```
 
 ## Cluster Configuration
 
@@ -227,8 +287,8 @@ kubectl get application workloads-apps --namespace argocd -o yaml
 Verify Application manifests exist:
 
 ```bash
-ls -la ./clusters/flink-demo/infrastructure/
-ls -la ./clusters/flink-demo/workloads/
+ls -la ./clusters/flink-demo-mtls/infrastructure/
+ls -la ./clusters/flink-demo-mtls/workloads/
 ```
 
 ### Pods Not Starting
@@ -252,7 +312,7 @@ kubectl top pods --all-namespaces
 Verify kind port mappings:
 
 ```bash
-docker ps | grep flink-demo
+docker ps | grep flink-demo-mtls
 ```
 
 Should show port mappings: `0.0.0.0:80->30080/tcp, 0.0.0.0:443->30443/tcp`
@@ -266,7 +326,7 @@ kubectl get ingressroute --all-namespaces
 Verify /etc/hosts entries:
 
 ```bash
-grep flink-demo /etc/hosts
+grep flink-demo-mtls /etc/hosts
 ```
 
 ### Certificate Issues
@@ -283,6 +343,43 @@ Describe failing certificate:
 
 ```bash
 kubectl describe certificate <cert-name> --namespace <namespace>
+```
+
+Check cert-manager logs:
+
+```bash
+kubectl logs -n cert-manager -l app=cert-manager --tail=100
+```
+
+### mTLS Connection Issues
+
+Check CMF service is using HTTPS:
+
+```bash
+kubectl get svc cmf-service -n operator -o yaml
+```
+
+Verify client certificates exist:
+
+```bash
+kubectl get secret cmf-client-tls -n flink
+kubectl get secret cmf-server-tls -n operator
+```
+
+Check CMF logs for TLS errors:
+
+```bash
+kubectl logs -n operator -l app.kubernetes.io/name=confluent-manager-for-apache-flink --tail=100
+```
+
+Test certificate chain:
+
+```bash
+# Verify client certificate
+kubectl get secret cmf-client-tls -n flink -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
+
+# Verify server certificate
+kubectl get secret cmf-server-tls -n operator -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
 ```
 
 ### CFK Components Not Deploying
@@ -310,7 +407,7 @@ kubectl get kafka,kraft,schemaregistry,controlcenter --namespace kafka
 Run the comprehensive validation script:
 
 ```bash
-./scripts/validate-cluster.sh flink-demo --verbose
+./scripts/validate-cluster.sh flink-demo-mtls --verbose
 ```
 
 This checks:
@@ -328,7 +425,7 @@ This checks:
 Remove the kind cluster:
 
 ```bash
-kind delete cluster --name flink-demo
+kind delete cluster --name flink-demo-mtls
 ```
 
 ### Stop Colima
@@ -346,6 +443,7 @@ colima stop
 - **Fork Repository**: See [Fork Customization Guide](../../docs/adoption-guide.md#path-5-fork-customization-guide)
 - **Understand Architecture**: See [Architecture](../../docs/architecture.md)
 - **Run Flink SQL Demos**: See [cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.md)
+- **Extend mTLS**: See [Issue #71](https://github.com/osowski/confluent-platform-gitops/issues/71) for future mTLS phases
 
 ## Related Documentation
 
