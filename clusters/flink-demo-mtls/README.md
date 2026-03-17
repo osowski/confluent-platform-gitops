@@ -188,56 +188,173 @@ See **[cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.
 
 ## mTLS Configuration
 
-This cluster variant demonstrates comprehensive mTLS authentication for Confluent Flink components.
+This cluster variant demonstrates comprehensive mTLS (mutual TLS) authentication for Confluent Flink components, showcasing production-grade security patterns for GitOps deployments.
+
+> **For Operators**: See [MTLS_IMPLEMENTATION.md](./MTLS_IMPLEMENTATION.md) for detailed deployment procedures, testing, troubleshooting, and rollback instructions.
+
+### What is mTLS?
+
+Mutual TLS (mTLS) provides bidirectional authentication where both the client and server verify each other's identities using X.509 certificates. This ensures:
+
+- **Authentication**: Both parties prove their identity
+- **Encryption**: Communication is encrypted end-to-end
+- **Integrity**: Messages cannot be tampered with in transit
 
 ### Current Implementation (Phase 2)
 
-**CMF mTLS Authentication:**
-- CMF service requires client certificates for API access
-- Confluent Flink CLI commands use mTLS for authentication
-- CFK operator authenticates to CMF using client certificates
-- Certificate lifecycle managed by cert-manager
-- CA distribution via trust-manager
+**Implemented Components:**
+- ✅ CMF service mTLS (HTTPS with client certificate verification)
+- ✅ Confluent Flink CLI mTLS (CLI commands use client certificates)
+- ✅ CFK operator mTLS (CFK authenticates to CMF using certificates)
+- ✅ ArgoCD hook jobs mTLS (initialization jobs use client certificates)
 
 **Certificate Infrastructure:**
-- Root CA: Self-signed, 10-year validity
-- Server certificates: CMF service (90-day validity, auto-renewal)
-- Client certificates: Flink CLI and CFK operator (90-day validity, auto-renewal)
-- Trust bundles: Distributed to `operator` and `flink` namespaces
 
-### Future Enhancements (Planned)
+| Certificate | Namespace | Validity | Purpose |
+|-------------|-----------|----------|---------|
+| Root CA | `cert-manager` | 10 years | Self-signed CA for signing all certificates |
+| CMF Server Cert | `operator` | 90 days | Server certificate for CMF HTTPS endpoint |
+| CMF Client Cert | `flink` | 90 days | Client certificate for Flink CLI and CFK |
 
-- **Phase 3**: Kafka broker mTLS (inter-broker and client authentication)
-- **Phase 4**: Schema Registry mTLS
-- **Phase 5**: Complete component mTLS (Control Center, Connect, ksqlDB)
+All certificates auto-renew 30 days before expiry via cert-manager.
 
-See [Issue #71](https://github.com/osowski/confluent-platform-gitops/issues/71) for implementation roadmap.
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ cert-manager namespace                                   │
+├─────────────────────────────────────────────────────────┤
+│ - CA Certificate (cmf-root-ca)                          │
+│ - CA Secret (cmf-root-ca) ← ClusterIssuer references    │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│ ClusterIssuer (cluster-scoped)                          │
+├─────────────────────────────────────────────────────────┤
+│ name: cmf-ca-issuer                                     │
+│ secretName: cmf-root-ca (in cert-manager namespace)     │
+└─────────────────────────────────────────────────────────┘
+         ↓                                  ↓
+┌──────────────────────┐         ┌──────────────────────┐
+│ operator namespace   │         │ flink namespace      │
+│ - Server Certificate │         │ - Client Certificate │
+│ - Secret: cmf-server │         │ - Secret: cmf-client │
+│ - Label: cmf-mtls    │         │ - Label: cmf-mtls    │
+└──────────────────────┘         └──────────────────────┘
+         ↓                                  ↓
+┌──────────────────────┐         ┌──────────────────────┐
+│ ConfigMap:           │         │ ConfigMap:           │
+│   cmf-ca-bundle      │         │   cmf-ca-bundle      │
+│ (via trust-manager)  │         │ (via trust-manager)  │
+└──────────────────────┘         └──────────────────────┘
+         ↓                                  ↓
+┌──────────────────────┐         ┌──────────────────────┐
+│ CMF Service          │         │ Flink CLI / CFK      │
+│ - HTTPS:443          │ ←mTLS→  │ - Client auth        │
+│ - Server cert mount  │         │ - Client cert mount  │
+└──────────────────────┘         └──────────────────────┘
+```
+
+### How It Works
+
+**1. Certificate Infrastructure (flink-resources overlay)**
+
+The `workloads/flink-resources/overlays/flink-demo-mtls` overlay creates cluster-wide certificate infrastructure:
+
+- **ClusterIssuer**: Signs certificates across namespaces (no secret syncing needed)
+- **Root CA**: Self-signed CA in `cert-manager` namespace
+- **Server Certificate**: For CMF service TLS termination
+- **Client Certificate**: For Flink CLI and CFK authentication
+- **Trust Bundle**: Distributes CA certificate to labeled namespaces via trust-manager
+
+**2. CMF Service Configuration (cmf-operator overlay)**
+
+The `workloads/cmf-operator/overlays/flink-demo-mtls` overlay configures CMF to require client certificates:
+
+```yaml
+cmf:
+  authentication:
+    type: mtls
+mountedVolumes:
+  volumes:
+    - name: cmf-server-tls
+      secret:
+        secretName: cmf-server-tls
+```
+
+**3. Hook Job Patches (cp-flink-sql-sandbox overlay)**
+
+The `workloads/cp-flink-sql-sandbox/overlays/flink-demo-mtls` overlay patches hook jobs using strategic merge:
+
+- Changes endpoint from HTTP:80 to HTTPS:443
+- Adds `wait-for-certificates` initContainer
+- Mounts client certificates and CA bundle
+- Updates `confluent flink` commands with `--cacert`, `--cert`, `--key` flags
+
+**4. Trust Distribution**
+
+trust-manager automatically distributes the CA certificate as ConfigMaps to namespaces labeled with `cmf-mtls: enabled`:
+
+```bash
+kubectl get namespace operator -o jsonpath='{.metadata.labels.cmf-mtls}'
+# Output: enabled
+```
+
+### Design Decisions
+
+**Why ClusterIssuer?**
+- Eliminates need for secret syncing tools (Reflector, kubed)
+- Simpler architecture (one issuer vs multiple)
+- More GitOps-friendly (cluster-scoped resources)
+- Certificates signed across namespaces without replication
+
+**Why separate certificate infrastructure?**
+- Certificates are cluster-wide, not workload-specific
+- Multiple workloads can consume same certificates
+- Clearer separation of concerns (infrastructure vs workload)
+- Easier to extend to other Flink workloads
+
+**Why strategic merge patches?**
+- Base resources remain cluster-agnostic (HTTP, no auth)
+- Overlays add mTLS without modifying base
+- Other clusters (flink-demo) use base without mTLS
+- Clean separation enables testing both variants
 
 ### Verifying mTLS
 
-Check certificate status:
+Quick verification after deployment:
 
 ```bash
-# Check CMF server certificate
-kubectl get certificate cmf-server-tls -n operator
+# 1. Verify certificates are ready
+kubectl get certificates -A | grep cmf
+# All should show "True" in READY column
 
-# Check client certificate
-kubectl get certificate cmf-client-tls -n flink
-
-# Check trust bundle distribution
-kubectl get configmap cmf-ca-bundle -n flink
+# 2. Verify trust bundles exist
 kubectl get configmap cmf-ca-bundle -n operator
+kubectl get configmap cmf-ca-bundle -n flink
+
+# 3. Verify hook jobs completed successfully
+kubectl get jobs -n flink
+# Both cmf-catalog-database-init and cmf-compute-pool-init should show "1/1" completions
+
+# 4. Check hook job logs for successful mTLS authentication
+kubectl logs -n flink -l job-name=cmf-catalog-database-init | grep -i "created\|success"
+
+# 5. Test mTLS connection to CMF
+kubectl run -n flink test-mtls \
+  --image=curlimages/curl --rm -it -- \
+  curl -v \
+    --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+    https://cmf-service.operator.svc.cluster.local:443/health
 ```
 
-View CMF connection with mTLS:
+### Future Enhancements (Planned)
 
-```bash
-# Check CMF service endpoint
-kubectl get svc cmf-service -n operator
+- **Phase 3**: Kafka broker mTLS (inter-broker and client authentication) - [Issue #73](https://github.com/osowski/confluent-platform-gitops/issues/73)
+- **Phase 4**: Schema Registry mTLS - [Issue #74](https://github.com/osowski/confluent-platform-gitops/issues/74)
+- **Phase 5**: Complete component mTLS (Control Center, Connect, ksqlDB) - [Issue #75](https://github.com/osowski/confluent-platform-gitops/issues/75)
 
-# Verify CMF pods are using TLS
-kubectl logs -n operator -l app.kubernetes.io/name=confluent-manager-for-apache-flink | grep -i tls
-```
+See [Issue #71](https://github.com/osowski/confluent-platform-gitops/issues/71) for overall implementation roadmap.
 
 ## Cluster Configuration
 

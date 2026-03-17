@@ -6,14 +6,8 @@ kind: Kustomization
 resources:
   - ../../base
 
-  # Certificate infrastructure (overlay-only)
-  - certificates/ca-certificate.yaml
-  - certificates/ca-cluster-issuer.yaml
-  - certificates/cmf-server-certificate.yaml
-  - certificates/cmf-client-certificate.yaml
-  - certificates/trust-bundle.yaml
-
 # Strategic merge patches to add mTLS to base resources
+# Note: Certificate infrastructure is managed by workloads/flink-resources/overlays/flink-demo-mtls
 patches:
   # Add mTLS to hook jobs
   - path: cmf-init-job-patch.yaml
@@ -24,23 +18,6 @@ patches:
     target:
       kind: Job
       name: cmf-compute-pool-init
-
-  # Add cmf-mtls labels to namespaces for trust bundle distribution
-  # Note: These namespaces are created by workloads/namespaces.yaml at cluster level
-  - patch: |-
-      - op: add
-        path: /metadata/labels/cmf-mtls
-        value: enabled
-    target:
-      kind: Namespace
-      name: operator
-  - patch: |-
-      - op: add
-        path: /metadata/labels/cmf-mtls
-        value: enabled
-    target:
-      kind: Namespace
-      name: flink
 
 # Cluster-specific labels
 labels:
