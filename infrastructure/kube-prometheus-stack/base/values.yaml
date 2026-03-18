@@ -62,6 +62,11 @@ grafana:
     type: pvc
     size: 5Gi
 
+  # Disable init-chown-data container (fixes issue #41)
+  # fsGroup in securityContext handles permissions automatically
+  initChownData:
+    enabled: false
+
   # Resource limits
   resources:
     requests:
