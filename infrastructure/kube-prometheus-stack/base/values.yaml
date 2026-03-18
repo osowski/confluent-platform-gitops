@@ -147,11 +147,11 @@ prometheus:
     # Resource limits
     resources:
       requests:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 1000m
+        memory: 1500Mi
       limits:
-        cpu: 2000m
-        memory: 2Gi
+        cpu: 1000m
+        memory: 1500Mi
 
     # Scrape configuration
     scrapeInterval: 30s
@@ -177,19 +177,23 @@ prometheus:
 nodeExporter:
   enabled: true
 
+# Node Exporter subchart configuration
+prometheus-node-exporter:
   # Resource limits
   resources:
     requests:
-      cpu: 50m
+      cpu: 100m
       memory: 64Mi
     limits:
-      cpu: 100m
+      cpu: 200m
       memory: 128Mi
 
 # Kube State Metrics configuration
 kubeStateMetrics:
   enabled: true
 
+# Kube State Metrics subchart configuration
+kube-state-metrics:
   # Resource limits
   resources:
     requests:
