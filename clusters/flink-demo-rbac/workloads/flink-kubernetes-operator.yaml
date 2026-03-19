@@ -15,8 +15,8 @@ spec:
       targetRevision: 1.130.2
       helm:
         valueFiles:
-          - /workloads/flink-kubernetes-operator/base/values.yaml
-          - /workloads/flink-kubernetes-operator/overlays/flink-demo-rbac/values.yaml
+          - $values/workloads/flink-kubernetes-operator/base/values.yaml
+          - $values/workloads/flink-kubernetes-operator/overlays/flink-demo-rbac/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
       targetRevision: HEAD

@@ -17,8 +17,8 @@ spec:
     helm:
       ignoreMissingValueFiles: true
       valueFiles:
-        - /infrastructure/trust-manager/base/values.yaml
-        - /infrastructure/trust-manager/overlays/flink-demo-rbac/values.yaml
+        - $values/infrastructure/trust-manager/base/values.yaml
+        - $values/infrastructure/trust-manager/overlays/flink-demo-rbac/values.yaml
   - repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
     ref: values
