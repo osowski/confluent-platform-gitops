@@ -25,32 +25,46 @@ The flink-demo-rbac cluster is configured with full RBAC authorization using:
 
 ## Initial Setup
 
-### 1. Generate MDS Token Keypair
+### 1. MDS Token Keypair Generation (Automated)
 
 The MDS token keypair is used to sign/validate authentication tokens.
 
-**Generate RSA keypair:**
+**Automated Generation:**
+A Kubernetes Job (`mds-keygen-job.yaml`) automatically generates the RSA keypair:
+- Runs as an ArgoCD PreSync hook (sync-wave: -4)
+- Generates a 2048-bit RSA keypair using openssl
+- Creates the `mds-token` secret in the kafka namespace
+- Checks if valid keys already exist before regenerating
+- Detects and replaces placeholder keys
+
+**Manual Verification:**
+```bash
+# Check if the secret exists
+kubectl get secret mds-token -n kafka
+
+# Verify the public key is valid (not a placeholder)
+kubectl get secret mds-token -n kafka -o jsonpath='{.data.mdsPublicKey\.pem}' | base64 -d | head -1
+# Should output: -----BEGIN PUBLIC KEY-----
+```
+
+**Manual Generation (if needed):**
+If you prefer to generate keys manually or the job fails:
 ```bash
 # Generate private key
 openssl genrsa -out mds-tokenkeypair.txt 2048
 
 # Extract public key
 openssl rsa -in mds-tokenkeypair.txt -outform PEM -pubout -out mds-publickey.txt
-```
 
-**Create Kubernetes secret:**
-```bash
+# Create secret
 kubectl create secret generic mds-token \
   --from-file=mdsPublicKey.pem=mds-publickey.txt \
   --from-file=mdsTokenKeyPair.pem=mds-tokenkeypair.txt \
-  --namespace kafka \
-  --dry-run=client -o yaml > mds-token-secret.yaml
+  --namespace kafka
 
-# Apply the secret (overwrites placeholder)
-kubectl apply -f mds-token-secret.yaml
+# Clean up local files
+rm mds-tokenkeypair.txt mds-publickey.txt
 ```
-
-**Important:** Delete the plaintext key files after creating the secret.
 
 ### 2. Verify OAuth Client Secrets
 

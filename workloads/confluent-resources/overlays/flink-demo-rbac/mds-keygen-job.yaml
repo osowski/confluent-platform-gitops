@@ -1,0 +1,136 @@
+# MDS Token Keypair Generation Job
+# Generates RSA keypair for MDS authentication tokens
+# Runs as ArgoCD PreSync hook to ensure keys exist before Kafka starts
+---
+# ServiceAccount for the keygen job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mds-keygen
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+---
+# Role to allow creating/updating the mds-token secret
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mds-keygen
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+    resourceNames: ["mds-token"]
+  # Allow creating the secret if it doesn't exist (no resourceName restriction)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+# RoleBinding for the keygen ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mds-keygen
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mds-keygen
+subjects:
+  - kind: ServiceAccount
+    name: mds-keygen
+    namespace: kafka
+---
+# Job to generate MDS token keypair
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mds-keygen
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  ttlSecondsAfterFinished: 300  # Clean up 5 minutes after completion
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: mds-keygen
+    spec:
+      serviceAccountName: mds-keygen
+      restartPolicy: OnFailure
+      containers:
+        - name: keygen
+          image: bitnami/kubectl:1.28
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              echo "=== MDS Token Keypair Generator ==="
+
+              # Check if secret already exists and has valid keys
+              if kubectl get secret mds-token -n kafka >/dev/null 2>&1; then
+                echo "Secret mds-token already exists, checking if it has valid keys..."
+
+                # Check if the secret has the placeholder text (invalid keys)
+                PUBLIC_KEY=$(kubectl get secret mds-token -n kafka -o jsonpath='{.data.mdsPublicKey\.pem}' | base64 -d)
+
+                if echo "$PUBLIC_KEY" | grep -q "REPLACE_WITH_ACTUAL_PUBLIC_KEY"; then
+                  echo "Found placeholder keys, will regenerate..."
+                elif echo "$PUBLIC_KEY" | grep -q "BEGIN PUBLIC KEY"; then
+                  echo "Valid keys already exist, skipping generation."
+                  exit 0
+                else
+                  echo "Invalid key format detected, will regenerate..."
+                fi
+              fi
+
+              echo "Generating RSA 2048-bit keypair..."
+
+              # Install openssl if not available
+              if ! command -v openssl &> /dev/null; then
+                echo "Installing openssl..."
+                apk add --no-cache openssl
+              fi
+
+              # Generate private key
+              openssl genrsa -out /tmp/mds-tokenkeypair.pem 2048
+
+              # Extract public key
+              openssl rsa -in /tmp/mds-tokenkeypair.pem -outform PEM -pubout -out /tmp/mds-publickey.pem
+
+              echo "Keys generated successfully:"
+              echo "- Private key: /tmp/mds-tokenkeypair.pem"
+              echo "- Public key: /tmp/mds-publickey.pem"
+
+              # Create or update the secret
+              echo "Creating/updating mds-token secret..."
+
+              kubectl create secret generic mds-token \
+                --from-file=mdsPublicKey.pem=/tmp/mds-publickey.pem \
+                --from-file=mdsTokenKeyPair.pem=/tmp/mds-tokenkeypair.pem \
+                --namespace kafka \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              echo "Secret mds-token created/updated successfully"
+
+              # Clean up temporary files
+              rm -f /tmp/mds-tokenkeypair.pem /tmp/mds-publickey.pem
+
+              echo "=== Keypair generation complete ==="
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

@@ -9,7 +9,7 @@ bases:
 
 # Additional resources for MDS/RBAC
 resources:
-  - mds-token-keypair-secret.yaml
+  - mds-keygen-job.yaml  # Generates mds-token secret with RSA keypair
   - oauth-client-secrets.yaml
   - confluentrolebindings.yaml
 
