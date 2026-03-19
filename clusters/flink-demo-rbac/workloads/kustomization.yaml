@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - namespaces.yaml
+  - keycloak.yaml
   - cfk-operator.yaml
   - confluent-resources.yaml
   - controlcenter-ingress.yaml

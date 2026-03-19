@@ -1,0 +1,263 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: keycloak
+data:
+  confluent-realm.json: |
+    {
+      "realm": "confluent",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false,
+      "resetPasswordAllowed": false,
+      "rememberMe": true,
+      "accessTokenLifespan": 7200,
+      "ssoSessionIdleTimeout": 7200,
+      "ssoSessionMaxLifespan": 36000,
+      "groups": [
+        {
+          "name": "admins",
+          "path": "/admins"
+        },
+        {
+          "name": "shapes",
+          "path": "/shapes"
+        },
+        {
+          "name": "colors",
+          "path": "/colors"
+        }
+      ],
+      "users": [
+        {
+          "username": "admin@osow.ski",
+          "enabled": true,
+          "email": "admin@osow.ski",
+          "firstName": "Admin",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admin123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/admins"]
+        },
+        {
+          "username": "user-square@osow.ski",
+          "enabled": true,
+          "email": "user-square@osow.ski",
+          "firstName": "Square",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "square123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-circle@osow.ski",
+          "enabled": true,
+          "email": "user-circle@osow.ski",
+          "firstName": "Circle",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "circle123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-triangle@osow.ski",
+          "enabled": true,
+          "email": "user-triangle@osow.ski",
+          "firstName": "Triangle",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "triangle123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-trapezoid@osow.ski",
+          "enabled": true,
+          "email": "user-trapezoid@osow.ski",
+          "firstName": "Trapezoid",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "trapezoid123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-diamond@osow.ski",
+          "enabled": true,
+          "email": "user-diamond@osow.ski",
+          "firstName": "Diamond",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "diamond123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-red@osow.ski",
+          "enabled": true,
+          "email": "user-red@osow.ski",
+          "firstName": "Red",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "red123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-green@osow.ski",
+          "enabled": true,
+          "email": "user-green@osow.ski",
+          "firstName": "Green",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "green123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-orange@osow.ski",
+          "enabled": true,
+          "email": "user-orange@osow.ski",
+          "firstName": "Orange",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "orange123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-blue@osow.ski",
+          "enabled": true,
+          "email": "user-blue@osow.ski",
+          "firstName": "Blue",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "blue123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-yellow@osow.ski",
+          "enabled": true,
+          "email": "user-yellow@osow.ski",
+          "firstName": "Yellow",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "yellow123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "cmf",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "authorizationServicesEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "cmf-secret"
+        },
+        {
+          "clientId": "controlcenter",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "controlcenter-secret"
+        },
+        {
+          "clientId": "kafka",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "kafka-secret"
+        },
+        {
+          "clientId": "confluent-sso",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "confluent-sso-secret"
+        }
+      ],
+      "roles": {
+        "realm": [
+          {
+            "name": "flink-admin",
+            "description": "Full Flink administration access"
+          },
+          {
+            "name": "flink-shapes-user",
+            "description": "Access to shapes environment"
+          },
+          {
+            "name": "flink-colors-user",
+            "description": "Access to colors environment"
+          }
+        ]
+      },
+      "clientScopeMappings": {},
+      "defaultRoles": ["offline_access", "uma_authorization"]
+    }
