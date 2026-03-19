@@ -50,15 +50,14 @@ subjects:
     namespace: kafka
 ---
 # Job to generate MDS token keypair
+# Regular Job with very low sync-wave to run before Kafka resources
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-4"
+    argocd.argoproj.io/sync-wave: "-9"
 spec:
   ttlSecondsAfterFinished: 300  # Clean up 5 minutes after completion
   backoffLimit: 3
