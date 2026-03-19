@@ -3,26 +3,24 @@
 # Runs as ArgoCD PreSync hook to ensure keys exist before Kafka starts
 ---
 # ServiceAccount for the keygen job
+# Regular resource (not hook) with early sync-wave to ensure it exists before Job runs
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/sync-wave: "-10"
 ---
 # Role to allow creating/updating the mds-token secret
+# Regular resource (not hook) with early sync-wave
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/sync-wave: "-10"
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -34,15 +32,14 @@ rules:
     verbs: ["create"]
 ---
 # RoleBinding for the keygen ServiceAccount
+# Regular resource (not hook) with early sync-wave
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/sync-wave: "-10"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
