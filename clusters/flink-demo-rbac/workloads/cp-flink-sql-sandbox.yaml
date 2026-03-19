@@ -1,0 +1,28 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cp-flink-sql-sandbox
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "115"
+spec:
+  project: workloads
+  source:
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    path: workloads/cp-flink-sql-sandbox/overlays/flink-demo-rbac
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flink
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
