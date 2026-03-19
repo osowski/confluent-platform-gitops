@@ -31,6 +31,12 @@ cmf:
       # Used when CMF needs to authenticate as a service principal
       oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
 
+  # Kafka-specific OAuth configuration
+  kafka:
+    # OAuth bearer allowed URLs - Required for OAuth authentication
+    # Allows CMF to connect to Keycloak for token validation
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent
+
 # Authorization configuration - connect to MDS for RBAC
   authorization:
     mdsRestConfig:
