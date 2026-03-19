@@ -1,5 +1,5 @@
 ---
-# ClusterRole for Flink administrators with full access
+# ClusterRole for Flink administrators with full cluster-wide access
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -13,36 +13,57 @@ rules:
     verbs:
       - "*"
 
-  # Full access to all CMF resources
+  # Full access to all CFK resources (including Flink and Confluent Platform)
   - apiGroups:
-      - sql.flink.apache.org
+      - platform.confluent.io
     resources:
       - "*"
     verbs:
       - "*"
 
-  # Read access to core resources for Flink operations
+  # Full access to core Kubernetes resources
   - apiGroups:
       - ""
     resources:
       - pods
       - pods/log
+      - pods/exec
       - services
       - configmaps
+      - secrets
+      - persistentvolumeclaims
       - events
       - namespaces
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
 
-  # Access to deployments and statefulsets for Flink cluster management
+  # Full access to apps resources
   - apiGroups:
       - apps
     resources:
       - deployments
       - statefulsets
+      - replicasets
+      - daemonsets
     verbs:
-      - get
-      - list
-      - watch
+      - "*"
+
+  # Full access to batch resources
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - "*"
+
+  # Full access to RBAC resources (for managing user permissions)
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs:
+      - "*"

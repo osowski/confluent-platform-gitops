@@ -1,5 +1,5 @@
 ---
-# RoleBinding for shapes group in flink-shapes namespace
+# RoleBinding for shapes group in flink-shapes namespace - Full permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -14,7 +14,7 @@ subjects:
     name: shapes-group
     namespace: flink-shapes
 ---
-# RoleBinding for colors group in flink-colors namespace
+# RoleBinding for colors group in flink-colors namespace - Full permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -24,6 +24,66 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: flink-developer
+subjects:
+  - kind: ServiceAccount
+    name: colors-group
+    namespace: flink-colors
+---
+# RoleBinding for shapes group in kafka namespace - Read-only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shapes-group-kafka-reader
+  namespace: kafka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-reader
+subjects:
+  - kind: ServiceAccount
+    name: shapes-group
+    namespace: flink-shapes
+---
+# RoleBinding for colors group in kafka namespace - Read-only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: colors-group-kafka-reader
+  namespace: kafka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-reader
+subjects:
+  - kind: ServiceAccount
+    name: colors-group
+    namespace: flink-colors
+---
+# RoleBinding for shapes group in flink namespace - Read-only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shapes-group-flink-reader
+  namespace: flink
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-reader
+subjects:
+  - kind: ServiceAccount
+    name: shapes-group
+    namespace: flink-shapes
+---
+# RoleBinding for colors group in flink namespace - Read-only
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: colors-group-flink-reader
+  namespace: flink
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flink-reader
 subjects:
   - kind: ServiceAccount
     name: colors-group
