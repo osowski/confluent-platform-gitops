@@ -1,0 +1,18 @@
+---
+# Strategic merge patch to enable mTLS for CMFRestClass
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    # Change endpoint to HTTPS (port 443)
+    endpoint: https://cmf-service.operator.svc.cluster.local:443
+
+    # Enable mTLS authentication
+    authentication:
+      type: mtls
+      sslClientAuthentication: true
+    tls:
+      secretRef: cmf-client-tls

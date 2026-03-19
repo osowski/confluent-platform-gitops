@@ -1,0 +1,95 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cmf-catalog-database-init
+  namespace: flink
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: wait-for-cmf
+        image: busybox:1.36
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for CMF to be ready..."
+          until nc -z cmf-service.operator.svc.cluster.local 443; do
+            echo "CMF not ready yet, waiting..."
+            sleep 5
+          done
+          echo "CMF is ready!"
+      - name: wait-for-certificates
+        image: busybox:1.36
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for client certificates to be ready..."
+          until [ -f /certs/client/tls.crt ] && [ -f /certs/client/tls.key ] && [ -f /certs/ca/ca.crt ]; do
+            echo "Certificates not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Certificates are ready!"
+          echo "Certificate details:"
+          ls -lh /certs/client/
+          ls -lh /certs/ca/
+        volumeMounts:
+        - name: client-certs
+          mountPath: /certs/client
+          readOnly: true
+        - name: ca-bundle
+          mountPath: /certs/ca
+          readOnly: true
+      containers:
+      - name: create-catalog-and-database
+        env:
+        - name: CMF_URL
+          value: "https://cmf-service.operator.svc.cluster.local:443"
+        volumeMounts:
+        - name: client-certs
+          mountPath: /certs/client
+          readOnly: true
+        - name: ca-bundle
+          mountPath: /certs/ca
+          readOnly: true
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+
+          echo "Creating Flink catalog with mTLS authentication..."
+          confluent flink catalog create /config/catalog/catalog.json \
+            --url ${CMF_URL} \
+            --cacert /certs/ca/ca.crt \
+            --cert /certs/client/tls.crt \
+            --key /certs/client/tls.key \
+            || echo "Catalog may already exist"
+
+          echo "Creating Flink database with mTLS..."
+          curl --silent \
+            --cacert /certs/ca/ca.crt \
+            --cert /certs/client/tls.crt \
+            --key /certs/client/tls.key \
+            -H "Content-Type: application/json" \
+            -X POST "${CMF_URL}/cmf/api/v1/catalogs/kafka/kafka-cat/databases" \
+            -d @/config/database/database.json | jq -r .
+
+          echo "Listing catalogs with mTLS..."
+          curl --silent \
+            --cacert /certs/ca/ca.crt \
+            --cert /certs/client/tls.crt \
+            --key /certs/client/tls.key \
+            "${CMF_URL}/cmf/api/v1/catalogs/kafka/kafka-cat/databases" | jq -r .
+
+          echo "Catalog and database initialization complete!"
+      volumes:
+      - name: client-certs
+        secret:
+          secretName: cmf-client-tls
+          defaultMode: 0440
+      - name: ca-bundle
+        configMap:
+          name: cmf-ca-bundle

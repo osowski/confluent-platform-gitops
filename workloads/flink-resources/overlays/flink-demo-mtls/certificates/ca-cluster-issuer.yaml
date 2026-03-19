@@ -1,0 +1,10 @@
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cmf-ca-issuer
+spec:
+  ca:
+    secretName: cmf-root-ca
+    # ClusterIssuers look for CA secrets in the cert-manager namespace by default
+    # The CA Certificate resource creates the cmf-root-ca secret in cert-manager namespace

@@ -1,0 +1,19 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-client-tls
+  namespace: flink
+spec:
+  secretName: cmf-client-tls
+  duration: 2160h # 90 days
+  renewBefore: 720h # 30 days
+  commonName: cmf-cli-client
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth
+  issuerRef:
+    name: cmf-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

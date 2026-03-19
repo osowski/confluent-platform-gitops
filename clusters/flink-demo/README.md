@@ -384,7 +384,7 @@ colima stop
 - **Customize Infrastructure**: See [Adoption Guide](../../docs/adoption-guide.md)
 - **Fork Repository**: See [Fork Customization Guide](../../docs/adoption-guide.md#path-5-fork-customization-guide)
 - **Understand Architecture**: See [Architecture](../../docs/architecture.md)
-- **Run Flink SQL Demos**: See [cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/base/README.md)
+- **Run Flink SQL Demos**: See [cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.md)
 
 ## Related Documentation
 
