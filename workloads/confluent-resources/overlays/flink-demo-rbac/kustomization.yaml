@@ -1,0 +1,50 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kafka
+
+bases:
+  - ../../base
+
+patches:
+  # Kafka broker - external listener and resources
+  - path: kafka-broker-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+
+  # KRaft controller - resources
+  - path: kraft-controller-patch.yaml
+    target:
+      kind: KRaftController
+      name: kraftcontroller
+
+  # Control Center - resources
+  - path: control-center-patch.yaml
+    target:
+      kind: ControlCenter
+      name: controlcenter
+
+  # Schema Registry - resources
+  - path: schema-registry-patch.yaml
+    target:
+      kind: SchemaRegistry
+      name: schemaregistry
+
+  # Schema Registry - ingress
+  - path: schema-registry-ingress-patch.yaml
+    target:
+      kind: IngressRoute
+      name: schema-registry
+
+  # Connect - resources and JVM tuning
+  - path: connect-patch.yaml
+    target:
+      kind: Connect
+      name: connect
+
+  # ksqlDB - resources and JVM tuning
+  - path: ksqldb-patch.yaml
+    target:
+      kind: KsqlDB
+      name: ksqldb

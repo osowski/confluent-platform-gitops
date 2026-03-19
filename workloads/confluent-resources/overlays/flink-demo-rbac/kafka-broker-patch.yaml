@@ -1,0 +1,36 @@
+---
+# Kafka configuration for flink-demo-rbac cluster
+# - External NodePort listener for kind cluster access
+# - Resource limits tuned for 24GB total cluster memory
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  # External listener configuration
+  # This NodePort listener enables external access via kind's port mapping:
+  # - kind extraMappings: 31000-31002:31000-31002 (for 3 brokers)
+  # - Bootstrap connection: kafka.flink-demo-rbac.confluentdemo.local:31000
+  # - Requires /etc/hosts entry: 127.0.0.1 kafka.flink-demo-rbac.confluentdemo.local
+  listeners:
+    custom:
+      - name: external-nodeport
+        port: 9094
+        externalAccess:
+          type: nodePort
+          nodePort:
+            host: kafka.flink-demo-rbac.confluentdemo.local
+            nodePortOffset: 31000
+        tls:
+          enabled: false
+
+  # Resource limits for local demo environment
+  podTemplate:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi

@@ -1,0 +1,16 @@
+---
+# Connect resource limits and JVM tuning for flink-demo-rbac cluster
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi

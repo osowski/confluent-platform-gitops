@@ -1,0 +1,25 @@
+---
+# ksqlDB resource limits and JVM tuning for flink-demo-rbac cluster
+# ksqlDB can be memory-intensive depending on query complexity
+apiVersion: platform.confluent.io/v1beta1
+kind: KsqlDB
+metadata:
+  name: ksqldb
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+  # JVM heap tuning to prevent excessive memory consumption
+  configOverrides:
+    jvm:
+      - "---Xmx1G"    # Remove default -Xmx setting
+      - "---Xms1G"    # Remove default -Xms setting
+      - "-Xmx1536m"   # Set max heap to 1.5GB
+      - "-Xms512m"    # Set initial heap to 512MB

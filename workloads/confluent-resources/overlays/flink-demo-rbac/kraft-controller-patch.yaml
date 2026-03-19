@@ -1,0 +1,16 @@
+---
+# KRaft Controller resource limits for flink-demo-rbac cluster (24GB total cluster memory)
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi

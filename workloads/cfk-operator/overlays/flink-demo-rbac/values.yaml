@@ -1,0 +1,6 @@
+# Confluent for Kubernetes - flink-demo-rbac Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod annotations for flink-demo-rbac cluster identification
+podAnnotations:
+  cluster: flink-demo-rbac

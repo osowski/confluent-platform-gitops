@@ -1,0 +1,5 @@
+---
+# flink-demo-rbac cluster-specific configuration for metrics-server
+# Enable insecure TLS for kind cluster
+args:
+  - --kubelet-insecure-tls

@@ -1,0 +1,16 @@
+---
+# Control Center resource limits for flink-demo-rbac cluster (24GB total cluster memory)
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 2Gi
