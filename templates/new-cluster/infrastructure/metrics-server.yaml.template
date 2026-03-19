@@ -19,7 +19,7 @@ spec:
       valueFiles:
         - $values/infrastructure/metrics-server/base/values.yaml
         - $values/infrastructure/metrics-server/overlays/$CLUSTER_NAME/values.yaml
-  - repoURL: https://github.com/osowski/confluent-platform-gitops
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
     ref: values
   destination:

@@ -19,7 +19,7 @@ spec:
       valueFiles:
         - $values/infrastructure/cert-manager/base/values.yaml
         - $values/infrastructure/cert-manager/overlays/$CLUSTER_NAME/values.yaml
-  - repoURL: https://github.com/osowski/confluent-platform-gitops
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
     ref: values
   destination:
