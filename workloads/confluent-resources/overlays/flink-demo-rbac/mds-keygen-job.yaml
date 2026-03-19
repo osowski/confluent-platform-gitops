@@ -9,6 +9,8 @@ metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "-5"
 ---
 # Role to allow creating/updating the mds-token secret
@@ -18,6 +20,8 @@ metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "-5"
 rules:
   - apiGroups: [""]
@@ -36,6 +40,8 @@ metadata:
   name: mds-keygen
   namespace: kafka
   annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "-5"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
