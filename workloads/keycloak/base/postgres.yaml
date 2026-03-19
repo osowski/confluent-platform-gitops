@@ -30,13 +30,9 @@ spec:
       containers:
       - name: postgres
         image: postgres:16
-        env:
-        - name: POSTGRES_DB
-          value: keycloak
-        - name: POSTGRES_USER
-          value: keycloak
-        - name: POSTGRES_PASSWORD
-          value: keycloak
+        envFrom:
+        - secretRef:
+            name: postgres-credentials
         ports:
         - containerPort: 5432
           name: postgres

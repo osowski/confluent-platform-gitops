@@ -39,9 +39,15 @@ spec:
         - name: KC_DB_URL
           value: jdbc:postgresql://postgres:5432/keycloak
         - name: KC_DB_USERNAME
-          value: keycloak
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
         - name: KC_DB_PASSWORD
-          value: keycloak
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
         - name: KEYCLOAK_ADMIN
           value: admin
         - name: KEYCLOAK_ADMIN_PASSWORD
