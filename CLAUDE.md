@@ -212,6 +212,38 @@ git worktree remove ../confluent-platform-gitops-kafka-metrics
 - Include explicit markdown link to GitHub Issue
 - **MANDATORY: Review [Code Review Checklist](./docs/code_review_checklist.md)** before creating PR
 
+### Creating New Clusters
+
+**MANDATORY: Always use the `scripts/new-cluster.sh` script to create new clusters.**
+
+DO NOT manually create cluster directories or application files. The script generates the complete cluster structure:
+
+```bash
+./scripts/new-cluster.sh <cluster-name> <domain>
+
+# Example:
+./scripts/new-cluster.sh flink-demo-rbac confluentdemo.local
+```
+
+**What the script creates:**
+- Complete directory structure in `clusters/<cluster-name>/`
+- Bootstrap.yaml with cluster-specific configuration
+- Infrastructure applications (13 files by default)
+- Workload applications (9 files by default)
+- kind-config.yaml for local Kind clusters
+- README.md with cluster setup instructions
+- Properly formatted ArgoCD Application manifests
+
+**After running the script:**
+1. Review and customize `kind-config.yaml` if additional port mappings needed
+2. Create cluster-specific overlays in `infrastructure/*/overlays/<cluster-name>/` and `workloads/*/overlays/<cluster-name>/` as needed
+3. Add any additional applications beyond the template
+
+**Critical patterns (enforced in templates):**
+- repoURL must include `.git` extension when using `ref: values` pattern
+- valueFiles must use `$values/` prefix for multi-source Helm applications
+- All Application manifests follow established sync-wave ordering
+
 ### GitHub Issues
 
 Project status is tracked through GitHub Issues.
