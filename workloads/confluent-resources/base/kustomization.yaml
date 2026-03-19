@@ -11,7 +11,7 @@ resources:
   - kafka-broker.yaml
   - kafkarestclass.yaml
   - kraft-controller.yaml
-  # - ksqldb.yaml ## DISABLE ksqldb UNTIL IT IS NECESSARY
+  - ksqldb.yaml
   - podmonitor-cfk.yaml
   - schema-registry.yaml
   - schema-registry-ingress.yaml

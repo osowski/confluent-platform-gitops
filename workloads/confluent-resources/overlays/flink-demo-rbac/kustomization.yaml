@@ -38,13 +38,31 @@ patches:
       name: schema-registry
 
   # Connect - resources and JVM tuning
-  - path: connect-patch.yaml
-    target:
-      kind: Connect
-      name: connect
+  # - path: connect-patch.yaml
+  #   target:
+  #     kind: Connect
+  #     name: connect
 
   # ksqlDB - resources and JVM tuning
-  - path: ksqldb-patch.yaml
-    target:
+  # - path: ksqldb-patch.yaml
+  #   target:
+  #     kind: KsqlDB
+  #     name: ksqldb
+
+  # Explicitly delete Connect from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: Connect
+      metadata:
+        name: connect
+        namespace: kafka
+
+  # Explicitly delete ksqlDB from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
       kind: KsqlDB
-      name: ksqldb
+      metadata:
+        name: ksqldb
+        namespace: kafka

@@ -44,7 +44,16 @@ patches:
       name: connect
 
   # ksqlDB - resources and JVM tuning
-  - path: ksqldb-patch.yaml
-    target:
+  # - path: ksqldb-patch.yaml
+  #   target:
+  #     kind: KsqlDB
+  #     name: ksqldb
+
+  # Explicitly delete ksqlDB from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
       kind: KsqlDB
-      name: ksqldb
+      metadata:
+        name: ksqldb
+        namespace: kafka
