@@ -14,3 +14,6 @@ spec:
       limits:
         cpu: 500m
         memory: 2Gi
+  # Remove ksqldb dependency for this cluster
+  dependencies:
+    ksqldb: null
