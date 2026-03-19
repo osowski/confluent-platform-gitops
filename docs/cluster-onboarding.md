@@ -202,16 +202,33 @@ kubectl get svc -n ingress traefik -o jsonpath='{.status.loadBalancer.ingress[0]
 
 ### Update DNS
 
-Add DNS records for the cluster applications:
-- `*.{cluster-name}.confluentdemo.local` → LoadBalancer IP
+**For local testing (kind clusters):**
 
-Or update `/etc/hosts` for local testing:
+See [Getting Started - DNS Configuration](getting-started-for-the-uninitiated.md#dns-configuration) for the complete list of `/etc/hosts` entries for the `flink-demo` cluster, including IPv6 timeout workaround.
+
+For other local clusters, follow the same pattern using your cluster name:
 ```
-<LoadBalancer-IP>  echo.<cluster-name>.confluentdemo.local
+127.0.0.1  alertmanager.<cluster-name>.confluentdemo.local
+127.0.0.1  argocd.<cluster-name>.confluentdemo.local
+127.0.0.1  grafana.<cluster-name>.confluentdemo.local
+... (add entries for all your services)
 ```
 
-> [!WARNING]
-> If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries as well. Some HTTP clients prefer IPv6 and will timeout before falling back to IPv4. Add the corresponding `::1` entry to `/etc/hosts` if needed.
+**For production clusters:**
+
+Add DNS records pointing to your LoadBalancer IP:
+```bash
+# Get LoadBalancer IP
+LOADBALANCER_IP=$(kubectl get svc -n ingress traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+# Add A records in your DNS provider for each service:
+# alertmanager.<cluster-name>.<domain> → $LOADBALANCER_IP
+# grafana.<cluster-name>.<domain> → $LOADBALANCER_IP
+# prometheus.<cluster-name>.<domain> → $LOADBALANCER_IP
+# ... (add records for all your services)
+```
+
+Or use wildcard DNS: `*.<cluster-name>.<domain>` → LoadBalancer IP
 
 ### Test Application
 

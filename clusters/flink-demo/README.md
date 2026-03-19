@@ -26,6 +26,45 @@ The `flink-demo` cluster demonstrates a complete Confluent Platform deployment i
 
 The sections below provide cluster-specific reference information and advanced configuration.
 
+<!--
+INTENTIONAL DUPLICATION: The /etc/hosts entries below are duplicated from
+docs/getting-started-for-the-uninitiated.md for quick reference. This is
+explicitly allowed as a one-off exception to avoid users jumping between files.
+Changes should be kept in sync with the canonical source.
+-->
+
+### DNS Configuration
+
+Add these entries to `/etc/hosts`:
+
+```
+127.0.0.1  alertmanager.flink-demo.confluentdemo.local
+127.0.0.1  argocd.flink-demo.confluentdemo.local
+127.0.0.1  cmf.flink-demo.confluentdemo.local
+127.0.0.1  controlcenter.flink-demo.confluentdemo.local
+127.0.0.1  grafana.flink-demo.confluentdemo.local
+127.0.0.1  kafka.flink-demo.confluentdemo.local
+127.0.0.1  prometheus.flink-demo.confluentdemo.local
+127.0.0.1  s3proxy.flink-demo.confluentdemo.local
+127.0.0.1  schemaregistry.flink-demo.confluentdemo.local
+127.0.0.1  vault.flink-demo.confluentdemo.local
+```
+
+> [!WARNING]
+> If you experience ~5-second timeouts when accessing services, add IPv6 entries as well:
+> ```
+> ::1  alertmanager.flink-demo.confluentdemo.local
+> ::1  argocd.flink-demo.confluentdemo.local
+> ::1  cmf.flink-demo.confluentdemo.local
+> ::1  controlcenter.flink-demo.confluentdemo.local
+> ::1  grafana.flink-demo.confluentdemo.local
+> ::1  kafka.flink-demo.confluentdemo.local
+> ::1  prometheus.flink-demo.confluentdemo.local
+> ::1  s3proxy.flink-demo.confluentdemo.local
+> ::1  schemaregistry.flink-demo.confluentdemo.local
+> ::1  vault.flink-demo.confluentdemo.local
+> ```
+
 ## Deploy Confluent and Flink Resources
 
 The `confluent-resources` and `flink-resources` Applications require manual sync to ensure operators and namespaces are fully ready.

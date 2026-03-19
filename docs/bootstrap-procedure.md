@@ -414,13 +414,12 @@ After successful bootstrap:
    ```bash
    # Get LoadBalancer IP
    kubectl get svc -n ingress traefik
-
-   # Update /etc/hosts with application FQDNs
-   # Test with curl
    ```
 
-   > [!WARNING]
-   > If you experience ~5-second timeouts when accessing services, you may need to add IPv6 entries to `/etc/hosts` as well. Some HTTP clients prefer IPv6 and will timeout trying `::1` before falling back to IPv4.
+   > [!TIP]
+   > **For local testing with kind (flink-demo cluster):** See [Getting Started - DNS Configuration](getting-started-for-the-uninitiated.md#dns-configuration) for complete `/etc/hosts` entries including IPv6 timeout workaround.
+   >
+   > **For production clusters:** Add DNS records matching the pattern `<service>.<cluster-name>.<domain>` pointing to your LoadBalancer IP.
 
 4. **Configure ArgoCD notifications** (optional):
    - Slack, email, or webhook notifications for sync events

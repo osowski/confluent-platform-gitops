@@ -22,8 +22,10 @@ brew install colima \
 127.0.0.1  cmf.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
+127.0.0.1  kafka.flink-demo.confluentdemo.local
 127.0.0.1  prometheus.flink-demo.confluentdemo.local
 127.0.0.1  s3proxy.flink-demo.confluentdemo.local
+127.0.0.1  schemaregistry.flink-demo.confluentdemo.local
 127.0.0.1  vault.flink-demo.confluentdemo.local
 ```
 
@@ -35,8 +37,10 @@ brew install colima \
 > ::1  cmf.flink-demo.confluentdemo.local
 > ::1  controlcenter.flink-demo.confluentdemo.local
 > ::1  grafana.flink-demo.confluentdemo.local
+> ::1  kafka.flink-demo.confluentdemo.local
 > ::1  prometheus.flink-demo.confluentdemo.local
 > ::1  s3proxy.flink-demo.confluentdemo.local
+> ::1  schemaregistry.flink-demo.confluentdemo.local
 > ::1  vault.flink-demo.confluentdemo.local
 > ```
 
