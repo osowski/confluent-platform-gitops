@@ -1,0 +1,41 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # Traefik HTTP/HTTPS
+      - containerPort: 30000
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 30001
+        hostPort: 443
+        protocol: TCP
+      # Keycloak NodePort
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+      # Kafka Bootstrap
+      - containerPort: 31000
+        hostPort: 31000
+        protocol: TCP
+      # Kafka Broker 0
+      - containerPort: 31001
+        hostPort: 31001
+        protocol: TCP
+      # Kafka Broker 1
+      - containerPort: 31002
+        hostPort: 31002
+        protocol: TCP
+      # Kafka Broker 2
+      - containerPort: 31003
+        hostPort: 31003
+        protocol: TCP
+  - role: worker
+  - role: worker
+  - role: worker
