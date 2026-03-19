@@ -1,0 +1,53 @@
+# Kafka Broker MDS/RBAC Configuration Patch
+# Enables MDS (Metadata Service) with OAuth provider for RBAC authorization
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  # Enable MDS (Metadata Service) for RBAC
+  services:
+    mds:
+      # Token key pair for signing MDS authentication tokens
+      tokenKeyPair:
+        secretRef: mds-token
+      # OAuth provider configuration - uses Keycloak
+      provider:
+        oauth:
+          # Keycloak JWKS endpoint for token validation
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          # Expected issuer (must match external URL)
+          expectedIssuer: http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent
+          # Principal claim - use email as user identifier
+          subClaimName: email
+          # Groups claim for authorization
+          groupsClaimName: groups
+      # Impersonation settings
+      impersonation:
+        admins:
+          - User:kafka
+          - User:krp  # Kafka REST Proxy principal
+          - User:admin@osow.ski  # Admin user from Keycloak
+        protectedUsers:
+          - mds
+          - superadmin
+
+  # Enable RBAC authorization
+  authorization:
+    type: rbac
+    superUsers:
+      - User:kafka
+      - User:admin@osow.ski
+
+  # Kafka REST configuration for MDS
+  dependencies:
+    kafkaRest:
+      authentication:
+        type: oauth
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          # Client credentials for Kafka REST to authenticate with Keycloak
+          clientCredentials:
+            secretRef: kafka-oauth-client

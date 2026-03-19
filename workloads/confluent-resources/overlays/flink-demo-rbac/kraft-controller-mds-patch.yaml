@@ -1,0 +1,29 @@
+# KRaft Controller RBAC Configuration Patch
+# Enables RBAC authorization for KRaft controllers
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka
+spec:
+  # Enable RBAC authorization
+  authorization:
+    type: rbac
+    superUsers:
+      - User:kafka
+      - User:admin@osow.ski
+
+  # MDS Kafka cluster connection for RBAC
+  dependencies:
+    mdsKafkaCluster:
+      # Bootstrap endpoint for Kafka cluster with MDS
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
+      # Authentication to MDS using OAuth
+      authentication:
+        type: oauth
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          # Client credentials for KRaft to authenticate
+          clientCredentials:
+            secretRef: kraft-oauth-client

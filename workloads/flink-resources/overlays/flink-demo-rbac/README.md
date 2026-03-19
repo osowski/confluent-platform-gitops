@@ -31,21 +31,41 @@ kubectl create secret generic cmf-oauth-token \
   --from-literal=bearer-token=<token>
 ```
 
-## Authorization Limitations
+## Authorization - MDS RBAC
 
-**Important:** This configuration provides **authentication only** through OAuth.
+**MDS (Metadata Service) is configured** to provide full group-based RBAC authorization.
 
-Full group-based authorization via ConfluentRoleBindings requires:
-- MDS (Metadata Service) deployment
-- ConfluentRoleBindings created via `confluent iam rbac role-binding create`
-- MDS integration with CMF
+This cluster includes:
+- ✅ MDS enabled on Kafka brokers with OAuth provider (Keycloak)
+- ✅ CMF configured to use MDS for authorization
+- ✅ OAuth authentication for identity verification
+- ✅ Kubernetes RBAC for namespace-level isolation (see Issue #85)
 
-Without MDS:
-- ✅ OAuth authentication works (identity verification)
-- ✅ Kubernetes RBAC controls namespace access (implemented in Issue #85)
-- ❌ CMF-level RBAC authorization is not enforced
+### ConfluentRoleBindings
 
-For Kubernetes-level RBAC (namespace isolation, resource permissions), see `workloads/flink-rbac/`.
+ConfluentRoleBindings are **not Kubernetes resources** - they are created via MDS API using the Confluent CLI:
+
+```bash
+# Example: Grant DeveloperManage role to shapes group
+confluent iam rbac role-binding create \
+  --principal Group:shapes \
+  --role DeveloperManage \
+  --cmf CMF-id \
+  --flink-environment shapes-env \
+  --resource FlinkApplication:"*"
+
+# Example: Grant DeveloperManage role to colors group
+confluent iam rbac role-binding create \
+  --principal Group:colors \
+  --role DeveloperManage \
+  --cmf CMF-id \
+  --flink-environment colors-env \
+  --resource FlinkApplication:"*"
+```
+
+These role bindings are stored in MDS and evaluated when users make requests to CMF.
+
+For Kubernetes-level RBAC (namespace isolation, pod permissions), see `workloads/flink-rbac/`.
 
 ## Related Resources
 

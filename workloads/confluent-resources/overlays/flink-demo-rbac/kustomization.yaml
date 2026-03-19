@@ -3,9 +3,16 @@ kind: Kustomization
 
 namespace: kafka
 
+# Reference base configuration
 bases:
   - ../../base
 
+# Additional resources for MDS/RBAC
+resources:
+  - mds-token-keypair-secret.yaml
+  - oauth-client-secrets.yaml
+
+# Cluster-specific patches
 patches:
   # Kafka broker - external listener and resources
   - path: kafka-broker-patch.yaml
@@ -13,8 +20,20 @@ patches:
       kind: Kafka
       name: kafka
 
+  # Kafka broker - MDS/RBAC configuration
+  - path: kafka-broker-mds-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+
   # KRaft controller - resources
   - path: kraft-controller-patch.yaml
+    target:
+      kind: KRaftController
+      name: kraftcontroller
+
+  # KRaft controller - MDS/RBAC configuration
+  - path: kraft-controller-mds-patch.yaml
     target:
       kind: KRaftController
       name: kraftcontroller

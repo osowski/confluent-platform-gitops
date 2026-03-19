@@ -31,6 +31,28 @@ cmf:
       # Used when CMF needs to authenticate as a service principal
       oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
 
-# Note: Full RBAC authorization requires MDS (Metadata Service) deployment
-# Without MDS, OAuth provides authentication (identity verification) only
-# Group-based authorization would require MDS configuration
+# Authorization configuration - connect to MDS for RBAC
+  authorization:
+    mdsRestConfig:
+      # MDS endpoint on Kafka broker (internal cluster DNS)
+      endpoint: http://kafka.kafka.svc.cluster.local:8090
+      # OAuth authentication for CMF to talk to MDS
+      authentication:
+        type: oauth
+        config:
+          # OAuth bearer credentials provider
+          confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+          # Token endpoint to obtain tokens
+          confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          # Client ID for CMF service principal
+          confluent.metadata.oauthbearer.login.client.id: cmf
+          # Client secret from Kubernetes secret (mounted via secret)
+          confluent.metadata.oauthbearer.login.client.secret: ${CONFLUENT_METADATA_OAUTHBEARER_LOGIN_CLIENT_SECRET}
+
+# Environment variables for OAuth secrets
+env:
+  - name: CONFLUENT_METADATA_OAUTHBEARER_LOGIN_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: cmf-mds-oauth-client
+        key: clientSecret
