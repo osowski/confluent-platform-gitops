@@ -1,0 +1,17 @@
+# CMFRestClass OAuth Authentication Patch
+# Configures CFK operator authentication to CMF using OAuth
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    # OAuth authentication for CFK operator to CMF communication
+    # This is operator-level authentication, not end-user authentication
+    authentication:
+      type: oauth
+      bearer:
+        # Secret containing OAuth token for CFK operator
+        # This token allows the operator to create/manage Flink resources in CMF
+        secretRef: cfk-cmf-oauth-token

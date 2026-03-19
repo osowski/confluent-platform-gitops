@@ -4,19 +4,15 @@ kind: Kustomization
 # Reference base configuration
 resources:
   - ../../base
-  - cmfrestclass-shapes.yaml
-  - cmfrestclass-colors.yaml
+  - cfk-oauth-secret.yaml
 
-# Remove the base CMFRestClass since we have namespace-specific ones
+# Cluster-specific patches
 patches:
-  # Delete the base cmfrestclass from flink namespace
-  - patch: |-
-      $patch: delete
-      apiVersion: platform.confluent.io/v1beta1
+  # Update CMFRestClass with OAuth authentication for operator
+  - path: cmfrestclass-oauth-patch.yaml
+    target:
       kind: CMFRestClass
-      metadata:
-        name: cmf-rest-class
-        namespace: flink
+      name: cmf-rest-class
 
 # Cluster-specific labels
 labels:
