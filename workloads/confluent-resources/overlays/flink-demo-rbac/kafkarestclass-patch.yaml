@@ -17,8 +17,7 @@ spec:
   kafkaRest:
     authentication:
       type: oauth
-      jaasConfig:
+      oauth:
         secretRef: kafka-oauth-client
-      oauthSettings:
-        subClaimName: client_id
-        tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+        configuration:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
