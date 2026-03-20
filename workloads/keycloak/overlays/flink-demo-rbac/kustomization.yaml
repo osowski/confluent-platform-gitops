@@ -6,6 +6,11 @@ resources:
 
 # Cluster-specific patches
 patches:
+  - path: certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: keycloak-tls
+
   - path: ingress-patch.yaml
     target:
       kind: IngressRoute

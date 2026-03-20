@@ -1,0 +1,72 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Gateway
+metadata:
+  name: gateway-demo
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  # Number of Gateway replicas
+  replicas: 1
+
+  # Image configuration - CPC Gateway uses its own version scheme
+  image:
+    application: confluentinc/cpc-gateway:1.1.2
+    init: confluentinc/confluent-init-container:3.1.1
+
+  # Streaming domains define the backend Kafka clusters
+  streamingDomains:
+    - name: demo-kafka-cluster
+      type: kafka
+      kafkaCluster:
+        # Reference to the existing Kafka cluster via Gateway-specific services
+        bootstrapServers:
+          # Bootstrap endpoint (headless service)
+          - id: "0"
+            endpoint: kafka-gateway-bootstrap.kafka.svc.cluster.local:9092
+          # Individual broker endpoints - each on unique port for port-based identification
+          - id: "1"
+            endpoint: kafka-gateway-0.kafka.svc.cluster.local:9093
+          - id: "2"
+            endpoint: kafka-gateway-1.kafka.svc.cluster.local:9094
+          - id: "3"
+            endpoint: kafka-gateway-2.kafka.svc.cluster.local:9095
+        # Node ID ranges for the Kafka brokers (IDs 0-2)
+        nodeIdRanges:
+          - name: kafka-brokers
+            start: 0
+            end: 2
+
+  # Routes define how clients connect to the Gateway
+  routes:
+    - name: gateway-demo-route
+      # The endpoint where the Gateway will listen (internal cluster access)
+      endpoint: gateway-demo.kafka.svc.cluster.local:9092
+
+      # Reference to the streaming domain
+      streamingDomain:
+        name: demo-kafka-cluster
+        bootstrapServerId: "0"
+
+      # Security configuration
+      security:
+        # passthrough: forward client credentials directly to Kafka
+        # swap: Gateway manages its own authentication
+        auth: passthrough
+
+      # Broker identification strategy
+      brokerIdentificationStrategy:
+        # port: identify brokers by port number (no TLS/SNI required)
+        # host: identify brokers by hostname (requires TLS with SNI)
+        type: port
+
+  # Pod template for resource configuration
+  podTemplate:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 1Gi
