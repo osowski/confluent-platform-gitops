@@ -30,6 +30,17 @@ spec:
       containers:
         - name: realm-sync
           image: curlimages/curl:latest
+          env:
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN_PASSWORD
           command:
             - /bin/sh
             - -c
@@ -50,8 +61,8 @@ spec:
               echo "Getting admin access token..."
               ADMIN_TOKEN=$(curl -sf -X POST http://keycloak:8080/realms/master/protocol/openid-connect/token \
                 -H "Content-Type: application/x-www-form-urlencoded" \
-                -d "username=admin" \
-                -d "password=admin" \
+                -d "username=${KEYCLOAK_ADMIN}" \
+                -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
                 -d "grant_type=password" \
                 -d "client_id=admin-cli" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
@@ -91,6 +102,22 @@ spec:
                 echo "Kafka client secret updated"
               else
                 echo "WARNING: Kafka client not found, may need realm re-import"
+              fi
+
+              # Update Control Center client secret
+              echo "Updating Control Center client secret..."
+              CONTROLCENTER_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=controlcenter" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+
+              if [ -n "$CONTROLCENTER_CLIENT_ID" ]; then
+                echo "Found Control Center client: $CONTROLCENTER_CLIENT_ID"
+                curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CONTROLCENTER_CLIENT_ID" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{"secret":"controlcenter-secret"}'
+                echo "Control Center client secret updated"
+              else
+                echo "WARNING: Control Center client not found, may need realm re-import"
               fi
 
               echo "=== Realm sync complete ==="

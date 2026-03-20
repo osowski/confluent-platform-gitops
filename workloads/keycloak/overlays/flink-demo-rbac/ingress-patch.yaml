@@ -5,9 +5,13 @@ metadata:
   name: keycloak
   namespace: keycloak
 spec:
+  entryPoints:
+    - websecure
   routes:
     - match: Host(`keycloak.flink-demo-rbac.confluentdemo.local`)
       kind: Rule
       services:
         - name: keycloak
           port: 8080
+  tls:
+    secretName: keycloak-tls

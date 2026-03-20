@@ -1,0 +1,80 @@
+# ==============================================================================
+# KRaft Controller Configuration for flink-demo-rbac Cluster
+# ==============================================================================
+# This patch consolidates all KRaft controller configuration including:
+# - Resource limits for local demo environment
+# - OAuth authentication for controller quorum communication
+# - RBAC authorization with MDS dependency
+# - JVM configuration for OAuth SASL mechanism
+# ==============================================================================
+# NOTE: RBAC requires MDS access for permission validation
+#       Controllers connect to broker MDS endpoint (not circular - different dependency type)
+# TODO: Issue #72 - Switch from OAuth to mTLS authentication when TLS is implemented
+# ==============================================================================
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka
+spec:
+  # ==============================================================================
+  # RESOURCE LIMITS - Tuned for 24GB total cluster memory
+  # ==============================================================================
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  # ==============================================================================
+  # CONTROLLER LISTENER - OAuth authentication for quorum communication
+  # ==============================================================================
+  listeners:
+    controller:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kraft-oauth-client
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          expectedIssuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          subClaimName: client_id
+
+  # ==============================================================================
+  # AUTHORIZATION - RBAC with super users for control plane operations
+  # ==============================================================================
+  authorization:
+    type: rbac
+    superUsers:
+      - User:kafka
+      - User:kraftcontroller
+      - User:admin@osow.ski
+
+  # ==============================================================================
+  # DEPENDENCIES - MDS connection for RBAC permission validation
+  # ==============================================================================
+  dependencies:
+    mdsKafkaCluster:
+      # Connect to broker MDS endpoint (TOKEN listener on port 9073)
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9073
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kraft-oauth-client
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+  # ==============================================================================
+  # JVM CONFIGURATION - OAuth SASL mechanism
+  # ==============================================================================
+  configOverrides:
+    jvm:
+      # OAuth login callback handler
+      - "-Dorg.apache.kafka.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      - "-Dsasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      # OAuth allowed URLs (internal HTTP and external HTTPS Keycloak endpoints)
+      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/certs,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/token"

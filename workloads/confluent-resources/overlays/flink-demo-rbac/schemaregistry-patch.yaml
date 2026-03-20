@@ -1,0 +1,61 @@
+# ==============================================================================
+# Schema Registry Configuration for flink-demo-rbac Cluster
+# ==============================================================================
+# This patch consolidates all Schema Registry configuration including:
+# - Resource limits for local demo environment
+# - OAuth authentication to Kafka and MDS
+# - RBAC authorization
+# ==============================================================================
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: kafka
+spec:
+  # ==============================================================================
+  # RESOURCE LIMITS - Tuned for 24GB total cluster memory
+  # ==============================================================================
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # ==============================================================================
+  # AUTHORIZATION - RBAC
+  # ==============================================================================
+  authorization:
+    type: rbac
+
+  # ==============================================================================
+  # DEPENDENCIES - Kafka and MDS with OAuth authentication
+  # ==============================================================================
+  dependencies:
+    # Kafka connection with OAuth authentication
+    kafka:
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kafka-oauth-client
+        oauthSettings:
+          subClaimName: client_id
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+    # MDS connection with OAuth authentication
+    mds:
+      endpoint: http://kafka.kafka.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: kafka-oauth-client
+          configuration:
+            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            expectedIssuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent
+            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+            subClaimName: client_id

@@ -8,60 +8,31 @@ resources:
   - ../../base
   - mds-keygen-job.yaml  # Generates mds-token secret with RSA keypair
   - oauth-client-secrets.yaml
+  - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
   - confluentrolebindings.yaml
 
 # Cluster-specific patches
 patches:
-  # Kafka broker - external listener and resources
-  - path: kafka-broker-patch.yaml
+  # Kafka broker - consolidated configuration (external listener, MDS/RBAC, KRaft auth, SSO/OIDC)
+  - path: kafka-patch.yaml
     target:
       kind: Kafka
       name: kafka
 
-  # Kafka broker - MDS/RBAC configuration
-  - path: kafka-broker-mds-patch.yaml
-    target:
-      kind: Kafka
-      name: kafka
-
-  # Kafka broker - KRaft controller authentication
-  - path: kafka-broker-kraft-auth-patch.yaml
-    target:
-      kind: Kafka
-      name: kafka
-
-  # KRaft controller - resources
-  - path: kraft-controller-patch.yaml
+  # KRaft controller - consolidated configuration (resources, OAuth, RBAC, MDS dependency)
+  - path: kraftcontroller-patch.yaml
     target:
       kind: KRaftController
       name: kraftcontroller
 
-  # KRaft controller - MDS/RBAC configuration
-  - path: kraft-controller-mds-patch.yaml
-    target:
-      kind: KRaftController
-      name: kraftcontroller
-
-  # Control Center - resources
-  - path: control-center-patch.yaml
+  # Control Center - consolidated configuration (resources, OAuth/RBAC, OIDC SSO)
+  - path: controlcenter-patch.yaml
     target:
       kind: ControlCenter
       name: controlcenter
 
-  # Control Center - OAuth/RBAC configuration
-  - path: control-center-rbac-patch.yaml
-    target:
-      kind: ControlCenter
-      name: controlcenter
-
-  # Schema Registry - resources
-  - path: schema-registry-patch.yaml
-    target:
-      kind: SchemaRegistry
-      name: schemaregistry
-
-  # Schema Registry - OAuth/RBAC configuration
-  - path: schema-registry-rbac-patch.yaml
+  # Schema Registry - consolidated configuration (resources, OAuth/RBAC)
+  - path: schemaregistry-patch.yaml
     target:
       kind: SchemaRegistry
       name: schemaregistry
