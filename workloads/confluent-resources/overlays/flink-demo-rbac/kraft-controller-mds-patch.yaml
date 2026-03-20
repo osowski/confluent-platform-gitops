@@ -33,7 +33,7 @@ spec:
   # MDS dependency - required for RBAC permission validation
   dependencies:
     mdsKafkaCluster:
-      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9092
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9073
       authentication:
         type: oauth
         jaasConfig:
