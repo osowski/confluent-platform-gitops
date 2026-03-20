@@ -112,7 +112,10 @@ get_current_revisions() {
     local files
     files=$(find_target_files "$cluster")
 
-    echo "$files" | xargs yq eval '.spec.source.targetRevision // ""' 2>/dev/null | grep -v "^$" | sort -u
+    {
+        echo "$files" | xargs yq eval '.spec.source.targetRevision // ""' 2>/dev/null
+        echo "$files" | xargs yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' 2>/dev/null
+    } | grep -v "^$" | grep -v "^---$" | sort -u
 }
 
 # Preview changes
@@ -130,11 +133,26 @@ preview_changes() {
         # Check if file has targetRevision field
         if yq eval 'has("spec")' "$file" 2>/dev/null | grep -q "true"; then
             local current_revision
+            local current_helm_revision
             current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
+            current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
+
+            local has_changes=false
+            local changes=""
 
             if [ -n "$current_revision" ] && [ "$current_revision" != "$new_revision" ]; then
+                has_changes=true
+                changes="${changes}spec.source.targetRevision: $current_revision → $new_revision\n"
+            fi
+
+            if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$new_revision" ]; then
+                has_changes=true
+                changes="${changes}    helm.valuesObject.git.targetRevision: $current_helm_revision → $new_revision"
+            fi
+
+            if [ "$has_changes" = "true" ]; then
                 echo "  $file"
-                debug "Current: $current_revision → New: $new_revision"
+                debug "$changes"
             fi
         fi
     done <<< "$files"
@@ -152,36 +170,59 @@ update_files() {
     local file
 
     while IFS= read -r file; do
-        # Check if file has spec.source or spec.sources
+        # Check if file has spec.source, spec.sources, or helm.valuesObject.git.targetRevision
         local has_source
         local has_sources
+        local has_helm_values
         has_source=$(yq eval 'has("spec") and .spec | has("source")' "$file" 2>/dev/null)
         has_sources=$(yq eval 'has("spec") and .spec | has("sources")' "$file" 2>/dev/null)
+        has_helm_values=$(yq eval 'has("spec") and .spec | has("source") and .spec.source | has("helm") and .spec.source.helm | has("valuesObject") and .spec.source.helm.valuesObject | has("git")' "$file" 2>/dev/null)
 
-        if [ "$has_source" = "true" ] || [ "$has_sources" = "true" ]; then
-            # Get current revision
+        if [ "$has_source" = "true" ] || [ "$has_sources" = "true" ] || [ "$has_helm_values" = "true" ]; then
+            # Get current revision(s)
             local current_revision
+            local current_helm_revision
             current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
+            current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
 
-            # Skip if already at target revision
-            if [ "$current_revision" = "$new_revision" ]; then
+            # Skip if already at target revision for both fields
+            local needs_update=false
+            if [ -n "$current_revision" ] && [ "$current_revision" != "$new_revision" ]; then
+                needs_update=true
+            fi
+            if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$new_revision" ]; then
+                needs_update=true
+            fi
+
+            if [ "$needs_update" = "false" ]; then
                 skipped_count=$((skipped_count + 1))
                 continue
             fi
 
             if [ "$DRY_RUN" = true ]; then
-                debug "Would update: $file ($current_revision → $new_revision)"
+                debug "Would update: $file"
+                if [ -n "$current_revision" ] && [ "$current_revision" != "$new_revision" ]; then
+                    debug "  spec.source.targetRevision: $current_revision → $new_revision"
+                fi
+                if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$new_revision" ]; then
+                    debug "  helm.valuesObject.git.targetRevision: $current_helm_revision → $new_revision"
+                fi
             else
                 # Create backup
                 cp "$file" "$file.bak"
 
-                # Update based on structure (single source vs multi-source)
+                # Update spec.source.targetRevision if present
                 if [ "$has_source" = "true" ]; then
                     # Single source Application
                     yq eval ".spec.source.targetRevision = \"${new_revision}\"" -i "$file"
                 elif [ "$has_sources" = "true" ]; then
                     # Multi-source Application - update all sources that have targetRevision
                     yq eval "(.spec.sources[] | select(has(\"targetRevision\")).targetRevision) = \"${new_revision}\"" -i "$file"
+                fi
+
+                # Update helm.valuesObject.git.targetRevision if present
+                if [ "$has_helm_values" = "true" ]; then
+                    yq eval ".spec.source.helm.valuesObject.git.targetRevision = \"${new_revision}\"" -i "$file"
                 fi
 
                 # Check if yq succeeded
@@ -219,10 +260,17 @@ verify_update() {
 
     while IFS= read -r file; do
         local current_revision
+        local current_helm_revision
         current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
+        current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
 
         if [ -n "$current_revision" ] && [ "$current_revision" != "$expected_revision" ]; then
-            error "Mismatch in $file: $current_revision (expected: $expected_revision)"
+            error "Mismatch in $file (spec.source.targetRevision): $current_revision (expected: $expected_revision)"
+            mismatches=$((mismatches + 1))
+        fi
+
+        if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$expected_revision" ]; then
+            error "Mismatch in $file (helm.valuesObject.git.targetRevision): $current_helm_revision (expected: $expected_revision)"
             mismatches=$((mismatches + 1))
         fi
     done <<< "$files"
