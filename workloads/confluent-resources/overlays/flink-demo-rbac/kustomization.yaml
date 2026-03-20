@@ -51,6 +51,12 @@ patches:
       kind: ControlCenter
       name: controlcenter
 
+  # Control Center - OAuth/RBAC configuration
+  - path: control-center-rbac-patch.yaml
+    target:
+      kind: ControlCenter
+      name: controlcenter
+
   # Schema Registry - resources
   - path: schema-registry-patch.yaml
     target:
