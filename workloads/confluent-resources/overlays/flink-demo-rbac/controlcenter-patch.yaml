@@ -13,6 +13,9 @@ kind: ControlCenter
 metadata:
   name: controlcenter
   namespace: kafka
+  annotations:
+    # Disable automatic internal role binding creation since we manage RBAC bindings manually
+    platform.confluent.io/disable-internal-rolebindings-creation: "true"
 spec:
   # ==============================================================================
   # RESOURCE LIMITS - Tuned for 24GB total cluster memory
