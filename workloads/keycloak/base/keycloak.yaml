@@ -54,12 +54,8 @@ spec:
           value: admin
         - name: KC_HTTP_ENABLED
           value: "true"
-        - name: KC_HOSTNAME_STRICT
-          value: "false"
-        - name: KC_HOSTNAME_STRICT_HTTPS
-          value: "false"
-        - name: KC_PROXY
-          value: edge
+        - name: KC_PROXY_HEADERS
+          value: xforwarded
         ports:
         - name: http
           containerPort: 8080
