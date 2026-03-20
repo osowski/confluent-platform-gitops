@@ -16,5 +16,6 @@ resources:
   - schema-registry.yaml
   - schema-registry-ingress.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: confluent-platform
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: confluent-platform
