@@ -1,0 +1,103 @@
+# Keycloak Realm Sync Job
+# Ensures Keycloak realm configuration matches the ConfigMap
+# Runs as a Job to update client secrets and configuration via Admin API
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-realm-sync
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-realm-sync
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "-9"
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: keycloak-realm-sync
+    spec:
+      serviceAccountName: keycloak-realm-sync
+      restartPolicy: OnFailure
+      containers:
+        - name: realm-sync
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "=== Keycloak Realm Sync ==="
+
+              # Wait for Keycloak to be ready
+              echo "Waiting for Keycloak to be ready..."
+              until curl -sf http://keycloak:8080/health/ready > /dev/null; do
+                echo "Keycloak not ready, waiting..."
+                sleep 5
+              done
+              echo "Keycloak is ready"
+
+              # Get admin token
+              echo "Getting admin access token..."
+              ADMIN_TOKEN=$(curl -sf -X POST http://keycloak:8080/realms/master/protocol/openid-connect/token \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "username=admin" \
+                -d "password=admin" \
+                -d "grant_type=password" \
+                -d "client_id=admin-cli" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "$ADMIN_TOKEN" ]; then
+                echo "ERROR: Failed to get admin token"
+                exit 1
+              fi
+              echo "Admin token obtained"
+
+              # Update CMF client secret
+              echo "Updating CMF client secret..."
+              CMF_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=cmf" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+
+              if [ -n "$CMF_CLIENT_ID" ]; then
+                echo "Found CMF client: $CMF_CLIENT_ID"
+                curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CMF_CLIENT_ID" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{"secret":"cmf-secret"}'
+                echo "CMF client secret updated"
+              else
+                echo "WARNING: CMF client not found, may need realm re-import"
+              fi
+
+              # Update Kafka client secret
+              echo "Updating Kafka client secret..."
+              KAFKA_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=kafka" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+
+              if [ -n "$KAFKA_CLIENT_ID" ]; then
+                echo "Found Kafka client: $KAFKA_CLIENT_ID"
+                curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$KAFKA_CLIENT_ID" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{"secret":"kafka-secret"}'
+                echo "Kafka client secret updated"
+              else
+                echo "WARNING: Kafka client not found, may need realm re-import"
+              fi
+
+              echo "=== Realm sync complete ==="
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

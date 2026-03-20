@@ -9,4 +9,5 @@ resources:
   - postgres.yaml
   - realm-configmap.yaml
   - keycloak.yaml
+  - realm-sync-job.yaml
   - ingress.yaml
