@@ -256,13 +256,13 @@ data:
             "acr",
             "profile",
             "roles",
-            "email",
-            "offline_access"
+            "email"
           ],
           "optionalClientScopes": [
             "address",
             "phone",
-            "microprofile-jwt"
+            "microprofile-jwt",
+            "offline_access"
           ],
           "protocolMappers": [
             {

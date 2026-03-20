@@ -106,7 +106,7 @@ spec:
                 echo "WARNING: Kafka client not found, may need realm re-import"
               fi
 
-              # Update Control Center client secret and scopes
+              # Update Control Center client secret
               echo "Updating Control Center client secret..."
               CONTROLCENTER_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=controlcenter" \
                 -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
@@ -118,31 +118,6 @@ spec:
                   -H "Content-Type: application/json" \
                   -d '{"secret":"controlcenter-secret"}'
                 echo "Control Center client secret updated"
-
-                # Add offline_access to DEFAULT client scopes (not optional)
-                echo "Configuring Control Center client scopes..."
-                # Fetch all client scopes and find offline_access
-                SCOPES_JSON=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/client-scopes" \
-                  -H "Authorization: Bearer $ADMIN_TOKEN")
-
-                # Extract the ID for offline_access scope (search for the name, then extract the id from that entry)
-                OFFLINE_ACCESS_SCOPE_ID=$(echo "$SCOPES_JSON" | grep -A 5 '"name":"offline_access"' | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-
-                if [ -n "$OFFLINE_ACCESS_SCOPE_ID" ]; then
-                  echo "Found offline_access scope: $OFFLINE_ACCESS_SCOPE_ID"
-
-                  # Remove from optional scopes first (in case it's already there)
-                  curl -sf -X DELETE "http://keycloak:8080/admin/realms/confluent/clients/$CONTROLCENTER_CLIENT_ID/optional-client-scopes/$OFFLINE_ACCESS_SCOPE_ID" \
-                    -H "Authorization: Bearer $ADMIN_TOKEN" 2>/dev/null || true
-
-                  # Add to DEFAULT scopes (automatically included in all requests)
-                  curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CONTROLCENTER_CLIENT_ID/default-client-scopes/$OFFLINE_ACCESS_SCOPE_ID" \
-                    -H "Authorization: Bearer $ADMIN_TOKEN" \
-                    -H "Content-Type: application/json"
-                  echo "offline_access scope added to Control Center client as DEFAULT scope"
-                else
-                  echo "WARNING: offline_access scope not found"
-                fi
               else
                 echo "WARNING: Control Center client not found, may need realm re-import"
               fi

@@ -102,7 +102,7 @@ spec:
             # Server-side calls use internal HTTP (no TLS)
             jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-            refreshToken: true
+            refreshToken: false
             sessionTokenExpiry: 900000      # 15 minutes
             sessionMaxTimeout: 21600000     # 6 hours
 
