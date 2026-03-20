@@ -44,7 +44,7 @@ spec:
           secretRef: kafka-oauth-client
         oauthSettings:
           tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          expectedIssuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent
+          expectedIssuer: http://keycloak.flink-demo-rbac.confluentdemo.local:8080/realms/confluent
           jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
           subClaimName: client_id
 
@@ -84,7 +84,7 @@ spec:
         oauth:
           configurations:
             jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-            expectedIssuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent
+            expectedIssuer: http://keycloak.flink-demo-rbac.confluentdemo.local:8080/realms/confluent
             subClaimName: client_id
 
         # SSO/OIDC configuration for browser-based authentication (authorization code flow)
@@ -140,7 +140,7 @@ spec:
           secretRef: kafka-oauth-client
         oauthSettings:
           tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          expectedIssuer: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent
+          expectedIssuer: http://keycloak.flink-demo-rbac.confluentdemo.local:8080/realms/confluent
           jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
           subClaimName: client_id
 
