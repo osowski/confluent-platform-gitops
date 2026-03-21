@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: reflector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://emberstack.github.io/helm-charts
+    chart: reflector
+    targetRevision: 10.0.21
+    helm:
+      values: |
+        # Reflector - Kubernetes Secret/ConfigMap replication controller
+        # Automatically replicates secrets and configmaps across namespaces
+        #
+        # Current use case: Replicate mds-token secret from kafka to operator namespace
+        # for CMF to validate MDS-signed SSO tokens from Control Center
+        #
+        # NOTE: If additional policy enforcement or generation needs arise beyond
+        # simple secret replication, consider migrating to Kyverno (CNCF project)
+        # which provides broader policy engine capabilities including validation,
+        # mutation, generation, and image verification. Kyverno can replace this
+        # reflector functionality with ClusterPolicy resources.
+        #
+        # References:
+        # - Reflector: https://github.com/emberstack/kubernetes-reflector
+        # - Kyverno: https://kyverno.io/
+
+        # Resource limits for homelab/demo cluster
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+
+        # Monitoring configuration
+        serviceMonitor:
+          enabled: false  # Enable if Prometheus is configured
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: reflector-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

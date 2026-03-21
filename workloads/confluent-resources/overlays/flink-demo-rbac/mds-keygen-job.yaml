@@ -115,16 +115,22 @@ spec:
               echo "- Private key: /tmp/mds-tokenkeypair.pem"
               echo "- Public key: /tmp/mds-publickey.pem"
 
-              # Create or update the secret
-              echo "Creating/updating mds-token secret..."
+              # Create or update the secret with reflector annotations
+              echo "Creating/updating mds-token secret with reflector annotations..."
 
               kubectl create secret generic mds-token \
                 --from-file=mdsPublicKey.pem=/tmp/mds-publickey.pem \
                 --from-file=mdsTokenKeyPair.pem=/tmp/mds-tokenkeypair.pem \
                 --namespace kafka \
-                --dry-run=client -o yaml | kubectl apply -f -
+                --dry-run=client -o yaml | \
+              kubectl annotate -f - \
+                reflector.v1.k8s.emberstack.com/reflection-allowed="true" \
+                reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces="operator" \
+                reflector.v1.k8s.emberstack.com/reflection-auto-enabled="true" \
+                --local --dry-run=client -o yaml | \
+              kubectl apply -f -
 
-              echo "Secret mds-token created/updated successfully"
+              echo "Secret mds-token created/updated successfully with reflector annotations"
 
               # Clean up temporary files
               rm -f /tmp/mds-tokenkeypair.pem /tmp/mds-publickey.pem
