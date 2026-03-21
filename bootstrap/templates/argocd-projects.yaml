@@ -17,6 +17,7 @@ spec:
     - https://charts.longhorn.io
     - https://helm.releases.hashicorp.com
     - https://kubernetes-sigs.github.io/metrics-server/
+    - https://emberstack.github.io/helm-charts  # Reflector for secret/configmap replication
     - oci://ghcr.io/traefik/helm/traefik
     - oci://quay.io/jetstack/charts/cert-manager
     - oci://quay.io/jetstack/charts/trust-manager
