@@ -19,8 +19,10 @@ cmf:
       # Must match KC_HOSTNAME setting in Keycloak deployment
       oauthbearer.expected.issuer: http://keycloak.flink-demo-rbac.confluentdemo.local:8080/realms/confluent
 
-      # Principal claim - use email as the user identifier
-      oauthbearer.sub.claim.name: email
+      # Principal claim - use client_id as the user identifier
+      # This works for both service accounts (client_id from service account) and
+      # user accounts (client_id is set by the controlcenter client via protocol mapper)
+      oauthbearer.sub.claim.name: client_id
 
       # Groups claim - extract group membership from tokens
       oauthbearer.groups.claim.name: groups

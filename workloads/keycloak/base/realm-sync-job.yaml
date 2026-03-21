@@ -74,8 +74,8 @@ spec:
               fi
               echo "Admin token obtained"
 
-              # Update CMF client secret
-              echo "Updating CMF client secret..."
+              # Update CMF client secret and add audience mapper
+              echo "Updating CMF client secret and audience mapper..."
               CMF_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=cmf" \
                 -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
 
@@ -86,6 +86,24 @@ spec:
                   -H "Content-Type: application/json" \
                   -d '{"secret":"cmf-secret"}'
                 echo "CMF client secret updated"
+
+                # Add audience mapper for cmf client
+                echo "Adding audience mapper to CMF client..."
+                curl -sf -X POST "http://keycloak:8080/admin/realms/confluent/clients/$CMF_CLIENT_ID/protocol-mappers/models" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "name": "audience-mapper",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                      "included.client.audience": "cmf",
+                      "id.token.claim": "true",
+                      "access.token.claim": "true"
+                    }
+                  }' 2>&1 | grep -v "Conflict detected" || echo "Audience mapper already exists or created"
+                echo "CMF audience mapper configured"
               else
                 echo "WARNING: CMF client not found, may need realm re-import"
               fi
