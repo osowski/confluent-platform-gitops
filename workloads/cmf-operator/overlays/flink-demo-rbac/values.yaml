@@ -1,10 +1,6 @@
 # Confluent Manager for Apache Flink - flink-demo-rbac Cluster Overlay
 # Cluster-specific configuration overrides
 
-# RBAC enforcement - disable for now to bypass Kafka cluster ID requirement in CRNs
-# TODO: Investigate proper Kafka cluster ID configuration for FlinkApplication authorization
-rbac: false
-
 # Additional pod annotations for flink-demo-rbac cluster identification
 podAnnotations:
   cluster: flink-demo-rbac
