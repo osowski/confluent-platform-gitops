@@ -90,7 +90,16 @@ spec:
                 if echo "$PUBLIC_KEY" | grep -q "REPLACE_WITH_ACTUAL_PUBLIC_KEY"; then
                   echo "Found placeholder keys, will regenerate..."
                 elif echo "$PUBLIC_KEY" | grep -q "BEGIN PUBLIC KEY"; then
-                  echo "Valid keys already exist, skipping generation."
+                  echo "Valid keys already exist, ensuring reflector annotations are present..."
+
+                  # Add reflector annotations to existing secret
+                  kubectl annotate secret mds-token -n kafka \
+                    reflector.v1.k8s.emberstack.com/reflection-allowed="true" \
+                    reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces="operator" \
+                    reflector.v1.k8s.emberstack.com/reflection-auto-enabled="true" \
+                    --overwrite
+
+                  echo "Reflector annotations applied to existing secret"
                   exit 0
                 else
                   echo "Invalid key format detected, will regenerate..."
