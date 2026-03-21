@@ -7,12 +7,16 @@ podAnnotations:
 
 # OAuth authentication configuration for CMF REST API
 # Validates bearer tokens from Keycloak for incoming client requests
+# IMPORTANT: CMF validates MDS-signed tokens using the MDS public key
 cmf:
   authentication:
     type: oauth
     config:
       # JWKS endpoint for token validation (internal cluster DNS)
       oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+
+      # Token issuer name for MDS-signed tokens
+      token.issuer: Confluent
 
       # Expected issuer must match the external URL that clients use
       # This is what appears in the token's "iss" claim
@@ -27,12 +31,23 @@ cmf:
       # Groups claim - extract group membership from tokens
       oauthbearer.groups.claim.name: groups
 
-      # Expected audience (optional) - CMF client ID
-      oauthbearer.expected.audience: cmf
+      # MDS public key path for validating MDS-signed SSO tokens from Control Center
+      # Control Center uses SSO tokens signed by MDS, not direct OAuth tokens
+      public.key.path: /mount/mds/mdsPublicKey.pem
+
+      # MDS metadata server URLs for token validation
+      confluent.metadata.bootstrap.server.urls: http://kafka.kafka.svc.cluster.local:8090
+
+      # OAuth credentials provider for CMF to authenticate to MDS
+      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
 
       # Token endpoint for CMF to obtain its own tokens (internal cluster DNS)
       # Used when CMF needs to authenticate as a service principal
-      oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+      # CMF client credentials for authenticating to MDS
+      confluent.metadata.oauthbearer.login.client.id: cmf
+      confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
   # Kafka-specific OAuth configuration
   kafka:
@@ -59,12 +74,12 @@ cmf:
           # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
           confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
-# TODO: Re-enable when upgrading to CMF Helm chart 2.3.x which supports extraEnv
-# Environment variables for OAuth secrets (commented out - not supported in v2.2.0)
-# extraEnv:
-#   - name: CONFLUENT_METADATA_OAUTHBEARER_LOGIN_CLIENT_SECRET
-#     valueFrom:
-#       secretKeyRef:
-#         name: cmf-mds-oauth-client
-#         key: clientSecret
-# Then update line 56 to: confluent.metadata.oauthbearer.login.client.secret: ${CONFLUENT_METADATA_OAUTHBEARER_LOGIN_CLIENT_SECRET}
+# Mount MDS token secret for public key validation of MDS-signed SSO tokens
+mountedVolumes:
+  volumes:
+    - name: mds-token
+      secret:
+        secretName: mds-token
+  volumeMounts:
+    - name: mds-token
+      mountPath: /mount/mds
