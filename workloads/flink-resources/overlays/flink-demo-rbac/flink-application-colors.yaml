@@ -9,6 +9,11 @@ spec:
   # Reference to FlinkEnvironment
   flinkEnvironment: colors-env
 
+  # Reference to CMFRestClass for CMF communication
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
   # Flink version
   flinkVersion: v1_20
 
