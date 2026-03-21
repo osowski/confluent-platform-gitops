@@ -186,9 +186,9 @@ update_files() {
             current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
             current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
 
-            # For multi-source, get GitHub repository targetRevisions
+            # For multi-source, get git source targetRevisions (sources with ref: values)
             if [ "$has_sources" = "true" ]; then
-                current_github_revisions=$(yq eval '.spec.sources[] | select(.repoURL | contains("github")) | .targetRevision' "$file" 2>/dev/null)
+                current_github_revisions=$(yq eval '.spec.sources[] | select(has("ref")) | .targetRevision' "$file" 2>/dev/null)
             fi
 
             # Skip if already at target revision for all fields
@@ -199,7 +199,7 @@ update_files() {
             if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$new_revision" ]; then
                 needs_update=true
             fi
-            # Check multi-source GitHub repositories
+            # Check multi-source git repositories (sources with ref field)
             if [ -n "$current_github_revisions" ]; then
                 while IFS= read -r rev; do
                     if [ -n "$rev" ] && [ "$rev" != "$new_revision" ]; then
@@ -231,9 +231,9 @@ update_files() {
                     # Single source Application
                     yq eval ".spec.source.targetRevision = \"${new_revision}\"" -i "$file"
                 elif [ "$has_sources" = "true" ]; then
-                    # Multi-source Application - only update GitHub repo sources, not Helm chart versions
-                    # This preserves Helm chart version pins (e.g., 1.130.2, v1.19.2)
-                    yq eval '(.spec.sources[] | select(.repoURL | contains("github")).targetRevision) = "'"${new_revision}"'"' -i "$file"
+                    # Multi-source Application - only update git sources (ref: values), not Helm chart versions
+                    # This preserves Helm chart version pins (e.g., 81.6.1, v1.19.2)
+                    yq eval '(.spec.sources[] | select(has("ref")).targetRevision) = "'"${new_revision}"'"' -i "$file"
                 fi
 
                 # Update helm.valuesObject.git.targetRevision if present
@@ -280,14 +280,14 @@ verify_update() {
         has_sources=$(yq eval 'has("spec") and .spec | has("sources")' "$file" 2>/dev/null)
 
         if [ "$has_sources" = "true" ]; then
-            # Multi-source: only check GitHub repo targetRevisions
+            # Multi-source: only check git source targetRevisions (sources with ref field)
             local github_revisions
-            github_revisions=$(yq eval '.spec.sources[] | select(.repoURL | contains("github")) | .targetRevision' "$file" 2>/dev/null)
+            github_revisions=$(yq eval '.spec.sources[] | select(has("ref")) | .targetRevision' "$file" 2>/dev/null)
 
             if [ -n "$github_revisions" ]; then
                 while IFS= read -r revision; do
                     if [ "$revision" != "$expected_revision" ]; then
-                        error "Mismatch in $file (GitHub source targetRevision): $revision (expected: $expected_revision)"
+                        error "Mismatch in $file (git source targetRevision): $revision (expected: $expected_revision)"
                         mismatches=$((mismatches + 1))
                     fi
                 done <<< "$github_revisions"
@@ -316,7 +316,7 @@ verify_update() {
         return 1
     fi
 
-    success "Verification passed - all GitHub repository targetRevisions updated to: $expected_revision"
+    success "Verification passed - all git repository targetRevisions updated to: $expected_revision"
     return 0
 }
 

@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   sources:
     - repoURL: https://prometheus-community.github.io/helm-charts
-      targetRevision: feature-89/flink-environments-and-applications # Pin to specific version
+      targetRevision: 81.6.1 # Pin to specific version
       chart: kube-prometheus-stack
       helm:
         valueFiles:

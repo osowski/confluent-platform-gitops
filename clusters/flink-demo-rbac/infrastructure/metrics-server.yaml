@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   sources:
     - repoURL: https://kubernetes-sigs.github.io/metrics-server/
-      targetRevision: feature-89/flink-environments-and-applications # Pin to specific version
+      targetRevision: 3.12.2 # Pin to specific version
       chart: metrics-server
       helm:
         ignoreMissingValueFiles: true
