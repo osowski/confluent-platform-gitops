@@ -216,8 +216,9 @@ update_files() {
                     # Single source Application
                     yq eval ".spec.source.targetRevision = \"${new_revision}\"" -i "$file"
                 elif [ "$has_sources" = "true" ]; then
-                    # Multi-source Application - update all sources that have targetRevision
-                    yq eval "(.spec.sources[] | select(has(\"targetRevision\")).targetRevision) = \"${new_revision}\"" -i "$file"
+                    # Multi-source Application - only update GitHub repo sources, not Helm chart versions
+                    # This preserves Helm chart version pins (e.g., 1.130.2, v1.19.2)
+                    yq eval '(.spec.sources[] | select(.repoURL | contains("github")).targetRevision) = "'"${new_revision}"'"' -i "$file"
                 fi
 
                 # Update helm.valuesObject.git.targetRevision if present
@@ -259,19 +260,39 @@ verify_update() {
     local file
 
     while IFS= read -r file; do
-        local current_revision
-        local current_helm_revision
-        current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
-        current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
+        # Check if multi-source or single-source
+        local has_sources
+        has_sources=$(yq eval 'has("spec") and .spec | has("sources")' "$file" 2>/dev/null)
 
-        if [ -n "$current_revision" ] && [ "$current_revision" != "$expected_revision" ]; then
-            error "Mismatch in $file (spec.source.targetRevision): $current_revision (expected: $expected_revision)"
-            mismatches=$((mismatches + 1))
-        fi
+        if [ "$has_sources" = "true" ]; then
+            # Multi-source: only check GitHub repo targetRevisions
+            local github_revisions
+            github_revisions=$(yq eval '.spec.sources[] | select(.repoURL | contains("github")) | .targetRevision' "$file" 2>/dev/null)
 
-        if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$expected_revision" ]; then
-            error "Mismatch in $file (helm.valuesObject.git.targetRevision): $current_helm_revision (expected: $expected_revision)"
-            mismatches=$((mismatches + 1))
+            if [ -n "$github_revisions" ]; then
+                while IFS= read -r revision; do
+                    if [ "$revision" != "$expected_revision" ]; then
+                        error "Mismatch in $file (GitHub source targetRevision): $revision (expected: $expected_revision)"
+                        mismatches=$((mismatches + 1))
+                    fi
+                done <<< "$github_revisions"
+            fi
+        else
+            # Single-source: check both spec.source.targetRevision and helm values
+            local current_revision
+            local current_helm_revision
+            current_revision=$(yq eval '.spec.source.targetRevision // ""' "$file" 2>/dev/null | head -1)
+            current_helm_revision=$(yq eval '.spec.source.helm.valuesObject.git.targetRevision // ""' "$file" 2>/dev/null)
+
+            if [ -n "$current_revision" ] && [ "$current_revision" != "$expected_revision" ]; then
+                error "Mismatch in $file (spec.source.targetRevision): $current_revision (expected: $expected_revision)"
+                mismatches=$((mismatches + 1))
+            fi
+
+            if [ -n "$current_helm_revision" ] && [ "$current_helm_revision" != "$expected_revision" ]; then
+                error "Mismatch in $file (helm.valuesObject.git.targetRevision): $current_helm_revision (expected: $expected_revision)"
+                mismatches=$((mismatches + 1))
+            fi
         fi
     done <<< "$files"
 
@@ -280,7 +301,7 @@ verify_update() {
         return 1
     fi
 
-    success "Verification passed - all targetRevisions updated to: $expected_revision"
+    success "Verification passed - all GitHub repository targetRevisions updated to: $expected_revision"
     return 0
 }
 
