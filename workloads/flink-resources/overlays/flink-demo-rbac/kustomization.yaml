@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ../../base
   - cfk-oauth-secret.yaml
+  - keycloak-service-account-job.yaml
   - flink-environment-shapes.yaml
   - flink-environment-colors.yaml
   - flink-application-shapes.yaml
