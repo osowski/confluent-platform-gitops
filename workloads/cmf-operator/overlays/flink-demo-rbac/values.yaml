@@ -21,6 +21,20 @@ cmf:
   # Enable stack traces in error responses for debugging authorization issues
   stackTraceLogging: true
 
+  # Database configuration - Use PostgreSQL instead of embedded SQLite
+  # SQLite has severe lock contention issues under concurrent operations
+  database:
+    type: postgres
+    jdbc:
+      engine: postgresql
+      database: cmf
+      url: jdbc:postgresql://cmf-postgres.operator.svc.cluster.local:5432/cmf
+      user: cmf
+      password:
+        kubernetesSecretName: cmf-postgres-credentials
+        kubernetesSecretProperty: POSTGRES_PASSWORD
+      port: 5432
+
   authentication:
     type: oauth
     config:
