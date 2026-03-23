@@ -12,7 +12,7 @@ spec:
   partitionCount: 3
   configs:
     cleanup.policy: "delete"
-    retention.ms: "604800000"  # 7 days
+    retention.ms: "172800000"  # 2 days
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -24,7 +24,7 @@ spec:
   partitionCount: 3
   configs:
     cleanup.policy: "delete"
-    retention.ms: "604800000"  # 7 days
+    retention.ms: "172800000"  # 2 days
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -49,7 +49,7 @@ spec:
   partitionCount: 3
   configs:
     cleanup.policy: "delete"
-    retention.ms: "604800000"  # 7 days
+    retention.ms: "172800000"  # 2 days
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -61,7 +61,7 @@ spec:
   partitionCount: 3
   configs:
     cleanup.policy: "delete"
-    retention.ms: "604800000"  # 7 days
+    retention.ms: "172800000"  # 2 days
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic

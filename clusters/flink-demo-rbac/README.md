@@ -453,13 +453,13 @@ Each group has `ResourceOwner` role on their prefixed resources, granting:
 The following topics are pre-created via KafkaTopic resources in `workloads/confluent-resources/overlays/flink-demo-rbac/topics.yaml`:
 
 **Shapes topics:**
-- `shapes-input` - Input topic (3 partitions, 7-day retention)
-- `shapes-output` - Output topic (3 partitions, 7-day retention)
+- `shapes-input` - Input topic (3 partitions, 2-day retention)
+- `shapes-output` - Output topic (3 partitions, 2-day retention)
 - `shapes-state` - State/changelog topic (3 partitions, compacted)
 
 **Colors topics:**
-- `colors-input` - Input topic (3 partitions, 7-day retention)
-- `colors-output` - Output topic (3 partitions, 7-day retention)
+- `colors-input` - Input topic (3 partitions, 2-day retention)
+- `colors-output` - Output topic (3 partitions, 2-day retention)
 - `colors-state` - State/changelog topic (3 partitions, compacted)
 
 Users can create additional topics following their group's naming pattern, subject to RBAC permissions.
