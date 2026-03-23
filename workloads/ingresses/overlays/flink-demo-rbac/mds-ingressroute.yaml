@@ -1,0 +1,16 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mds
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "110"
+spec:
+  routes:
+    - match: Host(`mds.flink-demo-rbac.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: kafka
+          port: 8090
+          scheme: http

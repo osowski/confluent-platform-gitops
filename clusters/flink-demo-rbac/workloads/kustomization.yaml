@@ -7,11 +7,10 @@ resources:
   - flink-rbac.yaml
   - cfk-operator.yaml
   - confluent-resources.yaml
-  - controlcenter-ingress.yaml
+  - ingresses.yaml
   - flink-kubernetes-operator.yaml
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
-  - cmf-ingress.yaml
   - cmf-operator.yaml
   - flink-resources.yaml
 

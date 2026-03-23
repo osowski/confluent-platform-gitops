@@ -2,22 +2,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: controlcenter-ingress
+  name: ingresses
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "115" # After Confluent resources (wave 110)
+    argocd.argoproj.io/sync-wave: "110"
 spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: feature-89/flink-environments-and-applications
-    path: workloads/controlcenter-ingress/overlays/flink-demo-rbac
+    path: workloads/ingresses/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
-    namespace: kafka
   syncPolicy:
     automated:
       prune: true
-      selfHeal: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
