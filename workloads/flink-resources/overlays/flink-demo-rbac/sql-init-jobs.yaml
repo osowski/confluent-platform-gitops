@@ -1,0 +1,178 @@
+# Jobs to initialize Flink SQL Catalogs, Databases, and ComputePools via CMF API
+# These jobs run once to create the resources in CMF
+---
+# Shapes SQL Initialization Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shapes-sql-init
+  namespace: flink-shapes
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sql-init
+          image: curlimages/curl:8.1.2
+          env:
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-oauth-client
+                  key: client-id
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-oauth-client
+                  key: client-secret
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              CMF_URL="http://cmf-service.operator.svc.cluster.local:80/cmf/api/v1"
+              KEYCLOAK_URL="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+
+              echo "Obtaining OAuth token..."
+              TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=client_credentials" \
+                -d "client_id=${OAUTH_CLIENT_ID}" \
+                -d "client_secret=${OAUTH_CLIENT_SECRET}" \
+                -d "scope=kafka")
+
+              ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "${ACCESS_TOKEN}" ]; then
+                echo "Failed to obtain access token"
+                echo "Response: ${TOKEN_RESPONSE}"
+                exit 1
+              fi
+
+              echo "Token obtained successfully"
+
+              echo "Creating shapes-catalog..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/catalogs/kafka \
+                -d @/config/catalog/catalog.json || true
+
+              echo "Creating shapes-database in shapes-catalog..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
+                -d @/config/database/database.json || true
+
+              echo "Creating shapes-pool in shapes-env..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/compute-pools \
+                -d @/config/pool/compute-pool.json || true
+
+              echo "Shapes SQL resources initialized successfully"
+          volumeMounts:
+            - name: catalog-config
+              mountPath: /config/catalog
+            - name: database-config
+              mountPath: /config/database
+            - name: pool-config
+              mountPath: /config/pool
+      volumes:
+        - name: catalog-config
+          configMap:
+            name: shapes-catalog-config
+        - name: database-config
+          configMap:
+            name: shapes-database-config
+        - name: pool-config
+          configMap:
+            name: shapes-pool-config
+---
+# Colors SQL Initialization Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: colors-sql-init
+  namespace: flink-colors
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sql-init
+          image: curlimages/curl:8.1.2
+          env:
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-oauth-client
+                  key: client-id
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kafka-oauth-client
+                  key: client-secret
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              CMF_URL="http://cmf-service.operator.svc.cluster.local:80/cmf/api/v1"
+              KEYCLOAK_URL="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+
+              echo "Obtaining OAuth token..."
+              TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=client_credentials" \
+                -d "client_id=${OAUTH_CLIENT_ID}" \
+                -d "client_secret=${OAUTH_CLIENT_SECRET}" \
+                -d "scope=kafka")
+
+              ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "${ACCESS_TOKEN}" ]; then
+                echo "Failed to obtain access token"
+                echo "Response: ${TOKEN_RESPONSE}"
+                exit 1
+              fi
+
+              echo "Token obtained successfully"
+
+              echo "Creating colors-catalog..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/catalogs/kafka \
+                -d @/config/catalog/catalog.json || true
+
+              echo "Creating colors-database in colors-catalog..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/catalogs/kafka/colors-catalog/databases \
+                -d @/config/database/database.json || true
+
+              echo "Creating colors-pool in colors-env..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/compute-pools \
+                -d @/config/pool/compute-pool.json || true
+
+              echo "Colors SQL resources initialized successfully"
+          volumeMounts:
+            - name: catalog-config
+              mountPath: /config/catalog
+            - name: database-config
+              mountPath: /config/database
+            - name: pool-config
+              mountPath: /config/pool
+      volumes:
+        - name: catalog-config
+          configMap:
+            name: colors-catalog-config
+        - name: database-config
+          configMap:
+            name: colors-database-config
+        - name: pool-config
+          configMap:
+            name: colors-pool-config

@@ -48,6 +48,24 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# Kafka service account - SystemAdmin role on CMF cluster
+# Allows kafka service account to create Catalogs, Databases, and ComputePools
+# Used by SQL initialization Jobs
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: kafka-cmf-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: kafka
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
 # Admin user - SystemAdmin role on CMF cluster
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding

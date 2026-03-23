@@ -1,0 +1,244 @@
+# ConfigMaps containing Flink SQL Catalog, Database, and ComputePool definitions
+# These are applied via Jobs that call the CMF API
+---
+# Shapes Catalog - References Schema Registry
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shapes-catalog-config
+  namespace: flink-shapes
+data:
+  catalog.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaCatalog",
+      "metadata": {
+        "name": "shapes-catalog"
+      },
+      "spec": {
+        "srInstance": {
+          "connectionConfig": {
+            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
+          }
+        }
+      }
+    }
+---
+# Shapes Database - References Kafka cluster
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shapes-database-config
+  namespace: flink-shapes
+data:
+  database.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaDatabase",
+      "metadata": {
+        "name": "shapes-database"
+      },
+      "spec": {
+        "kafkaCluster": {
+          "connectionConfig": {
+            "bootstrap.servers": "kafka.kafka.svc.cluster.local:9071"
+          }
+        },
+        "alterEnvironments": [
+          "shapes-env"
+        ]
+      }
+    }
+---
+# Shapes Compute Pool - Dedicated compute resources for shapes-env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shapes-pool-config
+  namespace: flink-shapes
+data:
+  compute-pool.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "ComputePool",
+      "metadata": {
+        "name": "shapes-pool",
+        "environment": "shapes-env"
+      },
+      "spec": {
+        "type": "DEDICATED",
+        "clusterSpec": {
+          "flinkVersion": "v1_20",
+          "image": "confluentinc/cp-flink-sql:1.20-cp1",
+          "flinkConfiguration": {
+            "taskmanager.numberOfTaskSlots": "2",
+            "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
+            "metrics.reporter.prom.port": "9249-9250",
+            "pipeline.operator-chaining.enabled": "false",
+            "execution.checkpointing.interval": "10s",
+            "state.checkpoints.dir": "s3://warehouse/checkpoints/shapes/",
+            "state.savepoints.dir": "s3://warehouse/savepoints/shapes/",
+            "s3.endpoint": "http://s3proxy.flink.svc.cluster.local:8000",
+            "s3.path.style.access": "true",
+            "s3.connection.ssl.enabled": "false",
+            "s3.access-key": "admin",
+            "s3.secret-key": "password",
+            "state.backend": "filesystem",
+            "state.checkpoints.timeout": "600000",
+            "execution.checkpointing.min-pause": "5000",
+            "execution.checkpointing.max-concurrent-checkpoints": "1",
+            "high-availability.type": "kubernetes",
+            "high-availability.storageDir": "s3://warehouse/ha/shapes/",
+            "state.checkpoints.num-retained": "10"
+          },
+          "podTemplate": {
+            "spec": {
+              "restartPolicy": "Always",
+              "terminationGracePeriodSeconds": 30,
+              "containers": [
+                {
+                  "name": "flink-main-container",
+                  "imagePullPolicy": "IfNotPresent",
+                  "securityContext": {
+                    "runAsUser": 9999
+                  }
+                }
+              ]
+            }
+          },
+          "taskManager": {
+            "resource": {
+              "cpu": 1.0,
+              "memory": "1700m"
+            }
+          },
+          "jobManager": {
+            "resource": {
+              "cpu": 1,
+              "memory": "1700m"
+            }
+          }
+        }
+      }
+    }
+---
+# Colors Catalog - References Schema Registry
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: colors-catalog-config
+  namespace: flink-colors
+data:
+  catalog.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaCatalog",
+      "metadata": {
+        "name": "colors-catalog"
+      },
+      "spec": {
+        "srInstance": {
+          "connectionConfig": {
+            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
+          }
+        }
+      }
+    }
+---
+# Colors Database - References Kafka cluster
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: colors-database-config
+  namespace: flink-colors
+data:
+  database.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaDatabase",
+      "metadata": {
+        "name": "colors-database"
+      },
+      "spec": {
+        "kafkaCluster": {
+          "connectionConfig": {
+            "bootstrap.servers": "kafka.kafka.svc.cluster.local:9071"
+          }
+        },
+        "alterEnvironments": [
+          "colors-env"
+        ]
+      }
+    }
+---
+# Colors Compute Pool - Dedicated compute resources for colors-env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: colors-pool-config
+  namespace: flink-colors
+data:
+  compute-pool.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "ComputePool",
+      "metadata": {
+        "name": "colors-pool",
+        "environment": "colors-env"
+      },
+      "spec": {
+        "type": "DEDICATED",
+        "clusterSpec": {
+          "flinkVersion": "v1_20",
+          "image": "confluentinc/cp-flink-sql:1.20-cp1",
+          "flinkConfiguration": {
+            "taskmanager.numberOfTaskSlots": "2",
+            "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
+            "metrics.reporter.prom.port": "9249-9250",
+            "pipeline.operator-chaining.enabled": "false",
+            "execution.checkpointing.interval": "10s",
+            "state.checkpoints.dir": "s3://warehouse/checkpoints/colors/",
+            "state.savepoints.dir": "s3://warehouse/savepoints/colors/",
+            "s3.endpoint": "http://s3proxy.flink.svc.cluster.local:8000",
+            "s3.path.style.access": "true",
+            "s3.connection.ssl.enabled": "false",
+            "s3.access-key": "admin",
+            "s3.secret-key": "password",
+            "state.backend": "filesystem",
+            "state.checkpoints.timeout": "600000",
+            "execution.checkpointing.min-pause": "5000",
+            "execution.checkpointing.max-concurrent-checkpoints": "1",
+            "high-availability.type": "kubernetes",
+            "high-availability.storageDir": "s3://warehouse/ha/colors/",
+            "state.checkpoints.num-retained": "10"
+          },
+          "podTemplate": {
+            "spec": {
+              "restartPolicy": "Always",
+              "terminationGracePeriodSeconds": 30,
+              "containers": [
+                {
+                  "name": "flink-main-container",
+                  "imagePullPolicy": "IfNotPresent",
+                  "securityContext": {
+                    "runAsUser": 9999
+                  }
+                }
+              ]
+            }
+          },
+          "taskManager": {
+            "resource": {
+              "cpu": 1.0,
+              "memory": "1700m"
+            }
+          },
+          "jobManager": {
+            "resource": {
+              "cpu": 1,
+              "memory": "1700m"
+            }
+          }
+        }
+      }
+    }

@@ -9,6 +9,8 @@ resources:
   - flink-environment-colors.yaml
   - flink-application-shapes.yaml
   - flink-application-colors.yaml
+  - sql-config-configmaps.yaml
+  - sql-init-jobs.yaml
 
 # Cluster-specific patches
 patches:
