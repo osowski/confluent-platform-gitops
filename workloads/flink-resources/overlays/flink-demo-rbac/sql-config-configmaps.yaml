@@ -62,8 +62,7 @@ data:
       "apiVersion": "cmf.confluent.io/v1",
       "kind": "ComputePool",
       "metadata": {
-        "name": "shapes-pool",
-        "environment": "shapes-env"
+        "name": "shapes-pool"
       },
       "spec": {
         "type": "DEDICATED",
@@ -183,8 +182,7 @@ data:
       "apiVersion": "cmf.confluent.io/v1",
       "kind": "ComputePool",
       "metadata": {
-        "name": "colors-pool",
-        "environment": "colors-env"
+        "name": "colors-pool"
       },
       "spec": {
         "type": "DEDICATED",
