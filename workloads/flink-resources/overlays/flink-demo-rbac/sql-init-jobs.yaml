@@ -18,13 +18,13 @@ spec:
             - name: OAUTH_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: kafka-oauth-client
-                  key: client-id
+                  name: cmf-mds-oauth-client
+                  key: clientId
             - name: OAUTH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: kafka-oauth-client
-                  key: client-secret
+                  name: cmf-mds-oauth-client
+                  key: clientSecret
           command:
             - /bin/sh
             - -c
@@ -105,13 +105,13 @@ spec:
             - name: OAUTH_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: kafka-oauth-client
-                  key: client-id
+                  name: cmf-mds-oauth-client
+                  key: clientId
             - name: OAUTH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: kafka-oauth-client
-                  key: client-secret
+                  name: cmf-mds-oauth-client
+                  key: clientSecret
           command:
             - /bin/sh
             - -c
