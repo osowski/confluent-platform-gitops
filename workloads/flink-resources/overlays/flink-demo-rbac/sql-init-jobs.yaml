@@ -51,6 +51,27 @@ spec:
 
               echo "Token obtained successfully"
 
+              echo "Checking if kafka-oauth-secret exists..."
+              SECRET_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/secrets/kafka-oauth-secret)
+
+              if [ "${SECRET_EXISTS}" = "404" ]; then
+                echo "Creating kafka-oauth-secret..."
+                curl -v -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X POST ${CMF_URL}/secrets \
+                  -d @/config/secret/secret.json
+              else
+                echo "kafka-oauth-secret already exists (HTTP ${SECRET_EXISTS})"
+              fi
+
+              echo "Creating shapes-env secret mapping..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
+                -d @/config/secret-mapping/secret-mapping.json || true
+
               echo "Creating shapes-catalog..."
               curl -v -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -77,6 +98,10 @@ spec:
               mountPath: /config/database
             - name: pool-config
               mountPath: /config/pool
+            - name: secret-config
+              mountPath: /config/secret
+            - name: secret-mapping-config
+              mountPath: /config/secret-mapping
       volumes:
         - name: catalog-config
           configMap:
@@ -87,6 +112,12 @@ spec:
         - name: pool-config
           configMap:
             name: shapes-pool-config
+        - name: secret-config
+          configMap:
+            name: kafka-oauth-secret-config
+        - name: secret-mapping-config
+          configMap:
+            name: shapes-secret-mapping-config
 ---
 # Colors SQL Initialization Job
 apiVersion: batch/v1
@@ -138,6 +169,27 @@ spec:
 
               echo "Token obtained successfully"
 
+              echo "Checking if kafka-oauth-secret exists..."
+              SECRET_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/secrets/kafka-oauth-secret)
+
+              if [ "${SECRET_EXISTS}" = "404" ]; then
+                echo "Creating kafka-oauth-secret..."
+                curl -v -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X POST ${CMF_URL}/secrets \
+                  -d @/config/secret/secret.json
+              else
+                echo "kafka-oauth-secret already exists (HTTP ${SECRET_EXISTS})"
+              fi
+
+              echo "Creating colors-env secret mapping..."
+              curl -v -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
+                -d @/config/secret-mapping/secret-mapping.json || true
+
               echo "Creating colors-catalog..."
               curl -v -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -164,6 +216,10 @@ spec:
               mountPath: /config/database
             - name: pool-config
               mountPath: /config/pool
+            - name: secret-config
+              mountPath: /config/secret
+            - name: secret-mapping-config
+              mountPath: /config/secret-mapping
       volumes:
         - name: catalog-config
           configMap:
@@ -174,3 +230,9 @@ spec:
         - name: pool-config
           configMap:
             name: colors-pool-config
+        - name: secret-config
+          configMap:
+            name: kafka-oauth-secret-config
+        - name: secret-mapping-config
+          configMap:
+            name: colors-secret-mapping-config
