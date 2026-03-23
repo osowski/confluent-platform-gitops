@@ -39,8 +39,7 @@ spec:
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
                 -d "client_id=${OAUTH_CLIENT_ID}" \
-                -d "client_secret=${OAUTH_CLIENT_SECRET}" \
-                -d "scope=kafka")
+                -d "client_secret=${OAUTH_CLIENT_SECRET}")
 
               ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
@@ -127,8 +126,7 @@ spec:
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
                 -d "client_id=${OAUTH_CLIENT_ID}" \
-                -d "client_secret=${OAUTH_CLIENT_SECRET}" \
-                -d "scope=kafka")
+                -d "client_secret=${OAUTH_CLIENT_SECRET}")
 
               ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
