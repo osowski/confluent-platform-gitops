@@ -13,6 +13,8 @@ spec:
   configs:
     cleanup.policy: "delete"
     retention.ms: "172800000"  # 2 days
+  kafkaRestClassRef:
+    name: default
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -25,6 +27,8 @@ spec:
   configs:
     cleanup.policy: "delete"
     retention.ms: "172800000"  # 2 days
+  kafkaRestClassRef:
+    name: default
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -37,6 +41,8 @@ spec:
   configs:
     cleanup.policy: "compact"
     min.compaction.lag.ms: "0"
+  kafkaRestClassRef:
+    name: default
 ---
 # Colors group topics
 apiVersion: platform.confluent.io/v1beta1
@@ -50,6 +56,8 @@ spec:
   configs:
     cleanup.policy: "delete"
     retention.ms: "172800000"  # 2 days
+  kafkaRestClassRef:
+    name: default
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -62,6 +70,8 @@ spec:
   configs:
     cleanup.policy: "delete"
     retention.ms: "172800000"  # 2 days
+  kafkaRestClassRef:
+    name: default
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
@@ -74,3 +84,5 @@ spec:
   configs:
     cleanup.policy: "compact"
     min.compaction.lag.ms: "0"
+  kafkaRestClassRef:
+    name: default
