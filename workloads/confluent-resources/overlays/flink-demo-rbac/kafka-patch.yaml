@@ -68,6 +68,7 @@ spec:
     superUsers:
       - User:admin@osow.ski
       - User:kafka
+      - User:cmf
 
   # ==============================================================================
   # MDS (METADATA SERVICE) - RBAC and SSO/OIDC configuration
