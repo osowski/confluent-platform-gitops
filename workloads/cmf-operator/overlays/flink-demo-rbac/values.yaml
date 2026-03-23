@@ -14,6 +14,13 @@ env:
   - name: LOGGING_LEVEL_IO_CONFLUENT_COMMON_SECURITY
     value: DEBUG
 
+# Encryption key for CMF Secrets - Required for storing Flink SQL secret data
+# CMF uses AES-GCM encryption to store spec.data in its metadata database
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
 # OAuth authentication configuration for CMF REST API
 # Validates bearer tokens from Keycloak for incoming client requests
 # IMPORTANT: CMF validates MDS-signed tokens using the MDS public key

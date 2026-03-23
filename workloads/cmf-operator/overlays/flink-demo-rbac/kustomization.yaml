@@ -5,5 +5,6 @@ namespace: operator
 
 resources:
   - cmf-mds-oauth-secret.yaml
+  - cmf-encryption-key.yaml
   - postgres-secret.yaml
   - postgres.yaml
