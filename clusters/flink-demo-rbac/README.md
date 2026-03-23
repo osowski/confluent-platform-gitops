@@ -306,17 +306,113 @@ kustomize build infrastructure/argocd-ingress/overlays/flink-demo-rbac
 
 ## Access
 
-### ArgoCD UI
+### Required /etc/hosts Entries
+
+Add these entries to `/etc/hosts` for local DNS resolution:
 
 ```bash
-# Get cluster-specific hostname (after argocd-ingress is deployed)
-kubectl get ingressroute -n argocd argocd-server -o yaml | yq '.spec.routes[0].match'
-
-# Get admin password
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+sudo tee -a /etc/hosts << 'EOF'
+127.0.0.1  argocd.flink-demo-rbac.confluentdemo.local
+127.0.0.1  controlcenter.flink-demo-rbac.confluentdemo.local
+127.0.0.1  cmf.flink-demo-rbac.confluentdemo.local
+127.0.0.1  mds.flink-demo-rbac.confluentdemo.local
+127.0.0.1  keycloak.flink-demo-rbac.confluentdemo.local
+EOF
 ```
 
-Navigate to `https://argocd.flink-demo-rbac.confluentdemo.local` and login with username `admin`.
+### Services via IngressRoute
+
+All services are exposed through Traefik IngressRoutes (preferred method):
+
+**ArgoCD UI:**
+```bash
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Access at: https://argocd.flink-demo-rbac.confluentdemo.local
+# Username: admin
+```
+
+**Control Center UI:**
+```bash
+# Access at: https://controlcenter.flink-demo-rbac.confluentdemo.local
+# Username: admin@osow.ski (via Keycloak SSO)
+# Password: admin123
+```
+
+**Keycloak Admin Console:**
+```bash
+# Access at: http://keycloak.flink-demo-rbac.confluentdemo.local:30080
+# Username: flink-admin
+# Password: admin123
+```
+
+**Confluent Manager for Apache Flink (CMF) API:**
+```bash
+export CONFLUENT_CMF_URL=http://cmf.flink-demo-rbac.confluentdemo.local/cmf
+
+# List Flink environments
+confluent flink environment list
+
+# List applications
+confluent flink application list --environment shapes-env
+```
+
+**MDS (Metadata Service) for CLI Authentication:**
+```bash
+export CONFLUENT_PLATFORM_SSO=true
+
+# Login via MDS ingress
+confluent login --url http://mds.flink-demo-rbac.confluentdemo.local --no-browser
+
+# Follow device grant flow prompts
+```
+
+### Port-Forwarding (Fallback/Troubleshooting)
+
+While services are accessible via IngressRoutes, port-forwarding can be used for direct access or troubleshooting:
+
+**MDS (if ingress authentication fails):**
+```bash
+# Port-forward MDS
+kubectl port-forward -n kafka svc/kafka 8090:8090
+
+# In another terminal, login
+export CONFLUENT_PLATFORM_SSO=true
+confluent login --url http://localhost:8090 --no-browser
+```
+
+**CMF API (if ingress is unavailable):**
+```bash
+# Port-forward CMF
+kubectl port-forward -n operator svc/cmf-service 8081:80
+
+# Use local URL
+export CONFLUENT_CMF_URL=http://localhost:8081/cmf
+confluent flink environment list
+```
+
+**Kafka Bootstrap (for direct client access):**
+```bash
+# Kafka is also exposed via NodePort at 31000
+# Bootstrap: kafka.flink-demo-rbac.confluentdemo.local:31000
+```
+
+### Confluent CLI Environment Variables
+
+For convenience, set these environment variables:
+
+```bash
+export CONFLUENT_PLATFORM_SSO=true
+export CONFLUENT_CMF_URL=http://cmf.flink-demo-rbac.confluentdemo.local/cmf
+
+# Login once via MDS ingress
+confluent login --url http://mds.flink-demo-rbac.confluentdemo.local --no-browser
+
+# Then use Flink commands
+confluent flink environment list
+confluent flink application list --environment shapes-env
+```
 
 ## Customization
 
