@@ -239,3 +239,167 @@ spec:
     flinkEnvironmentId: colors-env
   kafkaRestClassRef:
     name: default
+---
+# ==============================================================================
+# KAFKA TOPIC RBAC - Group-based topic access control
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* topics
+# Allows shapes group users to create, read, write, and delete topics with shapes- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* topics
+# Allows colors group users to create, read, write, and delete topics with colors- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# SCHEMA REGISTRY RBAC - Group-based schema access control
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* subjects
+# Allows shapes group users to create, read, update, and delete schemas with shapes- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Subject
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* subjects
+# Allows colors group users to create, read, update, and delete schemas with colors- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Subject
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# CONSUMER GROUP RBAC - Required for Flink SQL and streaming applications
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* consumer groups
+# Allows shapes group users to create and manage consumer groups for their Flink applications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* consumer groups
+# Allows colors group users to create and manage consumer groups for their Flink applications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# TRANSACTIONAL ID RBAC - Required for exactly-once Flink processing
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* transactional IDs
+# Allows shapes group Flink applications to use transactions for exactly-once processing
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* transactional IDs
+# Allows colors group Flink applications to use transactions for exactly-once processing
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
