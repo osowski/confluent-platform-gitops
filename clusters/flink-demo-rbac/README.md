@@ -414,6 +414,56 @@ confluent flink environment list
 confluent flink application list --environment shapes-env
 ```
 
+## Kafka Resource Naming Conventions
+
+This cluster enforces group-based RBAC for Kafka resources using prefixed naming patterns.
+
+### Resource Naming Patterns
+
+**Shapes Group Resources:**
+- Topics: `shapes-*` (e.g., `shapes-input`, `shapes-output`, `shapes-state`)
+- Subjects: `shapes-*` (e.g., `shapes-value`, `shapes-key`)
+- Consumer Groups: `shapes-*` (e.g., `shapes-consumer-1`)
+- Transactional IDs: `shapes-*` (e.g., `shapes-tx-1`)
+
+**Colors Group Resources:**
+- Topics: `colors-*` (e.g., `colors-input`, `colors-output`, `colors-state`)
+- Subjects: `colors-*` (e.g., `colors-value`, `colors-key`)
+- Consumer Groups: `colors-*` (e.g., `colors-consumer-1`)
+- Transactional IDs: `colors-*` (e.g., `colors-tx-1`)
+
+### RBAC Permissions
+
+Each group has `ResourceOwner` role on their prefixed resources, granting:
+- **Topics:** Create, read, write, delete, and describe
+- **Subjects:** Register, update, delete, and view schemas
+- **Consumer Groups:** Create and manage consumer groups for Flink applications
+- **Transactional IDs:** Use transactions for exactly-once processing
+
+**Admin User:**
+- `SystemAdmin` role on both Kafka cluster and CMF cluster
+- Full access to all resources across all groups
+
+**Cross-Group Access:**
+- Groups CANNOT access each other's resources
+- RBAC enforcement prevents `shapes` group from accessing `colors-*` resources and vice versa
+
+### Pre-created Topics
+
+The following topics are pre-created via KafkaTopic resources in `workloads/confluent-resources/overlays/flink-demo-rbac/topics.yaml`:
+
+**Shapes topics:**
+- `shapes-input` - Input topic (3 partitions, 7-day retention)
+- `shapes-output` - Output topic (3 partitions, 7-day retention)
+- `shapes-state` - State/changelog topic (3 partitions, compacted)
+
+**Colors topics:**
+- `colors-input` - Input topic (3 partitions, 7-day retention)
+- `colors-output` - Output topic (3 partitions, 7-day retention)
+- `colors-state` - State/changelog topic (3 partitions, compacted)
+
+Users can create additional topics following their group's naming pattern, subject to RBAC permissions.
+
 ## Customization
 
 This cluster was created using `scripts/new-cluster.sh`. Customize by:

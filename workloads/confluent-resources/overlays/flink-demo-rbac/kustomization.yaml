@@ -11,6 +11,7 @@ resources:
   - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
   - confluentrolebindings.yaml
+  - topics.yaml  # Group-based Kafka topics (shapes-*, colors-*)
 
 # Cluster-specific patches
 patches:
