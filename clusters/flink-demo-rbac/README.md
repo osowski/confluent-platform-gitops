@@ -425,20 +425,34 @@ This cluster enforces group-based RBAC for Kafka resources using prefixed naming
 - Subjects: `shapes-*` (e.g., `shapes-value`, `shapes-key`)
 - Consumer Groups: `shapes-*` (e.g., `shapes-consumer-1`)
 - Transactional IDs: `shapes-*` (e.g., `shapes-tx-1`)
+- Flink SQL Catalog: `shapes-catalog`
+- Flink SQL Database: `shapes-database`
 
 **Colors Group Resources:**
 - Topics: `colors-*` (e.g., `colors-input`, `colors-output`, `colors-state`)
 - Subjects: `colors-*` (e.g., `colors-value`, `colors-key`)
 - Consumer Groups: `colors-*` (e.g., `colors-consumer-1`)
 - Transactional IDs: `colors-*` (e.g., `colors-tx-1`)
+- Flink SQL Catalog: `colors-catalog`
+- Flink SQL Database: `colors-database`
 
 ### RBAC Permissions
 
-Each group has `ResourceOwner` role on their prefixed resources, granting:
+Each group has permissions on their group-specific resources:
+
+**Kafka Resources** (`ResourceOwner` role on prefixed resources):
 - **Topics:** Create, read, write, delete, and describe
 - **Subjects:** Register, update, delete, and view schemas
 - **Consumer Groups:** Create and manage consumer groups for Flink applications
 - **Transactional IDs:** Use transactions for exactly-once processing
+
+**Flink SQL Resources** (`DeveloperManage` role):
+- **KafkaCatalog:** View and manage group-specific catalogs (shapes-catalog, colors-catalog)
+- **KafkaDatabase:** View and manage group-specific databases (shapes-database, colors-database)
+
+**Flink Resources** (`DeveloperManage` and `ClusterAdmin` roles):
+- **FlinkEnvironment:** Manage group-specific environments
+- **FlinkApplication:** Full control over applications in group environment
 
 **Admin User:**
 - `SystemAdmin` role on both Kafka cluster and CMF cluster
