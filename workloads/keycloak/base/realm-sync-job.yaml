@@ -134,8 +134,8 @@ spec:
                 curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CONTROLCENTER_CLIENT_ID" \
                   -H "Authorization: Bearer $ADMIN_TOKEN" \
                   -H "Content-Type: application/json" \
-                  -d '{"secret":"controlcenter-secret","serviceAccountsEnabled":true}'
-                echo "Control Center client secret and service account enabled"
+                  -d '{"secret":"controlcenter-secret","serviceAccountsEnabled":true,"attributes":{"oauth2.device.authorization.grant.enabled":"true"}}'
+                echo "Control Center client secret, service account, and device auth flow enabled"
               else
                 echo "WARNING: Control Center client not found, may need realm re-import"
               fi
