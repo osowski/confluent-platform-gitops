@@ -57,40 +57,51 @@ spec:
                 -X GET ${CMF_URL}/secrets/kafka-oauth-secret-shapes)
 
               if [ "${SECRET_EXISTS}" = "404" ]; then
-                echo "Creating kafka-oauth-secret-shapes..."
-                curl -H "Content-Type: application/json" \
+                echo "[1/5] Creating CMF Secret: kafka-oauth-secret-shapes"
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                   -X POST ${CMF_URL}/secrets \
-                  -d @/config/secret/secret.json
+                  -d @/config/secret/secret.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                echo "  -> HTTP $HTTP_CODE"
               else
-                echo "kafka-oauth-secret-shapes already exists (HTTP ${SECRET_EXISTS})"
+                echo "[1/5] Secret kafka-oauth-secret-shapes already exists (HTTP ${SECRET_EXISTS})"
               fi
 
-              echo "Creating shapes-env secret mapping..."
-              curl -H "Content-Type: application/json" \
+              echo "[2/5] Creating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
-                -d @/config/secret-mapping/secret-mapping.json || true
+                -d @/config/secret-mapping/secret-mapping.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating shapes-catalog..."
-              curl -H "Content-Type: application/json" \
+              echo "[3/5] Creating KafkaCatalog: shapes-catalog"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka \
-                -d @/config/catalog/catalog.json || true
+                -d @/config/catalog/catalog.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating shapes-database in shapes-catalog..."
-              curl -H "Content-Type: application/json" \
+              echo "[4/5] Creating KafkaDatabase: shapes-database in shapes-catalog"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
-                -d @/config/database/database.json || true
+                -d @/config/database/database.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating shapes-pool in shapes-env..."
-              curl -H "Content-Type: application/json" \
+              echo "[5/5] Creating ComputePool: shapes-pool in shapes-env"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
-                -d @/config/pool/compute-pool.json || true
+                -d @/config/pool/compute-pool.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Shapes SQL resources initialized successfully"
+              echo ""
+              echo "Shapes environment initialization complete"
           volumeMounts:
             - name: catalog-config
               mountPath: /config/catalog
@@ -175,40 +186,51 @@ spec:
                 -X GET ${CMF_URL}/secrets/kafka-oauth-secret-colors)
 
               if [ "${SECRET_EXISTS}" = "404" ]; then
-                echo "Creating kafka-oauth-secret-colors..."
-                curl -H "Content-Type: application/json" \
+                echo "[1/5] Creating CMF Secret: kafka-oauth-secret-colors"
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                   -X POST ${CMF_URL}/secrets \
-                  -d @/config/secret/secret.json
+                  -d @/config/secret/secret.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                echo "  -> HTTP $HTTP_CODE"
               else
-                echo "kafka-oauth-secret-colors already exists (HTTP ${SECRET_EXISTS})"
+                echo "[1/5] Secret kafka-oauth-secret-colors already exists (HTTP ${SECRET_EXISTS})"
               fi
 
-              echo "Creating colors-env secret mapping..."
-              curl -H "Content-Type: application/json" \
+              echo "[2/5] Creating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
-                -d @/config/secret-mapping/secret-mapping.json || true
+                -d @/config/secret-mapping/secret-mapping.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating colors-catalog..."
-              curl -H "Content-Type: application/json" \
+              echo "[3/5] Creating KafkaCatalog: colors-catalog"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka \
-                -d @/config/catalog/catalog.json || true
+                -d @/config/catalog/catalog.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating colors-database in colors-catalog..."
-              curl -H "Content-Type: application/json" \
+              echo "[4/5] Creating KafkaDatabase: colors-database in colors-catalog"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/colors-catalog/databases \
-                -d @/config/database/database.json || true
+                -d @/config/database/database.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Creating colors-pool in colors-env..."
-              curl -H "Content-Type: application/json" \
+              echo "[5/5] Creating ComputePool: colors-pool in colors-env"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
-                -d @/config/pool/compute-pool.json || true
+                -d @/config/pool/compute-pool.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              echo "  -> HTTP $HTTP_CODE"
 
-              echo "Colors SQL resources initialized successfully"
+              echo ""
+              echo "Colors environment initialization complete"
           volumeMounts:
             - name: catalog-config
               mountPath: /config/catalog
