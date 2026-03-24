@@ -32,7 +32,7 @@ spec:
             - name: KAFKA_TOPIC
               value: "shapes-input"
 
-            # Data type for message generation
+            # Data type label (for logging/identification only - all producers generate same sensor data)
             - name: DATA_TYPE
               value: "shapes"
 
@@ -105,7 +105,7 @@ spec:
             - name: KAFKA_TOPIC
               value: "colors-input"
 
-            # Data type for message generation
+            # Data type label (for logging/identification only - all producers generate same sensor data)
             - name: DATA_TYPE
               value: "colors"
 
