@@ -12,6 +12,7 @@ resources:
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
   - confluentrolebindings.yaml
   - topics.yaml  # Group-based Kafka topics (shapes-*, colors-*)
+  - schemas.yaml  # Avro schemas for Flink SQL table discovery (shapes-*, colors-*)
 
 # Cluster-specific patches
 patches:
