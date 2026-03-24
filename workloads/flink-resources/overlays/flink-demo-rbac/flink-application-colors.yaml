@@ -45,6 +45,8 @@ spec:
       containers:
         - name: flink-main-container
           env:
+            - name: ENABLE_BUILT_IN_PLUGINS
+              value: "flink-s3-fs-hadoop-2.1.1-cp1.jar"
             # OAuth client ID from secret
             - name: KAFKA_OAUTH_CLIENT_ID
               valueFrom:
