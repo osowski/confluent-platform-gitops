@@ -158,7 +158,9 @@ spec:
     parallelism: 2
 
     # Upgrade mode (stateful with checkpointing)
-    upgradeMode: last-state
+    # stateless for first deployment
+    # last-state to recover from previous state
+    upgradeMode: stateless
 
     # Job state
     state: running
