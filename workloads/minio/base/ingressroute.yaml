@@ -1,0 +1,36 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+  labels:
+    app: minio
+spec:
+  routes:
+    - match: Host(`minio.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: minio
+          port: 9000
+          scheme: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-console
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+  labels:
+    app: minio
+spec:
+  routes:
+    - match: Host(`minio-console.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: minio
+          port: 9001
+          scheme: http

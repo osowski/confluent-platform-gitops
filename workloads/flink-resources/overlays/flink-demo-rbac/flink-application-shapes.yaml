@@ -125,8 +125,8 @@ spec:
 
     # State backend configuration
     state.backend: filesystem
-    state.checkpoints.dir: "s3://warehouse/checkpoints/shapes/"
-    state.savepoints.dir: "s3://warehouse/savepoints/shapes/"
+    state.checkpoints.dir: "s3://warehouse/checkpoints/shapes"
+    state.savepoints.dir: "s3://warehouse/savepoints/shapes"
     state.checkpoints.num-retained: "10"
 
     # S3 configuration (points to s3proxy service)
@@ -138,7 +138,7 @@ spec:
 
     # High availability configuration
     high-availability.type: kubernetes
-    high-availability.storageDir: "s3://warehouse/ha/shapes/"
+    high-availability.storageDir: "s3://warehouse/ha/shapes"
 
   # Job configuration
   job:
