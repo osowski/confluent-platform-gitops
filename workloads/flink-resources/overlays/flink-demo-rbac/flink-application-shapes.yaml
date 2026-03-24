@@ -1,9 +1,9 @@
-# FlinkApplication for shapes group - StateMachine example
+# FlinkApplication for shapes group - Kafka-connected with OAuth
 # Deployed in flink-shapes namespace, accessible only to shapes group members
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkApplication
 metadata:
-  name: shapes-statemachine
+  name: shapes
   namespace: flink-shapes
 spec:
   # Reference to FlinkEnvironment
@@ -17,11 +17,15 @@ spec:
   # Flink version
   flinkVersion: v1_20
 
-  # Flink Docker image
-  image: confluentinc/cp-flink:1.20.3-cp1
+  # Flink Docker image with bundled application JAR
+  image: quay.io/osowski/flink-kafka-demo:2.1.1-202603231630
+
+  # ServiceAccount for Kubernetes RBAC
+  serviceAccount: flink
 
   # JobManager configuration
   jobManager:
+    replicas: 1
     resource:
       memory: "1048m"
       cpu: 1
@@ -31,17 +35,83 @@ spec:
     resource:
       memory: "1048m"
       cpu: 1
+    replicas: 2
 
-  # ServiceAccount for Flink pods
-  serviceAccount: flink
+  # OAuth credentials injection
+  # Inject OAuth client credentials from Kubernetes Secret into pod environment
+  podTemplate:
+    spec:
+      containers:
+        - name: flink-main-container
+          env:
+            # OAuth client ID from secret
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-flink-oauth
+                  key: client-id
+            # OAuth client secret from secret
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-flink-oauth
+                  key: client-secret
+
+  # Flink configuration - Kafka OAuth Authentication
+  flinkConfiguration:
+    # Kafka bootstrap servers (internal SASL_PLAINTEXT listener)
+    # Port 9071 is the internal listener with OAuth enabled
+    kafka.bootstrap.servers: kafka.kafka.svc.cluster.local:9071
+
+    # Kafka security configuration
+    kafka.security.protocol: SASL_PLAINTEXT
+    kafka.sasl.mechanism: OAUTHBEARER
+
+    # JAAS configuration for OAuth authentication
+    # Uses environment variables injected via podTemplate
+    kafka.sasl.jaas.config: |
+      org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required
+      clientId="${env:KAFKA_OAUTH_CLIENT_ID}"
+      clientSecret="${env:KAFKA_OAUTH_CLIENT_SECRET}"
+      tokenEndpointUri="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token";
+
+    # OAuth callback handler
+    kafka.sasl.login.callback.handler.class: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
+
+    # Consumer configuration
+    kafka.consumer.group.id: shapes-autoscaler
+    kafka.consumer.auto.offset.reset: earliest
+
+    # Producer configuration
+    kafka.producer.transaction.timeout.ms: "900000"
+
+    # Application-specific topic configuration
+    kafka.input.topic: shapes-input
+    kafka.output.topic: shapes-output
+
+    # Flink autoscaling configuration (disabled for this demo environment)
+    kubernetes.operator.job.autoscaler.enabled: "false"
+
+    # Flink task slots
+    taskmanager.numberOfTaskSlots: "2"
+
+    # Prometheus metrics
+    metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+    metrics.reporter.prom.port: "9249-9250"
 
   # Job configuration
   job:
-    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    # JAR location (bundled in container image)
+    jarURI: local:///opt/flink/usrlib/flink-autoscaler.jar
+
+    # Parallelism
     parallelism: 2
+
+    # Upgrade mode (stateless for demo)
     upgradeMode: stateless
+
+    # Job state
     state: running
 
-  # Flink configuration overrides
-  flinkConfiguration:
-    taskmanager.numberOfTaskSlots: "2"
+    # Application arguments
+    args: []
