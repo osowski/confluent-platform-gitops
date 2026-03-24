@@ -13,7 +13,7 @@ data:
       "registrationAllowed": false,
       "resetPasswordAllowed": false,
       "rememberMe": true,
-      "accessTokenLifespan": 7200,
+      "accessTokenLifespan": 604800,
       "ssoSessionIdleTimeout": 7200,
       "ssoSessionMaxLifespan": 36000,
       "groups": [
