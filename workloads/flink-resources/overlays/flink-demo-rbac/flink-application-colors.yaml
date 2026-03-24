@@ -64,6 +64,17 @@ spec:
               value: colors-input
             - name: KAFKA_OUTPUT_TOPIC
               value: colors-output
+            # S3 credentials from reflected secret
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
 
   # Flink configuration - Kafka OAuth Authentication
   flinkConfiguration:
@@ -129,12 +140,10 @@ spec:
     state.savepoints.dir: "s3://warehouse/savepoints/colors"
     state.checkpoints.num-retained: "10"
 
-    # S3 configuration (points to s3proxy service)
+    # S3 configuration (points to MinIO service)
     s3.endpoint: "http://minio.flink.svc.cluster.local:9000"
     s3.path.style.access: "true"
     s3.connection.ssl.enabled: "false"
-    s3.access-key: "admin"
-    s3.secret-key: "password"
 
     # High availability configuration
     high-availability.type: kubernetes
