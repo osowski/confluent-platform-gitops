@@ -10,7 +10,7 @@ metadata:
     app: minio
 spec:
   routes:
-    - match: Host(`minio.flink-demo.confluentdemo.local`)
+    - match: Host(`s3.CLUSTER_NAME.DOMAIN`)
       kind: Rule
       services:
         - name: minio
@@ -28,7 +28,7 @@ metadata:
     app: minio
 spec:
   routes:
-    - match: Host(`minio-console.flink-demo.confluentdemo.local`)
+    - match: Host(`s3-console.CLUSTER_NAME.DOMAIN`)
       kind: Rule
       services:
         - name: minio
