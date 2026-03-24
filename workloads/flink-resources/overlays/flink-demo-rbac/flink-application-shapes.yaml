@@ -18,7 +18,8 @@ spec:
   flinkVersion: v2_1
 
   # Flink Docker image with bundled application JAR
-  image: quay.io/osowski/flink-kafka-demo:2.1.1-202603231630
+  # Updated to include Flink configuration property support for OAuth/SASL
+  image: quay.io/osowski/flink-kafka-demo:2.1.1-202603232320
 
   # ServiceAccount for Kubernetes RBAC
   serviceAccount: flink
