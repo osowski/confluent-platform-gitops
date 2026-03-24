@@ -434,8 +434,8 @@ spec:
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka
   resourcePatterns:
-    - patternType: PREFIXED
-      name: ""
+    - patternType: LITERAL
+      name: "*"
       resourceType: Subject
 ---
 # ==============================================================================
