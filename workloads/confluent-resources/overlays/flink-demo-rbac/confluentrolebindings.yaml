@@ -474,6 +474,24 @@ spec:
       name: "*"
       resourceType: Subject
 ---
+# Admin user - ResourceOwner on all subjects for schema deserialization in Control Center
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@osow.ski
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
 # Shapes group - ResourceOwner on shapes-* subjects for Flink SQL access
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
