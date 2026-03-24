@@ -1,0 +1,50 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    app: minio
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: minio-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mc
+        image: quay.io/minio/mc:latest
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for MinIO to be ready..."
+          until mc alias set myminio http://minio.flink.svc.cluster.local:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+            echo "MinIO not ready, waiting..."
+            sleep 5
+          done
+          echo "MinIO is ready"
+
+          echo "Creating warehouse bucket if it doesn't exist..."
+          mc mb myminio/warehouse --ignore-existing
+
+          echo "MinIO initialization complete"

@@ -64,6 +64,17 @@ spec:
               value: shapes-input
             - name: KAFKA_OUTPUT_TOPIC
               value: shapes-output
+            # S3 credentials from reflected secret
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-user
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: root-password
 
   # Flink configuration - Kafka OAuth Authentication
   flinkConfiguration:
@@ -124,21 +135,19 @@ spec:
     execution.checkpointing.timeout: "600000"
 
     # State backend configuration
-    state.backend: filesystem
-    state.checkpoints.dir: "s3://warehouse/checkpoints/shapes/"
-    state.savepoints.dir: "s3://warehouse/savepoints/shapes/"
+    state.backend: hashmap
+    state.checkpoints.dir: "s3://warehouse/checkpoints/shapes"
+    state.savepoints.dir: "s3://warehouse/savepoints/shapes"
     state.checkpoints.num-retained: "10"
 
-    # S3 configuration (points to s3proxy service)
-    s3.endpoint: "http://s3proxy.flink.svc.cluster.local:8000"
+    # S3 configuration (points to MinIO service)
+    s3.endpoint: "http://minio.flink.svc.cluster.local:9000"
     s3.path.style.access: "true"
     s3.connection.ssl.enabled: "false"
-    s3.access-key: "admin"
-    s3.secret-key: "password"
 
     # High availability configuration
     high-availability.type: kubernetes
-    high-availability.storageDir: "s3://warehouse/ha/shapes/"
+    high-availability.storageDir: "s3://warehouse/ha/shapes"
 
   # Job configuration
   job:
@@ -149,7 +158,9 @@ spec:
     parallelism: 2
 
     # Upgrade mode (stateful with checkpointing)
-    upgradeMode: last-state
+    # stateless for first deployment
+    # last-state to recover from previous state
+    upgradeMode: stateless
 
     # Job state
     state: running
