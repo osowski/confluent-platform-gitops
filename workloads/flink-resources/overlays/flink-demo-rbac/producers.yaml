@@ -1,0 +1,146 @@
+---
+# Shapes Producer Deployment
+# Writes messages to shapes-input topic using OAuth authentication
+# Default replicas: 0 (scale to 1 to enable)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shapes-producer
+  namespace: flink-shapes
+  labels:
+    app: shapes-producer
+spec:
+  replicas: 0  # Disabled by default - scale to 1 to enable
+  selector:
+    matchLabels:
+      app: shapes-producer
+  template:
+    metadata:
+      labels:
+        app: shapes-producer
+    spec:
+      containers:
+        - name: producer
+          image: quay.io/osowski/python-kafka-producer:latest
+          imagePullPolicy: Always
+          env:
+            # Kafka connection (internal OAuth listener)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+
+            # Topic configuration
+            - name: KAFKA_TOPIC
+              value: "shapes-input"
+
+            # Data type for message generation
+            - name: DATA_TYPE
+              value: "shapes"
+
+            # Producer rate (messages per second)
+            - name: MESSAGE_RATE
+              value: "10"
+
+            # Security configuration
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SASL_PLAINTEXT"
+
+            - name: KAFKA_SASL_MECHANISM
+              value: "OAUTHBEARER"
+
+            # OAuth token endpoint
+            - name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+              value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+
+            # OAuth credentials from secret
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-producer-oauth
+                  key: client-id
+
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-producer-oauth
+                  key: client-secret
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+# Colors Producer Deployment
+# Writes messages to colors-input topic using OAuth authentication
+# Default replicas: 0 (scale to 1 to enable)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: colors-producer
+  namespace: flink-colors
+  labels:
+    app: colors-producer
+spec:
+  replicas: 0  # Disabled by default - scale to 1 to enable
+  selector:
+    matchLabels:
+      app: colors-producer
+  template:
+    metadata:
+      labels:
+        app: colors-producer
+    spec:
+      containers:
+        - name: producer
+          image: quay.io/osowski/python-kafka-producer:latest
+          imagePullPolicy: Always
+          env:
+            # Kafka connection (internal OAuth listener)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+
+            # Topic configuration
+            - name: KAFKA_TOPIC
+              value: "colors-input"
+
+            # Data type for message generation
+            - name: DATA_TYPE
+              value: "colors"
+
+            # Producer rate (messages per second)
+            - name: MESSAGE_RATE
+              value: "10"
+
+            # Security configuration
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SASL_PLAINTEXT"
+
+            - name: KAFKA_SASL_MECHANISM
+              value: "OAUTHBEARER"
+
+            # OAuth token endpoint
+            - name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+              value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+
+            # OAuth credentials from secret
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: colors-producer-oauth
+                  key: client-id
+
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: colors-producer-oauth
+                  key: client-secret
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

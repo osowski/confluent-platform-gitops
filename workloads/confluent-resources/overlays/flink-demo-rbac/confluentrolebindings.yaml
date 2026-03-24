@@ -510,3 +510,83 @@ spec:
       resourceType: TransactionalId
   kafkaRestClassRef:
     name: default
+---
+# ==============================================================================
+# PRODUCER SERVICE ACCOUNT RBAC - OAuth service account permissions
+# ==============================================================================
+# Producer service accounts need direct user-level permissions because MDS
+# identifies principals by client_id claim, not by group membership for authorization.
+#
+# sa-shapes-producer service account - ResourceOwner on shapes-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-producer-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-producer service account - ResourceOwner on colors-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-producer-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-shapes-producer service account - ResourceOwner on shapes-* transactional IDs
+# Required for exactly-once semantics (optional for at-least-once)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-producer-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-producer service account - ResourceOwner on colors-* transactional IDs
+# Required for exactly-once semantics (optional for at-least-once)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-producer-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
