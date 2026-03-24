@@ -102,7 +102,7 @@ spec:
   # Job configuration
   job:
     # JAR location (bundled in container image)
-    jarURI: local:///opt/flink/usrlib/flink-autoscaler.jar
+    jarURI: local:///opt/flink/usrlib/kafka-flink-job.jar
 
     # Parallelism
     parallelism: 2
