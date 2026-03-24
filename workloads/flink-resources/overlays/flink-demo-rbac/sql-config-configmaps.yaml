@@ -68,8 +68,8 @@ data:
       "spec": {
         "type": "DEDICATED",
         "clusterSpec": {
-          "flinkVersion": "v1_20",
-          "image": "confluentinc/cp-flink-sql:1.20-cp1",
+          "flinkVersion": "v2_1",
+          "image": "confluentinc/cp-flink-sql:2.1-cp1",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
@@ -189,8 +189,8 @@ data:
       "spec": {
         "type": "DEDICATED",
         "clusterSpec": {
-          "flinkVersion": "v1_20",
-          "image": "confluentinc/cp-flink-sql:1.20-cp1",
+          "flinkVersion": "v2_1",
+          "image": "confluentinc/cp-flink-sql:2.1-cp1",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
