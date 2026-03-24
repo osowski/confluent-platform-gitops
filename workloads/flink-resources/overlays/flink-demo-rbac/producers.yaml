@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/python-kafka-producer:latest
+          image: quay.io/osowski/python-kafka-producer:latest-rbac
           imagePullPolicy: Always
           env:
             # Kafka connection (internal OAuth listener)
@@ -94,7 +94,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/python-kafka-producer:latest
+          image: quay.io/osowski/python-kafka-producer:latest-rbac
           imagePullPolicy: Always
           env:
             # Kafka connection (internal OAuth listener)
