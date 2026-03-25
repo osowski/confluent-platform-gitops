@@ -50,9 +50,9 @@ spec:
   authorization:
     type: rbac
     superUsers:
+      - User:admin@osow.ski
       - User:kafka
       - User:kraftcontroller
-      - User:admin@osow.ski
 
   # ==============================================================================
   # DEPENDENCIES - MDS connection for RBAC permission validation
