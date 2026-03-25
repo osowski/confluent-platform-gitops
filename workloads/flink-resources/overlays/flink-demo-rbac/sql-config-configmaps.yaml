@@ -1,11 +1,12 @@
 # ConfigMaps containing Flink SQL Catalog, Database, and ComputePool definitions
 # These are applied via Jobs that call the CMF API
 ---
-# Shapes Catalog - References Schema Registry
+# Shared Kafka Catalog - References Schema Registry with shared credentials
+# This catalog is accessible from both colors-env and shapes-env
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: shapes-catalog-config
+  name: kafka-catalog-config
   namespace: flink-shapes
 data:
   catalog.json: |
@@ -13,19 +14,20 @@ data:
       "apiVersion": "cmf.confluent.io/v1",
       "kind": "KafkaCatalog",
       "metadata": {
-        "name": "shapes-catalog"
+        "name": "kafka-cat"
       },
       "spec": {
         "srInstance": {
           "connectionConfig": {
             "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
           },
-          "connectionSecretId": "sr-oauth-secret-id-shapes"
+          "connectionSecretId": "sr-oauth-secret-id-catalog"
         }
       }
     }
 ---
-# Shapes Database - References Kafka cluster
+# Shapes Database - References Kafka cluster within shared kafka-cat catalog
+# Only accessible from shapes-env via environment-specific secret mapping
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -123,31 +125,8 @@ data:
       }
     }
 ---
-# Colors Catalog - References Schema Registry
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: colors-catalog-config
-  namespace: flink-colors
-data:
-  catalog.json: |
-    {
-      "apiVersion": "cmf.confluent.io/v1",
-      "kind": "KafkaCatalog",
-      "metadata": {
-        "name": "colors-catalog"
-      },
-      "spec": {
-        "srInstance": {
-          "connectionConfig": {
-            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
-          },
-          "connectionSecretId": "sr-oauth-secret-id-colors"
-        }
-      }
-    }
----
-# Colors Database - References Kafka cluster
+# Colors Database - References Kafka cluster within shared kafka-cat catalog
+# Only accessible from colors-env via environment-specific secret mapping
 apiVersion: v1
 kind: ConfigMap
 metadata:
