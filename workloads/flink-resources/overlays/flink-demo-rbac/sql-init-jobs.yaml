@@ -87,11 +87,23 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[3/5] Creating secret mapping: sr-oauth-secret-id-catalog -> sr-oauth-secret-catalog in shapes-env"
+              echo "[3/6] Creating secret mapping: sr-oauth-secret-id-catalog -> sr-oauth-secret-catalog in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
                 -d @/config/catalog-secret-mapping/secret-mapping.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+              echo "  -> HTTP $HTTP_CODE"
+              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                echo "  -> Error: $RESPONSE_BODY"
+              fi
+
+              echo "[4/6] Creating cross-environment secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors in shapes-env"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
+                -d @/config/colors-secret-mapping/secret-mapping.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
               echo "  -> HTTP $HTTP_CODE"
@@ -122,7 +134,7 @@ spec:
                 exit 1
               fi
 
-              echo "[4/5] Creating KafkaDatabase: shapes-database in kafka-cat"
+              echo "[5/6] Creating KafkaDatabase: shapes-database in kafka-cat"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/kafka-cat/databases \
@@ -134,7 +146,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[5/5] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -159,6 +171,8 @@ spec:
               mountPath: /config/secret-mapping
             - name: catalog-secret-mapping-config
               mountPath: /config/catalog-secret-mapping
+            - name: colors-secret-mapping-config
+              mountPath: /config/colors-secret-mapping
       volumes:
         - name: database-config
           configMap:
@@ -175,6 +189,9 @@ spec:
         - name: catalog-secret-mapping-config
           configMap:
             name: shapes-catalog-secret-mapping-config
+        - name: colors-secret-mapping-config
+          configMap:
+            name: shapes-colors-secret-mapping-config
 ---
 # Colors SQL Initialization Job
 apiVersion: batch/v1
@@ -261,11 +278,23 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[3/5] Creating secret mapping: sr-oauth-secret-id-catalog -> sr-oauth-secret-catalog in colors-env"
+              echo "[3/6] Creating secret mapping: sr-oauth-secret-id-catalog -> sr-oauth-secret-catalog in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
                 -d @/config/catalog-secret-mapping/secret-mapping.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+              echo "  -> HTTP $HTTP_CODE"
+              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                echo "  -> Error: $RESPONSE_BODY"
+              fi
+
+              echo "[4/6] Creating cross-environment secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes in colors-env"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
+                -d @/config/shapes-secret-mapping/secret-mapping.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
               echo "  -> HTTP $HTTP_CODE"
@@ -296,7 +325,7 @@ spec:
                 exit 1
               fi
 
-              echo "[4/5] Creating KafkaDatabase: colors-database in kafka-cat"
+              echo "[5/6] Creating KafkaDatabase: colors-database in kafka-cat"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/kafka-cat/databases \
@@ -308,7 +337,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[5/5] Creating ComputePool: colors-pool in colors-env"
+              echo "[6/6] Creating ComputePool: colors-pool in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
@@ -333,6 +362,8 @@ spec:
               mountPath: /config/secret-mapping
             - name: catalog-secret-mapping-config
               mountPath: /config/catalog-secret-mapping
+            - name: shapes-secret-mapping-config
+              mountPath: /config/shapes-secret-mapping
       volumes:
         - name: database-config
           configMap:
@@ -349,3 +380,6 @@ spec:
         - name: catalog-secret-mapping-config
           configMap:
             name: colors-catalog-secret-mapping-config
+        - name: shapes-secret-mapping-config
+          configMap:
+            name: colors-shapes-secret-mapping-config
