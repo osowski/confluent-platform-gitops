@@ -13,6 +13,7 @@ resources:
   - flink-application-colors.yaml
   - sql-config-configmaps.yaml
   - cmf-secret-configmaps.yaml
+  - catalog-init-job.yaml
   - sql-init-jobs.yaml
   - producer-oauth-secrets.yaml
   - producers.yaml

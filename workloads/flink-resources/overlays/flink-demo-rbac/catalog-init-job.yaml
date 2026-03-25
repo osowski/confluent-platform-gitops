@@ -1,0 +1,113 @@
+# Job to initialize shared Flink SQL Catalog via CMF API
+# This job runs in the flink namespace and creates the shared kafka-cat catalog
+# Must complete before database initialization jobs in colors/shapes namespaces
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: catalog-init
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: catalog-init
+          image: curlimages/curl:8.1.2
+          env:
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cmf-mds-oauth-client
+                  key: clientId
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cmf-mds-oauth-client
+                  key: clientSecret
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              CMF_URL="http://cmf-service.operator.svc.cluster.local:80/cmf/api/v1"
+              KEYCLOAK_URL="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+
+              echo "Obtaining OAuth token..."
+              TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=client_credentials" \
+                -d "client_id=${OAUTH_CLIENT_ID}" \
+                -d "client_secret=${OAUTH_CLIENT_SECRET}")
+
+              ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "${ACCESS_TOKEN}" ]; then
+                echo "Failed to obtain access token"
+                echo "Response: ${TOKEN_RESPONSE}"
+                exit 1
+              fi
+
+              echo "Token obtained successfully"
+
+              echo "Checking if sr-oauth-secret-catalog exists..."
+              SECRET_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/secrets/sr-oauth-secret-catalog)
+
+              if [ "${SECRET_EXISTS}" = "404" ]; then
+                echo "[1/2] Creating shared CMF Secret: sr-oauth-secret-catalog"
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X POST ${CMF_URL}/secrets \
+                  -d @/config/catalog-sr-secret/secret.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
+              else
+                echo "[1/2] Shared Secret sr-oauth-secret-catalog already exists (HTTP ${SECRET_EXISTS})"
+              fi
+
+              echo "Checking if kafka-cat catalog exists..."
+              CATALOG_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/catalogs/kafka/kafka-cat)
+
+              if [ "${CATALOG_EXISTS}" = "404" ]; then
+                echo "[2/2] Creating shared KafkaCatalog: kafka-cat"
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X POST ${CMF_URL}/catalogs/kafka \
+                  -d @/config/catalog/catalog.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
+              else
+                echo "[2/2] Shared catalog kafka-cat already exists (HTTP ${CATALOG_EXISTS})"
+              fi
+
+              echo ""
+              echo "Catalog initialization complete"
+          volumeMounts:
+            - name: catalog-config
+              mountPath: /config/catalog
+            - name: catalog-sr-secret-config
+              mountPath: /config/catalog-sr-secret
+      volumes:
+        - name: catalog-config
+          configMap:
+            name: kafka-catalog-config
+        - name: catalog-sr-secret-config
+          configMap:
+            name: catalog-sr-oauth-secret-config

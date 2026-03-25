@@ -3,6 +3,31 @@
 ---
 # Shared Kafka Catalog - References Schema Registry with shared credentials
 # This catalog is accessible from both colors-env and shapes-env
+# Copy in flink namespace for catalog-init-job
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-catalog-config
+  namespace: flink
+data:
+  catalog.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "KafkaCatalog",
+      "metadata": {
+        "name": "kafka-cat"
+      },
+      "spec": {
+        "srInstance": {
+          "connectionConfig": {
+            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
+          },
+          "connectionSecretId": "sr-oauth-secret-id-catalog"
+        }
+      }
+    }
+---
+# Shared Kafka Catalog - Copy in flink-shapes namespace for shapes database job
 apiVersion: v1
 kind: ConfigMap
 metadata:
