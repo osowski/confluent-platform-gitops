@@ -8,6 +8,8 @@ resources:
   - service.yaml
   - servicemonitor.yaml
   - grafana-dashboard.yaml
+  - flink-application.yaml
+  - flink-environment-env1.yaml
 
 # Common labels applied to all resources
 labels:

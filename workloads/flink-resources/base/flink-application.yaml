@@ -5,7 +5,7 @@ metadata:
   name: default-flink-app
   namespace: flink
 spec:
-  flinkEnvironment: default-flink-env
+  flinkEnvironment: env1
   image: confluentinc/cp-flink:1.20.3-cp1
   flinkVersion: v1_20
   flinkConfiguration:
