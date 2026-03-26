@@ -24,6 +24,20 @@ patches:
     target:
       kind: CMFRestClass
       name: cmf-rest-class
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: FlinkEnvironment
+      metadata:
+        name: env1
+        namespace: flink
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: FlinkApplication
+      metadata:
+        name: default-flink-app
+        namespace: flink
 
 # Cluster-specific labels
 labels:
