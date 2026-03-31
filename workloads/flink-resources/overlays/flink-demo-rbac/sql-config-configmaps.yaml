@@ -1,29 +1,10 @@
-# ConfigMaps containing Flink SQL Catalog, Database, and ComputePool definitions
+# ConfigMaps containing Flink SQL Database and ComputePool definitions
 # These are applied via Jobs that call the CMF API
----
-# Shapes Catalog - References Schema Registry
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: shapes-catalog-config
-  namespace: flink-shapes
-data:
-  catalog.json: |
-    {
-      "apiVersion": "cmf.confluent.io/v1",
-      "kind": "KafkaCatalog",
-      "metadata": {
-        "name": "shapes-catalog"
-      },
-      "spec": {
-        "srInstance": {
-          "connectionConfig": {
-            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
-          },
-          "connectionSecretId": "sr-oauth-secret-id-shapes"
-        }
-      }
-    }
+# NOTE: Catalog definitions are built dynamically in the sql-init jobs
+# to embed a fresh STATIC_TOKEN for Schema Registry authentication.
+# CMF 2.2 does not support OAUTHBEARER as a bearer.auth.credentials.source
+# in its embedded SR client, so catalogs use STATIC_TOKEN with runtime
+# token generation instead of connectionSecretId with CMF Secrets.
 ---
 # Shapes Database - References Kafka cluster
 apiVersion: v1
@@ -119,30 +100,6 @@ data:
               "memory": "1700m"
             }
           }
-        }
-      }
-    }
----
-# Colors Catalog - References Schema Registry
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: colors-catalog-config
-  namespace: flink-colors
-data:
-  catalog.json: |
-    {
-      "apiVersion": "cmf.confluent.io/v1",
-      "kind": "KafkaCatalog",
-      "metadata": {
-        "name": "colors-catalog"
-      },
-      "spec": {
-        "srInstance": {
-          "connectionConfig": {
-            "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081"
-          },
-          "connectionSecretId": "sr-oauth-secret-id-colors"
         }
       }
     }

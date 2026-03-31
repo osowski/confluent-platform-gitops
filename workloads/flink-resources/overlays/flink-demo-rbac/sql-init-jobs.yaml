@@ -1,6 +1,11 @@
 # Jobs to initialize Flink SQL Catalogs, Databases, and ComputePools via CMF API
 # These jobs run as ArgoCD PostSync hooks to create the resources after CMF is deployed
 # BeforeHookCreation policy ensures old job instances are deleted before new ones are created
+#
+# IMPORTANT: Catalogs are built dynamically with a fresh STATIC_TOKEN for Schema Registry
+# authentication. CMF 2.2 does not support OAUTHBEARER as a bearer.auth.credentials.source
+# in its embedded SR client. Each ArgoCD sync generates a fresh token, ensuring the catalog
+# always has valid SR credentials. See the README for token lifetime details.
 ---
 # Shapes SQL Initialization Job
 apiVersion: batch/v1
@@ -42,6 +47,18 @@ spec:
                 sleep 5
               done
               echo "Schema Registry is ready!"
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Keycloak to be ready..."
+              until nc -z keycloak.keycloak.svc.cluster.local 8080; do
+                echo "Keycloak not ready yet, waiting..."
+                sleep 5
+              done
+              echo "Keycloak is ready!"
       containers:
         - name: sql-init
           image: curlimages/curl:8.1.2
@@ -56,6 +73,16 @@ spec:
                 secretKeyRef:
                   name: cmf-mds-oauth-client
                   key: clientSecret
+            - name: SR_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-flink-oauth
+                  key: client-id
+            - name: SR_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-flink-oauth
+                  key: client-secret
           command:
             - /bin/sh
             - -c
@@ -65,7 +92,7 @@ spec:
               CMF_URL="http://cmf-service.operator.svc.cluster.local:80/cmf/api/v1"
               KEYCLOAK_URL="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
 
-              echo "Obtaining OAuth token..."
+              echo "Obtaining CMF API OAuth token..."
               TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
@@ -75,18 +102,18 @@ spec:
               ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
               if [ -z "${ACCESS_TOKEN}" ]; then
-                echo "Failed to obtain access token"
+                echo "Failed to obtain CMF access token"
                 echo "Response: ${TOKEN_RESPONSE}"
                 exit 1
               fi
 
-              echo "Token obtained successfully"
+              echo "CMF API token obtained successfully"
 
-              echo "[1/5] Deleting old CMF Secret kafka-oauth-secret-shapes if it exists..."
+              echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-shapes if it exists..."
               curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-shapes
 
-              echo "[1/5] Creating CMF Secret: kafka-oauth-secret-shapes"
+              echo "[1/6] Creating CMF Secret: kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
@@ -98,7 +125,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[2/7] Creating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
+              echo "[2/6] Creating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
@@ -110,52 +137,68 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "Checking if sr-oauth-secret-shapes exists..."
-              SECRET_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
-                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X GET ${CMF_URL}/secrets/sr-oauth-secret-shapes)
+              echo "[3/6] Obtaining SR STATIC_TOKEN for shapes-catalog..."
+              SR_TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=client_credentials" \
+                -d "client_id=${SR_CLIENT_ID}" \
+                -d "client_secret=${SR_CLIENT_SECRET}" \
+                -d "scope=profile email")
 
-              if [ "${SECRET_EXISTS}" = "404" ]; then
-                echo "[3/7] Creating CMF Secret: sr-oauth-secret-shapes"
-                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                  -X POST ${CMF_URL}/secrets \
-                  -d @/config/sr-secret/secret.json)
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-                echo "  -> HTTP $HTTP_CODE"
-                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                  echo "  -> Error: $RESPONSE_BODY"
-                fi
-              else
-                echo "[3/7] Secret sr-oauth-secret-shapes already exists (HTTP ${SECRET_EXISTS})"
+              SR_TOKEN=$(echo ${SR_TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "${SR_TOKEN}" ]; then
+                echo "Failed to obtain SR token for shapes-catalog"
+                echo "Response: ${SR_TOKEN_RESPONSE}"
+                exit 1
               fi
 
-              echo "[4/7] Creating secret mapping: sr-oauth-secret-id-shapes -> sr-oauth-secret-shapes"
-              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
-                -d @/config/sr-secret-mapping/secret-mapping.json)
-              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-              fi
+              echo "  -> SR token obtained (will be embedded as STATIC_TOKEN in catalog)"
 
-              echo "[5/7] Creating KafkaCatalog: shapes-catalog"
+              echo "[4/6] Creating/updating KafkaCatalog: shapes-catalog (with STATIC_TOKEN)"
+              CATALOG_JSON=$(cat <<CATALOG_EOF
+              {
+                "apiVersion": "cmf.confluent.io/v1",
+                "kind": "KafkaCatalog",
+                "metadata": { "name": "shapes-catalog" },
+                "spec": {
+                  "srInstance": {
+                    "connectionConfig": {
+                      "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081",
+                      "bearer.auth.credentials.source": "STATIC_TOKEN",
+                      "bearer.auth.token": "${SR_TOKEN}"
+                    }
+                  }
+                }
+              }
+              CATALOG_EOF
+              )
+
+              # Try to create the catalog; if it already exists, update it
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka \
-                -d @/config/catalog/catalog.json)
+                -d "${CATALOG_JSON}")
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
+
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/catalogs/kafka/shapes-catalog \
+                  -d "${CATALOG_JSON}")
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                fi
               fi
 
-              echo "[6/7] Creating KafkaDatabase: shapes-database in shapes-catalog"
+              echo "[5/6] Creating KafkaDatabase: shapes-database in shapes-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
@@ -167,7 +210,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[7/7] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -182,8 +225,6 @@ spec:
               echo ""
               echo "Shapes environment initialization complete"
           volumeMounts:
-            - name: catalog-config
-              mountPath: /config/catalog
             - name: database-config
               mountPath: /config/database
             - name: pool-config
@@ -192,14 +233,7 @@ spec:
               mountPath: /config/secret
             - name: secret-mapping-config
               mountPath: /config/secret-mapping
-            - name: sr-secret-config
-              mountPath: /config/sr-secret
-            - name: sr-secret-mapping-config
-              mountPath: /config/sr-secret-mapping
       volumes:
-        - name: catalog-config
-          configMap:
-            name: shapes-catalog-config
         - name: database-config
           configMap:
             name: shapes-database-config
@@ -212,12 +246,6 @@ spec:
         - name: secret-mapping-config
           configMap:
             name: shapes-secret-mapping-config
-        - name: sr-secret-config
-          configMap:
-            name: sr-oauth-secret-config
-        - name: sr-secret-mapping-config
-          configMap:
-            name: shapes-sr-secret-mapping-config
 ---
 # Colors SQL Initialization Job
 apiVersion: batch/v1
@@ -259,6 +287,18 @@ spec:
                 sleep 5
               done
               echo "Schema Registry is ready!"
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Keycloak to be ready..."
+              until nc -z keycloak.keycloak.svc.cluster.local 8080; do
+                echo "Keycloak not ready yet, waiting..."
+                sleep 5
+              done
+              echo "Keycloak is ready!"
       containers:
         - name: sql-init
           image: curlimages/curl:8.1.2
@@ -273,6 +313,16 @@ spec:
                 secretKeyRef:
                   name: cmf-mds-oauth-client
                   key: clientSecret
+            - name: SR_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: colors-flink-oauth
+                  key: client-id
+            - name: SR_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: colors-flink-oauth
+                  key: client-secret
           command:
             - /bin/sh
             - -c
@@ -282,7 +332,7 @@ spec:
               CMF_URL="http://cmf-service.operator.svc.cluster.local:80/cmf/api/v1"
               KEYCLOAK_URL="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
 
-              echo "Obtaining OAuth token..."
+              echo "Obtaining CMF API OAuth token..."
               TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
@@ -292,18 +342,18 @@ spec:
               ACCESS_TOKEN=$(echo ${TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
               if [ -z "${ACCESS_TOKEN}" ]; then
-                echo "Failed to obtain access token"
+                echo "Failed to obtain CMF access token"
                 echo "Response: ${TOKEN_RESPONSE}"
                 exit 1
               fi
 
-              echo "Token obtained successfully"
+              echo "CMF API token obtained successfully"
 
-              echo "[1/5] Deleting old CMF Secret kafka-oauth-secret-colors if it exists..."
+              echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-colors if it exists..."
               curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-colors
 
-              echo "[1/5] Creating CMF Secret: kafka-oauth-secret-colors"
+              echo "[1/6] Creating CMF Secret: kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
@@ -315,7 +365,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[2/7] Creating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
+              echo "[2/6] Creating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
@@ -327,52 +377,68 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "Checking if sr-oauth-secret-colors exists..."
-              SECRET_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
-                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X GET ${CMF_URL}/secrets/sr-oauth-secret-colors)
+              echo "[3/6] Obtaining SR STATIC_TOKEN for colors-catalog..."
+              SR_TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "grant_type=client_credentials" \
+                -d "client_id=${SR_CLIENT_ID}" \
+                -d "client_secret=${SR_CLIENT_SECRET}" \
+                -d "scope=profile email")
 
-              if [ "${SECRET_EXISTS}" = "404" ]; then
-                echo "[3/7] Creating CMF Secret: sr-oauth-secret-colors"
-                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                  -X POST ${CMF_URL}/secrets \
-                  -d @/config/sr-secret/secret.json)
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-                echo "  -> HTTP $HTTP_CODE"
-                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                  echo "  -> Error: $RESPONSE_BODY"
-                fi
-              else
-                echo "[3/7] Secret sr-oauth-secret-colors already exists (HTTP ${SECRET_EXISTS})"
+              SR_TOKEN=$(echo ${SR_TOKEN_RESPONSE} | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "${SR_TOKEN}" ]; then
+                echo "Failed to obtain SR token for colors-catalog"
+                echo "Response: ${SR_TOKEN_RESPONSE}"
+                exit 1
               fi
 
-              echo "[4/7] Creating secret mapping: sr-oauth-secret-id-colors -> sr-oauth-secret-colors"
-              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
-                -d @/config/sr-secret-mapping/secret-mapping.json)
-              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-              fi
+              echo "  -> SR token obtained (will be embedded as STATIC_TOKEN in catalog)"
 
-              echo "[5/7] Creating KafkaCatalog: colors-catalog"
+              echo "[4/6] Creating/updating KafkaCatalog: colors-catalog (with STATIC_TOKEN)"
+              CATALOG_JSON=$(cat <<CATALOG_EOF
+              {
+                "apiVersion": "cmf.confluent.io/v1",
+                "kind": "KafkaCatalog",
+                "metadata": { "name": "colors-catalog" },
+                "spec": {
+                  "srInstance": {
+                    "connectionConfig": {
+                      "schema.registry.url": "http://schemaregistry.kafka.svc.cluster.local:8081",
+                      "bearer.auth.credentials.source": "STATIC_TOKEN",
+                      "bearer.auth.token": "${SR_TOKEN}"
+                    }
+                  }
+                }
+              }
+              CATALOG_EOF
+              )
+
+              # Try to create the catalog; if it already exists, update it
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka \
-                -d @/config/catalog/catalog.json)
+                -d "${CATALOG_JSON}")
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
+
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/catalogs/kafka/colors-catalog \
+                  -d "${CATALOG_JSON}")
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                fi
               fi
 
-              echo "[6/7] Creating KafkaDatabase: colors-database in colors-catalog"
+              echo "[5/6] Creating KafkaDatabase: colors-database in colors-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/colors-catalog/databases \
@@ -384,7 +450,7 @@ spec:
                 echo "  -> Error: $RESPONSE_BODY"
               fi
 
-              echo "[7/7] Creating ComputePool: colors-pool in colors-env"
+              echo "[6/6] Creating ComputePool: colors-pool in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
@@ -399,8 +465,6 @@ spec:
               echo ""
               echo "Colors environment initialization complete"
           volumeMounts:
-            - name: catalog-config
-              mountPath: /config/catalog
             - name: database-config
               mountPath: /config/database
             - name: pool-config
@@ -409,14 +473,7 @@ spec:
               mountPath: /config/secret
             - name: secret-mapping-config
               mountPath: /config/secret-mapping
-            - name: sr-secret-config
-              mountPath: /config/sr-secret
-            - name: sr-secret-mapping-config
-              mountPath: /config/sr-secret-mapping
       volumes:
-        - name: catalog-config
-          configMap:
-            name: colors-catalog-config
         - name: database-config
           configMap:
             name: colors-database-config
@@ -429,9 +486,3 @@ spec:
         - name: secret-mapping-config
           configMap:
             name: colors-secret-mapping-config
-        - name: sr-secret-config
-          configMap:
-            name: sr-oauth-secret-config
-        - name: sr-secret-mapping-config
-          configMap:
-            name: colors-sr-secret-mapping-config
