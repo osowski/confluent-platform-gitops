@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- argocd-config.yaml
+- argocd-ingress.yaml
+- cert-manager.yaml
+- cert-manager-resources.yaml
+- trust-manager.yaml
+- kube-prometheus-stack-crds.yaml
+- kube-prometheus-stack.yaml
+- metrics-server.yaml
+- traefik.yaml
+- vault.yaml
+- vault-ingress.yaml
+- vault-config.yaml
+
+# Infrastructure applications are deployed in sync wave order (10-85)
+# Remove any applications you don't need for your cluster

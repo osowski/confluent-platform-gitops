@@ -1,0 +1,23 @@
+# Confluent Manager for Apache Flink - flink-demo-mtls Cluster Overlay
+# mTLS-specific configuration overrides
+
+# Additional pod annotations for flink-demo-mtls cluster identification
+podAnnotations:
+  cluster: flink-demo-mtls
+
+# Enable mTLS authentication
+cmf:
+  authentication:
+    type: mtls
+
+# Mount server certificates for mTLS
+mountedVolumes:
+  volumes:
+    - name: cmf-server-tls
+      secret:
+        secretName: cmf-server-tls
+        defaultMode: 0440
+  volumeMounts:
+    - name: cmf-server-tls
+      mountPath: /etc/cmf/tls
+      readOnly: true

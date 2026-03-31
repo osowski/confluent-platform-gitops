@@ -1,0 +1,5 @@
+# Cluster-specific overrides for flink-demo
+
+# Additional arguments for local/development environments
+args:
+  - --kubelet-insecure-tls  # Required for Docker Desktop, kind, and some local K8s environments
