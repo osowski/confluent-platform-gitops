@@ -12,6 +12,7 @@ resources:
 - metrics-server.yaml
 - reflector.yaml
 - traefik.yaml
+- minio.yaml
 
 # Infrastructure applications are deployed in sync wave order (10-85)
 # Remove any applications you don't need for your cluster

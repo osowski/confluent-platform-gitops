@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
-  namespace: flink
+  namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "10"
   labels:

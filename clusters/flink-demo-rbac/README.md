@@ -48,11 +48,10 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **metrics-server** (wave 5) - Kubernetes Metrics Server
+- **minio** (wave 85) - S3-compatible object storage (namespace: storage)
+- **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
 - **traefik** (wave 10) - Ingress controller
 - **trust-manager** (wave 30) - CA certificate distribution
-- **vault** (wave 40) - HashiCorp Vault (dev mode)
-- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
-- **vault-config** (wave 50) - Vault transit engine configuration
 
 ### Workload Applications
 
