@@ -3,7 +3,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: minio
-  namespace: flink
+  namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "25"
   labels:
@@ -21,7 +21,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: minio-console
-  namespace: flink
+  namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "25"
   labels:

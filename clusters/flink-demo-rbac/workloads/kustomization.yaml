@@ -12,7 +12,6 @@ resources:
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
   - cmf-operator.yaml
-  - minio.yaml
   - flink-resources.yaml
 
 # Workload applications are deployed in sync wave order (100-120)

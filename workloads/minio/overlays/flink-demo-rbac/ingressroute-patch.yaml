@@ -3,7 +3,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: minio
-  namespace: flink
+  namespace: storage
 spec:
   routes:
     - match: Host(`s3.flink-demo-rbac.confluentdemo.local`)
@@ -17,7 +17,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: minio-console
-  namespace: flink
+  namespace: storage
 spec:
   routes:
     - match: Host(`s3-console.flink-demo-rbac.confluentdemo.local`)

@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: minio-init
-  namespace: flink
+  namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/hook: Sync
@@ -38,7 +38,7 @@ spec:
         - |
           set -e
           echo "Waiting for MinIO to be ready..."
-          until mc alias set myminio http://minio.flink.svc.cluster.local:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+          until mc alias set myminio http://minio.storage.svc.cluster.local:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
             echo "MinIO not ready, waiting..."
             sleep 5
           done
