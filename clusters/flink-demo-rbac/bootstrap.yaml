@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-149/minio-dedicated-namespace
+    targetRevision: HEAD
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,7 @@ spec:
           name: flink-demo-rbac
           domain: confluentdemo.local
         git:
-          targetRevision: "feature-149/minio-dedicated-namespace"
+          targetRevision: "HEAD"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
