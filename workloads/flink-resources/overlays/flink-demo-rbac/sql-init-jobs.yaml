@@ -146,6 +146,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[2/6] Creating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
@@ -219,6 +220,7 @@ spec:
                 echo "  -> Update: HTTP $HTTP_CODE"
                 if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                   echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
                 fi
               fi
 
@@ -232,6 +234,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
@@ -411,6 +414,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[2/6] Creating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
@@ -484,6 +488,7 @@ spec:
                 echo "  -> Update: HTTP $HTTP_CODE"
                 if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                   echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
                 fi
               fi
 
@@ -497,6 +502,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[6/6] Creating ComputePool: colors-pool in colors-env"
