@@ -266,7 +266,7 @@ spec:
                 fi
               fi
 
-              echo "[6/6] Creating/updating ComputePool: shapes-pool in shapes-env"
+              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -275,19 +275,12 @@ spec:
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
+              elif [ "$HTTP_CODE" = "409" ]; then
+                echo "  -> Already exists (HTTP 409), skipping"
               else
-                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
-                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                  -X PUT ${CMF_URL}/environments/shapes-env/compute-pools/shapes-pool \
-                  -d @/config/pool/compute-pool.json)
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-                echo "  -> Update: HTTP $HTTP_CODE"
-                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                  echo "  -> Error: $RESPONSE_BODY"
-                  exit 1
-                fi
+                echo "  -> Error: HTTP $HTTP_CODE"
+                echo "  -> $RESPONSE_BODY"
+                exit 1
               fi
 
               echo ""
@@ -574,7 +567,7 @@ spec:
                 fi
               fi
 
-              echo "[6/6] Creating/updating ComputePool: colors-pool in colors-env"
+              echo "[6/6] Creating ComputePool: colors-pool in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
@@ -583,19 +576,12 @@ spec:
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
+              elif [ "$HTTP_CODE" = "409" ]; then
+                echo "  -> Already exists (HTTP 409), skipping"
               else
-                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
-                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
-                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                  -X PUT ${CMF_URL}/environments/colors-env/compute-pools/colors-pool \
-                  -d @/config/pool/compute-pool.json)
-                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-                echo "  -> Update: HTTP $HTTP_CODE"
-                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                  echo "  -> Error: $RESPONSE_BODY"
-                  exit 1
-                fi
+                echo "  -> Error: HTTP $HTTP_CODE"
+                echo "  -> $RESPONSE_BODY"
+                exit 1
               fi
 
               echo ""
