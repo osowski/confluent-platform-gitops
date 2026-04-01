@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-149/cmf-sr-static-token
+    targetRevision: HEAD
     path: workloads/minio/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
