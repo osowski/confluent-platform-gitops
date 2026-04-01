@@ -132,34 +132,52 @@ spec:
                 sleep ${ENV_WAIT_INTERVAL}
               done
 
-              echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-shapes if it exists..."
-              curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-shapes
-
-              echo "[1/6] Creating CMF Secret: kafka-oauth-secret-shapes"
+              echo "[1/6] Creating/updating CMF Secret: kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
                 -d @/config/secret/secret.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/secrets/kafka-oauth-secret-shapes \
+                  -d @/config/secret/secret.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
-              echo "[2/6] Creating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
+              echo "[2/6] Creating/updating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
                 -d @/config/secret-mapping/secret-mapping.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/shapes-env/secret-mappings/kafka-conn-secret-id-shapes \
+                  -d @/config/secret-mapping/secret-mapping.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
               echo "[3/6] Obtaining SR STATIC_TOKEN for shapes-catalog..."
@@ -224,30 +242,52 @@ spec:
                 fi
               fi
 
-              echo "[5/6] Creating KafkaDatabase: shapes-database in shapes-catalog"
+              echo "[5/6] Creating/updating KafkaDatabase: shapes-database in shapes-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
                 -d @/config/database/database.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/catalogs/kafka/shapes-catalog/databases/shapes-database \
+                  -d @/config/database/database.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
-              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/6] Creating/updating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
                 -d @/config/pool/compute-pool.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/shapes-env/compute-pools/shapes-pool \
+                  -d @/config/pool/compute-pool.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
               echo ""
@@ -400,34 +440,52 @@ spec:
                 sleep ${ENV_WAIT_INTERVAL}
               done
 
-              echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-colors if it exists..."
-              curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-                -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-colors
-
-              echo "[1/6] Creating CMF Secret: kafka-oauth-secret-colors"
+              echo "[1/6] Creating/updating CMF Secret: kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
                 -d @/config/secret/secret.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/secrets/kafka-oauth-secret-colors \
+                  -d @/config/secret/secret.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
-              echo "[2/6] Creating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
+              echo "[2/6] Creating/updating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
                 -d @/config/secret-mapping/secret-mapping.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/colors-env/secret-mappings/kafka-conn-secret-id-colors \
+                  -d @/config/secret-mapping/secret-mapping.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
               echo "[3/6] Obtaining SR STATIC_TOKEN for colors-catalog..."
@@ -492,30 +550,52 @@ spec:
                 fi
               fi
 
-              echo "[5/6] Creating KafkaDatabase: colors-database in colors-catalog"
+              echo "[5/6] Creating/updating KafkaDatabase: colors-database in colors-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/colors-catalog/databases \
                 -d @/config/database/database.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/catalogs/kafka/colors-catalog/databases/colors-database \
+                  -d @/config/database/database.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
-              echo "[6/6] Creating ComputePool: colors-pool in colors-env"
+              echo "[6/6] Creating/updating ComputePool: colors-pool in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
                 -d @/config/pool/compute-pool.json)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-              echo "  -> HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-                echo "  -> Error: $RESPONSE_BODY"
-                exit 1
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              else
+                echo "  -> Create returned HTTP $HTTP_CODE, attempting update..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/colors-env/compute-pools/colors-pool \
+                  -d @/config/pool/compute-pool.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+                echo "  -> Update: HTTP $HTTP_CODE"
+                if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+                  echo "  -> Error: $RESPONSE_BODY"
+                  exit 1
+                fi
               fi
 
               echo ""
