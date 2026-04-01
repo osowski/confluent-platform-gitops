@@ -18,7 +18,7 @@ spec:
         valueFiles:
           - $values/infrastructure/kube-prometheus-stack-crds/base/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: feature-149/cmf-sr-static-token
       ref: values
   destination:
     server: https://kubernetes.default.svc

@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-149/cmf-sr-static-token
     path: infrastructure/argocd-ingress/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
