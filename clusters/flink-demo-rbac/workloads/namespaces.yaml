@@ -11,7 +11,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-149/minio-dedicated-namespace
     path: workloads/namespaces/base
   destination:
     server: https://kubernetes.default.svc
