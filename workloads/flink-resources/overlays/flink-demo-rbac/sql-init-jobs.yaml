@@ -109,6 +109,29 @@ spec:
 
               echo "CMF API token obtained successfully"
 
+              # Wait for FlinkEnvironment 'shapes-env' to be registered in CMF
+              echo "Waiting for shapes-env to be registered in CMF..."
+              ENV_WAIT_TIMEOUT=300
+              ENV_WAIT_INTERVAL=10
+              ENV_WAITED=0
+              while true; do
+                ENV_RESPONSE=$(curl --silent -w "\n%{http_code}" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X GET ${CMF_URL}/environments/shapes-env)
+                ENV_HTTP_CODE=$(echo "$ENV_RESPONSE" | tail -n1)
+                if [ "$ENV_HTTP_CODE" = "200" ]; then
+                  echo "  -> shapes-env is available in CMF"
+                  break
+                fi
+                ENV_WAITED=$((ENV_WAITED + ENV_WAIT_INTERVAL))
+                if [ "$ENV_WAITED" -ge "$ENV_WAIT_TIMEOUT" ]; then
+                  echo "  -> ERROR: Timed out after ${ENV_WAIT_TIMEOUT}s waiting for shapes-env"
+                  exit 1
+                fi
+                echo "  -> shapes-env not found (HTTP $ENV_HTTP_CODE), retrying in ${ENV_WAIT_INTERVAL}s... (${ENV_WAITED}/${ENV_WAIT_TIMEOUT}s)"
+                sleep ${ENV_WAIT_INTERVAL}
+              done
+
               echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-shapes if it exists..."
               curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-shapes
@@ -135,6 +158,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[3/6] Obtaining SR STATIC_TOKEN for shapes-catalog..."
@@ -220,6 +244,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo ""
@@ -349,6 +374,29 @@ spec:
 
               echo "CMF API token obtained successfully"
 
+              # Wait for FlinkEnvironment 'colors-env' to be registered in CMF
+              echo "Waiting for colors-env to be registered in CMF..."
+              ENV_WAIT_TIMEOUT=300
+              ENV_WAIT_INTERVAL=10
+              ENV_WAITED=0
+              while true; do
+                ENV_RESPONSE=$(curl --silent -w "\n%{http_code}" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X GET ${CMF_URL}/environments/colors-env)
+                ENV_HTTP_CODE=$(echo "$ENV_RESPONSE" | tail -n1)
+                if [ "$ENV_HTTP_CODE" = "200" ]; then
+                  echo "  -> colors-env is available in CMF"
+                  break
+                fi
+                ENV_WAITED=$((ENV_WAITED + ENV_WAIT_INTERVAL))
+                if [ "$ENV_WAITED" -ge "$ENV_WAIT_TIMEOUT" ]; then
+                  echo "  -> ERROR: Timed out after ${ENV_WAIT_TIMEOUT}s waiting for colors-env"
+                  exit 1
+                fi
+                echo "  -> colors-env not found (HTTP $ENV_HTTP_CODE), retrying in ${ENV_WAIT_INTERVAL}s... (${ENV_WAITED}/${ENV_WAIT_TIMEOUT}s)"
+                sleep ${ENV_WAIT_INTERVAL}
+              done
+
               echo "[1/6] Deleting old CMF Secret kafka-oauth-secret-colors if it exists..."
               curl -s -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X DELETE ${CMF_URL}/secrets/kafka-oauth-secret-colors
@@ -375,6 +423,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo "[3/6] Obtaining SR STATIC_TOKEN for colors-catalog..."
@@ -460,6 +509,7 @@ spec:
               echo "  -> HTTP $HTTP_CODE"
               if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
                 echo "  -> Error: $RESPONSE_BODY"
+                exit 1
               fi
 
               echo ""
