@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **Moved KafkaTopics and Schemas to application-specific namespaces** ([#149](https://github.com/osowski/confluent-platform-gitops/issues/149))
-  - Relocated topics and schemas from confluent-resources (kafka namespace) to flink-resources (flink-shapes/flink-colors namespaces)
-  - Added cross-namespace references for kafkaRestClassRef and schemaRegistryClusterRef
-
 ### Added
 - **Implemented OAuth/RBAC for flink-demo-rbac cluster** ([#87](https://github.com/osowski/confluent-platform-gitops/issues/87))
   - Configured OAuth authentication for Kafka, KRaft controllers, Schema Registry, and Control Center with Keycloak integration
