@@ -1,12 +1,13 @@
 # KafkaTopic resources for group-based RBAC demonstration
 # Topics follow naming convention: <group>-* for RBAC enforcement
+# Deployed in application-specific namespaces with cross-namespace KafkaRestClass reference
 ---
 # Shapes group topics
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: shapes-input
-  namespace: kafka
+  namespace: flink-shapes
 spec:
   replicas: 3
   partitionCount: 3
@@ -15,12 +16,13 @@ spec:
     retention.ms: "172800000"  # 2 days
   kafkaRestClassRef:
     name: default
+    namespace: kafka
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: shapes-output
-  namespace: kafka
+  namespace: flink-shapes
 spec:
   replicas: 3
   partitionCount: 3
@@ -29,12 +31,13 @@ spec:
     retention.ms: "172800000"  # 2 days
   kafkaRestClassRef:
     name: default
+    namespace: kafka
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: shapes-state
-  namespace: kafka
+  namespace: flink-shapes
 spec:
   replicas: 3
   partitionCount: 3
@@ -43,13 +46,14 @@ spec:
     min.compaction.lag.ms: "0"
   kafkaRestClassRef:
     name: default
+    namespace: kafka
 ---
 # Colors group topics
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: colors-input
-  namespace: kafka
+  namespace: flink-colors
 spec:
   replicas: 3
   partitionCount: 3
@@ -58,12 +62,13 @@ spec:
     retention.ms: "172800000"  # 2 days
   kafkaRestClassRef:
     name: default
+    namespace: kafka
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: colors-output
-  namespace: kafka
+  namespace: flink-colors
 spec:
   replicas: 3
   partitionCount: 3
@@ -72,12 +77,13 @@ spec:
     retention.ms: "172800000"  # 2 days
   kafkaRestClassRef:
     name: default
+    namespace: kafka
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: colors-state
-  namespace: kafka
+  namespace: flink-colors
 spec:
   replicas: 3
   partitionCount: 3
@@ -86,3 +92,4 @@ spec:
     min.compaction.lag.ms: "0"
   kafkaRestClassRef:
     name: default
+    namespace: kafka

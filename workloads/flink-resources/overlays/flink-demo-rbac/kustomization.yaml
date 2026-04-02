@@ -16,6 +16,8 @@ resources:
   - sql-init-jobs.yaml
   - producer-oauth-secrets.yaml
   - producers.yaml
+  - topics.yaml
+  - schemas.yaml
 
 # Cluster-specific patches
 patches:
