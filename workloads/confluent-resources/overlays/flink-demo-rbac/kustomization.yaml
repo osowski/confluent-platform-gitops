@@ -6,7 +6,6 @@ namespace: kafka
 # Additional resources for MDS/RBAC
 resources:
   - ../../base
-  - mds-keygen-job.yaml  # Generates mds-token secret with RSA keypair and reflector annotations
   - oauth-client-secrets.yaml
   - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
