@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Standardized cluster README.md structure** ([#159](https://github.com/osowski/confluent-platform-gitops/issues/159))
+  - Consolidated `flink-demo` and `flink-demo-rbac` READMEs into a common template with consistent sections
+  - Updated `templates/new-cluster/README.md.template` with the standardized structure
+
 ### Added
 - **Implemented OAuth/RBAC for flink-demo-rbac cluster** ([#87](https://github.com/osowski/confluent-platform-gitops/issues/87))
   - Configured OAuth authentication for Kafka, KRaft controllers, Schema Registry, and Control Center with Keycloak integration
