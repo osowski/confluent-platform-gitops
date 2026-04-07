@@ -51,7 +51,7 @@ data:
         "type": "DEDICATED",
         "clusterSpec": {
           "flinkVersion": "v1_19",
-          "image": "confluentinc/cp-flink-sql:1.19-cp5",
+          "image": "confluentinc/cp-flink-sql:1.19-cp7",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
@@ -63,8 +63,6 @@ data:
             "s3.endpoint": "http://minio.storage.svc.cluster.local:9000",
             "s3.path.style.access": "true",
             "s3.connection.ssl.enabled": "false",
-            "s3.access-key": "admin",
-            "s3.secret-key": "password",
             "state.backend": "filesystem",
             "state.checkpoints.timeout": "600000",
             "execution.checkpointing.min-pause": "5000",
@@ -83,7 +81,27 @@ data:
                   "imagePullPolicy": "IfNotPresent",
                   "securityContext": {
                     "runAsUser": 9999
-                  }
+                  },
+                  "env": [
+                    {
+                      "name": "AWS_ACCESS_KEY_ID",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-user"
+                        }
+                      }
+                    },
+                    {
+                      "name": "AWS_SECRET_ACCESS_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-password"
+                        }
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -149,7 +167,7 @@ data:
         "type": "DEDICATED",
         "clusterSpec": {
           "flinkVersion": "v1_19",
-          "image": "confluentinc/cp-flink-sql:1.19-cp5",
+          "image": "confluentinc/cp-flink-sql:1.19-cp7",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
@@ -161,8 +179,6 @@ data:
             "s3.endpoint": "http://minio.storage.svc.cluster.local:9000",
             "s3.path.style.access": "true",
             "s3.connection.ssl.enabled": "false",
-            "s3.access-key": "admin",
-            "s3.secret-key": "password",
             "state.backend": "filesystem",
             "state.checkpoints.timeout": "600000",
             "execution.checkpointing.min-pause": "5000",
@@ -181,7 +197,27 @@ data:
                   "imagePullPolicy": "IfNotPresent",
                   "securityContext": {
                     "runAsUser": 9999
-                  }
+                  },
+                  "env": [
+                    {
+                      "name": "AWS_ACCESS_KEY_ID",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-user"
+                        }
+                      }
+                    },
+                    {
+                      "name": "AWS_SECRET_ACCESS_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-password"
+                        }
+                      }
+                    }
+                  ]
                 }
               ]
             }
