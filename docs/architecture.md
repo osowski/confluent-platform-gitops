@@ -264,7 +264,7 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - Keycloak provides OAuth2/OIDC authentication for all Confluent Platform components
 - OAuth clients: `cmf` (CMF operator), `controlcenter` (Control Center OIDC SSO), `kafka` (Kafka broker OAUTHBEARER), `sso` (general SSO)
 - 11 demo users across 3 groups: shapes (5 users), colors (5 users), admin (1 user)
-- Token lifespan: 7200 seconds (120 minutes)
+- Token lifespan: 604800 seconds (7 days)
 - Control Center authenticates via OIDC SSO; users see only their authorized FlinkEnvironments
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
