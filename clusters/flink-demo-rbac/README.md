@@ -216,10 +216,6 @@ confluent login --url http://mds.flink-demo-rbac.confluentdemo.local:80 --no-bro
 # Follow device grant flow prompts
 ```
 
-> [!WARNING]
-> You must currently replace `http` with `https` and remove the port `:8080` from the auto-generated link when pasting into your browser.
-> This will be corrected in a future update.
-
 **CMF API:**
 
 ```bash
