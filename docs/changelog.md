@@ -13,9 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `templates/new-cluster/README.md.template` with the standardized structure
 
 ### Added
-- **Implemented OAuth/RBAC for flink-demo-rbac cluster** ([#87](https://github.com/osowski/confluent-platform-gitops/issues/87))
-  - Configured OAuth authentication for Kafka, KRaft controllers, Schema Registry, and Control Center with Keycloak integration
-  - Enabled MDS-based RBAC authorization across all Confluent Platform components using service account credentials
+- **flink-demo-rbac cluster with multi-user RBAC** ([#76](https://github.com/osowski/confluent-platform-gitops/issues/76))
+  - New cluster variant demonstrating group-based namespace isolation with Keycloak OAuth, MDS authorization, and Kubernetes RBAC across 11 demo users (shapes/colors/admin groups)
+  - Keycloak identity provider with pre-configured realm, OAuth clients for CMF/Control Center/Kafka, and OIDC SSO login
+  - CMF operator with dedicated PostgreSQL backend, OAuth authentication, and ConfluentRoleBindings for group-scoped Flink resources
+  - FlinkEnvironments and FlinkApplications per group with Flink SQL catalogs, Kafka topic RBAC, and S3 checkpointing via MinIO
+  - Infrastructure refactors: MinIO as dedicated infrastructure app, mds-keygen as standalone application, KafkaTopics/Schemas moved to application-specific namespaces
 
 ## [0.5.2] - 2026-03-19
 

@@ -251,6 +251,35 @@ Clients must resolve the advertised hostname to localhost. Add to `/etc/hosts`:
 
 This pattern keeps the base Kafka configuration reusable across clusters while allowing cluster-specific external access configuration.
 
+### Multi-Tenant RBAC Architecture (flink-demo-rbac cluster)
+
+The `flink-demo-rbac` cluster implements a three-layer authorization model for group-based multi-tenant isolation:
+
+**Layer 1 — Kubernetes RBAC:**
+- Namespace isolation: `flink-shapes` (shapes group), `flink-colors` (colors group), plus shared `kafka`, `flink`, `operator` namespaces
+- Per-group ServiceAccounts, Roles, and RoleBindings restrict kubectl access to group-specific namespaces
+- Kubeconfig generation script (`scripts/generate-kubeconfigs.sh`) creates per-user contexts with scoped credentials
+
+**Layer 2 — OAuth/SSO (Keycloak):**
+- Keycloak provides OAuth2/OIDC authentication for all Confluent Platform components
+- OAuth clients: `cmf` (CMF operator), `controlcenter` (Control Center OIDC SSO), `kafka` (Kafka broker OAUTHBEARER), `sso` (general SSO)
+- 11 demo users across 3 groups: shapes (5 users), colors (5 users), admin (1 user)
+- Token lifespan: 7200 seconds (120 minutes)
+- Control Center authenticates via OIDC SSO; users see only their authorized FlinkEnvironments
+
+**Layer 3 — MDS Authorization (ConfluentRoleBindings):**
+- Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources
+- ConfluentRoleBindings grant `ResourceOwner` and `DeveloperManage` roles scoped to group-specific resources
+- Resource scoping: KafkaTopics (`shapes-*`/`colors-*`), Schema Registry subjects, consumer groups, and transactional IDs
+- CMF resources (FlinkEnvironments, FlinkApplications, catalogs) are scoped per group via MDS policies
+
+**Key differences from flink-demo:**
+- Keycloak replaces anonymous access with authenticated OAuth/OIDC flows
+- MDS adds authorization layer (flink-demo uses no RBAC)
+- Multiple FlinkEnvironments per group instead of a single shared environment
+- MinIO provides S3-compatible storage for Flink checkpoints/savepoints
+- Reflector replicates secrets across tenant namespaces
+
 ## RBAC Boundaries
 
 ### Infrastructure Project

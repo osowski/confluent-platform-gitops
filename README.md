@@ -151,6 +151,7 @@ confluent-platform-gitops/
 ## Current Clusters
 
 - **flink-demo** - Demo cluster for Confluent Platform for Apache Flink (flink-demo.confluentdemo.local)
+- **flink-demo-rbac** - Multi-tenant RBAC variant with Keycloak OAuth, MDS authorization, and group-based namespace isolation (flink-demo-rbac.confluentdemo.local)
 
 ## Current Applications
 
