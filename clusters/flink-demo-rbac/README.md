@@ -75,6 +75,27 @@ In the ArgoCD UI:
 2. Click **Sync** → **Synchronize**
 3. Wait for `Healthy` status (~2-3 minutes)
 
+### Generate Data
+
+The `flink-resources` Application includes two producer Deployments that write Avro-encoded sensor data to the group input topics. They are deployed with `replicas: 0` by default and must be scaled up to start producing:
+
+```bash
+# Start the shapes producer (writes to shapes-input topic in flink-shapes namespace)
+kubectl scale deployment shapes-producer -n flink-shapes --replicas=1
+
+# Start the colors producer (writes to colors-input topic in flink-colors namespace)
+kubectl scale deployment colors-producer -n flink-colors --replicas=1
+```
+
+Each producer authenticates to Kafka via OAuth (OAUTHBEARER) using group-specific service account credentials and publishes at 10 messages/second. Once scaled, data will flow through the `shapes-input` and `colors-input` topics and be visible in Control Center.
+
+To stop producing, scale back to 0:
+
+```bash
+kubectl scale deployment shapes-producer -n flink-shapes --replicas=0
+kubectl scale deployment colors-producer -n flink-colors --replicas=0
+```
+
 ## Applications
 
 ### Infrastructure Applications
