@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-08
+
 ### Changed
 - **Standardized cluster README.md structure** ([#159](https://github.com/osowski/confluent-platform-gitops/issues/159))
   - Consolidated `flink-demo` and `flink-demo-rbac` READMEs into a common template with consistent sections
@@ -356,7 +358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.4.0...v0.5.0
