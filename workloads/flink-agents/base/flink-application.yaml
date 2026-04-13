@@ -1,0 +1,38 @@
+---
+# Reference: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-af-application
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: flink-agents-workflow
+  namespace: flink
+spec:
+  flinkEnvironment: env1
+  image: quay.io/osowski/flink-agents-demo
+  flinkVersion: v2_1
+  flinkConfiguration:
+    "taskmanager.numberOfTaskSlots": "2"
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: 1048m
+      cpu: 1
+  taskManager:
+    resource:
+      memory: 1048m
+      cpu: 1
+  job:
+    jarURI: local:///opt/flink/usrlib/flink-agents-examples.jar
+    entryClass: org.apache.flink.agents.examples.WorkflowSingleAgentExample
+    state: running
+    parallelism: 1
+    upgradeMode: stateless
+  podTemplate:
+    spec:
+      containers:
+        - name: flink-main-container
+          env:
+            - name: OLLAMA_ENDPOINT
+              value: http://ollama.ollama.svc.cluster.local:11434
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
