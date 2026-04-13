@@ -6,8 +6,9 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Patch to inject the image tag from the most recent osowski/flink-agents build.
-# Update the value with the SHA from scripts/build-image.sh in the osowski/flink-agents repo.
+# Patch spec.image with the SHA tag from the most recent osowski/flink-agents build.
+# kustomize images: transformer does not apply to FlinkApplication's spec.image (custom CRD field).
+# To update: run scripts/build-image.sh in osowski/flink-agents and replace the value below.
 patches:
   - target:
       kind: FlinkApplication
