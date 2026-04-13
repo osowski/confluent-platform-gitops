@@ -11,5 +11,6 @@ resources:
   - cmf-operator.yaml
   - flink-resources.yaml
   - s3proxy.yaml
+  - flink-agents.yaml
   - cmf-ingress.yaml
   - cp-flink-sql-sandbox.yaml
