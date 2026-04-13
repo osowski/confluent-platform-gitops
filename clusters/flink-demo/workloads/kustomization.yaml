@@ -13,3 +13,4 @@ resources:
   - s3proxy.yaml
   - cmf-ingress.yaml
   - cp-flink-sql-sandbox.yaml
+  - ollama.yaml
