@@ -17,7 +17,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/image
-        value: quay.io/osowski/flink-agents-demo:00e3992
+        value: quay.io/osowski/flink-agents-demo:4c0fe4f
 
 # Cluster-specific labels
 labels:
