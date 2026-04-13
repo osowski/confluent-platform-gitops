@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ollama
-  namespace: flink
+  namespace: ollama
   annotations:
     argocd.argoproj.io/sync-wave: "15"
   labels:

@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ollama-model-config
-  namespace: flink
+  namespace: ollama
   annotations:
     argocd.argoproj.io/sync-wave: "15"
   labels:

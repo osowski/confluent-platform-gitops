@@ -16,7 +16,7 @@ spec:
     path: workloads/ollama/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
-    namespace: flink
+    namespace: ollama
   syncPolicy:
     syncOptions:
       - CreateNamespace=false
