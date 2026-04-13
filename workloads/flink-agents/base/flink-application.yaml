@@ -7,6 +7,9 @@ metadata:
   namespace: flink
 spec:
   flinkEnvironment: env1
+  # No tag here — each cluster overlay must patch spec.image with the specific
+  # version tag for that deployment (kustomize images: transformer does not apply
+  # to custom CRD fields; use a JSON patch in the overlay instead).
   image: quay.io/osowski/flink-agents-demo
   flinkVersion: v2_1
   flinkConfiguration:
