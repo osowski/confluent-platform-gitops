@@ -40,7 +40,7 @@ spec:
             - sh
             - -c
             - |
-              until curl -sf "${OLLAMA_ENDPOINT}/api/health"; do
+              until curl -sf "${OLLAMA_ENDPOINT}"; do
                 echo "waiting for ollama at ${OLLAMA_ENDPOINT}...";
                 sleep 5;
               done
