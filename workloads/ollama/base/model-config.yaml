@@ -9,4 +9,5 @@ metadata:
   labels:
     app: ollama
 data:
-  model: "qwen3:8b"
+  models: |
+    qwen3:8b

@@ -34,10 +34,16 @@ spec:
         - /bin/sh
         - -c
         - |
-          MODEL=$(cat /config/model)
-          echo "Pulling model: ${MODEL}"
-          OLLAMA_HOST=http://ollama:11434 ollama pull ${MODEL}
-          echo "Model pull complete!"
+          export OLLAMA_HOST=http://ollama:11434
+          echo "Starting model pulls..."
+          while IFS= read -r MODEL || [ -n "${MODEL}" ]; do
+            MODEL=$(echo "${MODEL}" | tr -d '[:space:]')
+            [ -z "${MODEL}" ] && continue
+            echo "Pulling model: ${MODEL}"
+            ollama pull "${MODEL}"
+            echo "Done pulling: ${MODEL}"
+          done < /config/models
+          echo "All models pulled successfully!"
         volumeMounts:
         - name: model-config
           mountPath: /config
@@ -46,5 +52,5 @@ spec:
         configMap:
           name: ollama-model-config
           items:
-          - key: model
-            path: model
+          - key: models
+            path: models
