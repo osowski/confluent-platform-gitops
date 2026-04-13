@@ -67,11 +67,33 @@ Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. 
 
 ### Install and start
 
+Run Ollama as a brew service rather than a foreground process. This starts automatically on login, restarts on crash, and writes logs to a persistent file — making it easier to observe inference activity and debug issues.
+
 ```bash
 brew install ollama
-ollama serve          # starts on :11434, uses Metal automatically on Apple Silicon
-ollama pull qwen3:8b  # or whichever model is configured (see Model section)
+brew services start ollama    # starts on :11434, uses Metal automatically on Apple Silicon
+ollama pull qwen3:8b          # or whichever model is configured (see Model section)
 ```
+
+**Logs** (written continuously while the service runs):
+```bash
+tail -f /opt/homebrew/var/log/ollama.log    # Apple Silicon
+tail -f /usr/local/var/log/ollama.log       # Intel Mac
+```
+
+Common service management commands:
+```bash
+brew services stop ollama     # stop the service
+brew services restart ollama  # restart after config changes
+brew services info ollama     # show current status and PID
+```
+
+> If you need to pass environment variables (e.g. `OLLAMA_NUM_PARALLEL`, `OLLAMA_FLASH_ATTENTION`), set them via `launchctl` before starting the service, or add them to a `~/.config/ollama/ollama.conf` file if your Ollama version supports it:
+> ```bash
+> launchctl setenv OLLAMA_FLASH_ATTENTION 1
+> launchctl setenv OLLAMA_NUM_PARALLEL 2
+> brew services restart ollama
+> ```
 
 ### Performance knobs (native macOS)
 
