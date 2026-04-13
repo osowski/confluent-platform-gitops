@@ -15,8 +15,9 @@ spec:
   flinkConfiguration:
     "taskmanager.numberOfTaskSlots": "2"
     # flink-agents uses jdk.internal.vm.ContinuationScope for Loom-based async execution.
-    # Java 21 requires explicit --add-opens to grant access to this JDK internal package.
-    "env.java.opts": "--add-opens java.base/jdk.internal.vm=ALL-UNNAMED"
+    # Java 21 requires explicit --add-exports to grant access to this JDK internal package.
+    # ref: https://nightlies.apache.org/flink/flink-docs-stable/docs/deployment/config/#env-java-opts-all
+    "env.java.opts.all": "--add-exports java.base/jdk.internal.vm=ALL-UNNAMED"
   serviceAccount: flink
   jobManager:
     resource:
