@@ -12,7 +12,7 @@ resources:
 
 # Cluster-specific labels
 labels:
-  - includeSelectors: false
-    includeTemplates: true
-    pairs:
-      cluster: flink-demo
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: flink-demo
