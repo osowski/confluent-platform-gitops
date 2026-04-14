@@ -9,7 +9,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: workloads
+  project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD

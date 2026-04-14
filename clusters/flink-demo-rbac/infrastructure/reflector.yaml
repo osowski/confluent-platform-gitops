@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,40 +10,18 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infrastructure
-  source:
-    repoURL: https://emberstack.github.io/helm-charts
-    chart: reflector
-    targetRevision: 10.0.21  # Pin to specific chart version
-    helm:
-      values: |
-        # Reflector - Kubernetes Secret/ConfigMap replication controller
-        # Automatically replicates secrets and configmaps across namespaces
-        #
+  sources:
+    - repoURL: https://emberstack.github.io/helm-charts
+      chart: reflector
+      targetRevision: 10.0.21  # Pin to specific chart version
+      helm:
+        valueFiles:
+          - $values/infrastructure/reflector/base/values.yaml
         # Current use case: Replicate mds-token secret from kafka to operator namespace
         # for CMF to validate MDS-signed SSO tokens from Control Center
-        #
-        # NOTE: If additional policy enforcement or generation needs arise beyond
-        # simple secret replication, consider migrating to Kyverno (CNCF project)
-        # which provides broader policy engine capabilities including validation,
-        # mutation, generation, and image verification. Kyverno can replace this
-        # reflector functionality with ClusterPolicy resources.
-        #
-        # References:
-        # - Reflector: https://github.com/emberstack/kubernetes-reflector
-        # - Kyverno: https://kyverno.io/
-
-        # Resource limits for homelab/demo cluster
-        resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
-          requests:
-            cpu: 50m
-            memory: 64Mi
-
-        # Monitoring configuration
-        serviceMonitor:
-          enabled: false  # Enable if Prometheus is configured
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: reflector-system

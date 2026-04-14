@@ -1,0 +1,25 @@
+# Reflector - Kubernetes Secret/ConfigMap replication controller
+# Automatically replicates secrets and configmaps across namespaces
+#
+# NOTE: If additional policy enforcement or generation needs arise beyond
+# simple secret replication, consider migrating to Kyverno (CNCF project)
+# which provides broader policy engine capabilities including validation,
+# mutation, generation, and image verification. Kyverno can replace this
+# reflector functionality with ClusterPolicy resources.
+#
+# References:
+# - Reflector: https://github.com/emberstack/kubernetes-reflector
+# - Kyverno: https://kyverno.io/
+
+# Resource limits for homelab/demo cluster
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Monitoring configuration
+serviceMonitor:
+  enabled: false  # Enable if Prometheus is configured
