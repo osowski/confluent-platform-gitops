@@ -1,0 +1,6 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base kustomization for infrastructure ingresses
+# All IngressRoutes, Certificates, and ServersTransports are defined in cluster-specific overlays

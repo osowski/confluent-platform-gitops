@@ -1,0 +1,19 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault-server
+  namespace: vault
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`vault.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: vault
+          port: 8200
+  tls:
+    secretName: vault-server-tls
