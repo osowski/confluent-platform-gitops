@@ -6,16 +6,16 @@
     <string>s3</string>
 
     <key>Vendor</key>
-    <string>s3proxy-flink-demo</string>
+    <string>minio-flink-demo</string>
 
     <key>Scheme</key>
     <string>http</string>
 
     <key>Description</key>
-    <string>S3Proxy flink-demo (http, path-style)</string>
+    <string>MinIO flink-demo (http, path-style)</string>
 
     <key>Default Hostname</key>
-    <string>s3proxy.flink-demo.confluentdemo.local</string>
+    <string>s3.flink-demo.confluentdemo.local</string>
 
     <key>Default Port</key>
     <string>80</string>

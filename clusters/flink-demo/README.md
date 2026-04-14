@@ -115,11 +115,13 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **cert-manager** (wave 20) - TLS certificate management
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **trust-manager** (wave 30) - CA certificate distribution
+- **reflector** (wave 40) - Cross-namespace secret replication for minio-credentials
 - **vault** (wave 40) - HashiCorp Vault (dev mode)
 - **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
 - **vault-config** (wave 50) - Vault transit engine configuration
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI
+- **minio** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 
 ### Workload Applications
@@ -128,7 +130,6 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 
 - **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator)
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
-- **s3proxy** (wave 106) - S3-compatible object storage for Flink checkpoints
 - **cmf-ingress** (wave 110) - Traefik IngressRoute for CMF API
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Control Center UI
@@ -159,7 +160,8 @@ Add these entries to `/etc/hosts`:
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  kafka.flink-demo.confluentdemo.local
 127.0.0.1  prometheus.flink-demo.confluentdemo.local
-127.0.0.1  s3proxy.flink-demo.confluentdemo.local
+127.0.0.1  s3.flink-demo.confluentdemo.local
+127.0.0.1  s3-console.flink-demo.confluentdemo.local
 127.0.0.1  schemaregistry.flink-demo.confluentdemo.local
 127.0.0.1  vault.flink-demo.confluentdemo.local
 ```
@@ -174,7 +176,8 @@ Add these entries to `/etc/hosts`:
 > ::1  grafana.flink-demo.confluentdemo.local
 > ::1  kafka.flink-demo.confluentdemo.local
 > ::1  prometheus.flink-demo.confluentdemo.local
-> ::1  s3proxy.flink-demo.confluentdemo.local
+> ::1  s3.flink-demo.confluentdemo.local
+> ::1  s3-console.flink-demo.confluentdemo.local
 > ::1  schemaregistry.flink-demo.confluentdemo.local
 > ::1  vault.flink-demo.confluentdemo.local
 > ```
@@ -211,11 +214,12 @@ Add these entries to `/etc/hosts`:
 - **URL**: http://cmf.flink-demo.confluentdemo.local
 - **Documentation**: [CMF REST API](https://docs.confluent.io/platform/current/flink/index.html)
 
-**S3proxy:**
-- **URL**: http://s3proxy.flink-demo.confluentdemo.local
+**MinIO:**
+- **API URL**: http://s3.flink-demo.confluentdemo.local
+- **Console URL**: http://s3-console.flink-demo.confluentdemo.local
 - **Credentials**: Access Key `admin`, Secret Key `password`
 - **Bucket**: `warehouse`
-- **Purpose**: Backend storage for Flink state management
+- **Purpose**: Backend storage for Flink state management (checkpoints, savepoints, HA)
 - **Cyberduck**: Import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile for GUI access
 
 ## Cluster Specific Use Cases

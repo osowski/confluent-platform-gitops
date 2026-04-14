@@ -18,7 +18,7 @@ The following must be deployed before this application:
 - Confluent for Kubernetes (CFK) operator
 - Confluent Manager for Apache Flink (CMF) operator
 - Kafka cluster with Schema Registry
-- S3proxy for object storage
+- MinIO for object storage (deployed as infrastructure application)
 
 ## Getting Started
 
@@ -29,7 +29,8 @@ Once this application is synced in ArgoCD, you can proceed directly to the "Let'
 Access the following services via Ingress (not port-forward; when deployed in the `flink-demo` cluster):
 
 - **CMF API**: `http://cmf.flink-demo.confluentdemo.local`
-- **S3proxy**: `http://s3proxy.flink-demo.confluentdemo.local`
+- **MinIO API**: `http://s3.flink-demo.confluentdemo.local`
+- **MinIO Console**: `http://s3-console.flink-demo.confluentdemo.local`
 - **Control Center**: `http://controlcenter.flink-demo.confluentdemo.local`
 
 ### Running Flink SQL Queries
@@ -39,7 +40,7 @@ Use the CMF API endpoint to execute Flink SQL statements as documented in the pa
 > [!TIP] **Important differences from the upstream repo:**
 > - Use Ingress endpoints instead of port-forwarding
 > - CMF API: `http://cmf.flink-demo.confluentdemo.local`
-> - S3proxy: `http://s3proxy.flink-demo.confluentdemo.local`
+> - MinIO API: `http://s3.flink-demo.confluentdemo.local`
 > - Kafka bootstrap: `kafka.flink-demo.confluentdemo.local:31000`
 
 ## Reference
