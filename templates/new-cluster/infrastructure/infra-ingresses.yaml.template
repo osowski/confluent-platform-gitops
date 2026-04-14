@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-ingress
+  name: infra-ingresses
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,13 +11,20 @@ metadata:
 spec:
   project: infrastructure
   source:
-    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    repoURL: $REPO_URL
     targetRevision: HEAD
-    path: infrastructure/argocd-ingress/overlays/$CLUSTER_NAME
+    path: infrastructure/ingresses/overlays/$CLUSTER_NAME
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
