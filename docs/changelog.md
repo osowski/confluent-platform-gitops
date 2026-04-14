@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Consolidated all standalone ingress ArgoCD Applications into `infra-ingresses` and `workload-ingresses` per cluster; updated `new-cluster.sh` to scaffold ingress overlays automatically.
+
 ## [0.6.0] - 2026-04-08
 
 ### Changed

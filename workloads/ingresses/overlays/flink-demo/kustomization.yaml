@@ -4,7 +4,6 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - mds-ingressroute.yaml  # flink-demo-rbac only: MDS endpoint
 
 patches:
   - path: cmf-ingressroute-patch.yaml
@@ -32,4 +31,4 @@ labels:
 - includeSelectors: false
   includeTemplates: true
   pairs:
-    cluster: flink-demo-rbac
+    cluster: flink-demo

@@ -2,24 +2,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-config
+  name: infra-ingresses
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "85" # After argocd-ingress (80), before workloads (100)
+    argocd.argoproj.io/sync-wave: "80"
 spec:
   project: infrastructure
   source:
-    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    repoURL: $REPO_URL
     targetRevision: HEAD
-    path: infrastructure/argocd-config/overlays/flink-demo
+    path: infrastructure/ingresses/overlays/$CLUSTER_NAME
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -8,7 +8,7 @@ resources:
   - cfk-operator.yaml
   - mds-keygen.yaml
   - confluent-resources.yaml
-  - ingresses.yaml
+  - workload-ingresses.yaml
   - flink-kubernetes-operator.yaml
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
