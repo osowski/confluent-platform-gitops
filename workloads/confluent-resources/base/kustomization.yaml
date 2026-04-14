@@ -14,7 +14,6 @@ resources:
   - ksqldb.yaml
   - podmonitor-cfk.yaml
   - schema-registry.yaml
-  - schema-registry-ingress.yaml
 
 labels:
   - pairs:

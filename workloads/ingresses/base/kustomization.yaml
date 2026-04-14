@@ -2,5 +2,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Base kustomization for ingresses
-# IngressRoutes are defined in cluster-specific overlays
+resources:
+  - cmf-ingressroute.yaml
+  - controlcenter-ingressroute.yaml
+  - controlcenter-certificate.yaml
+  - schema-registry-ingressroute.yaml

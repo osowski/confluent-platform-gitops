@@ -1,0 +1,27 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference base configuration
+resources:
+  - ../../base
+
+# Patch spec.image with the SHA tag from the most recent osowski/flink-agents build.
+# kustomize images: transformer does not apply to FlinkApplication's spec.image (custom CRD field).
+# To update: run scripts/build-image.sh in osowski/flink-agents and replace the value below.
+patches:
+  - target:
+      kind: FlinkApplication
+      name: flink-agents-workflow
+      namespace: flink
+    patch: |-
+      - op: replace
+        path: /spec/image
+        value: quay.io/osowski/flink-agents-demo:b550df9
+
+# Cluster-specific labels
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      cluster: flink-demo

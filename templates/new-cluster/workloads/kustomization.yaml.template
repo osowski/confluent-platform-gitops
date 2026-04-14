@@ -5,7 +5,7 @@ resources:
   - namespaces.yaml
   - cfk-operator.yaml
   - confluent-resources.yaml
-  - controlcenter-ingress.yaml
+  - workload-ingresses.yaml
   - flink-kubernetes-operator.yaml
   - observability-resources.yaml
   - cmf-operator.yaml

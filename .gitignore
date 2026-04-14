@@ -34,3 +34,6 @@ charts/*.tgz
 # IDE AI assistant files
 .claude/
 .cursor/
+
+# Local-only working documents (design specs, brainstorming outputs)
+docs/superpowers/

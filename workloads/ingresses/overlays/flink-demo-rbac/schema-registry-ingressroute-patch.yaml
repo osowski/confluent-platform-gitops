@@ -1,0 +1,14 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: schema-registry
+  namespace: kafka
+spec:
+  routes:
+    - kind: Rule
+      match: Host(`schema-registry.flink-demo-rbac.confluentdemo.local`)
+      services:
+        - name: schemaregistry
+          port: 8081
+          scheme: http

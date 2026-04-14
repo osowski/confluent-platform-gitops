@@ -1,0 +1,34 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: cmf-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: cmf
+
+  - path: controlcenter-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: controlcenter
+
+  - path: controlcenter-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: controlcenter-tls
+
+  - path: schema-registry-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: schema-registry
+
+# Cluster-specific labels
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: flink-demo

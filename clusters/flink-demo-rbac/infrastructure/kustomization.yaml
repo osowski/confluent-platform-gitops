@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
 - argocd-config.yaml
-- argocd-ingress.yaml
+- infra-ingresses.yaml
 - cert-manager.yaml
 - cert-manager-resources.yaml
 - trust-manager.yaml

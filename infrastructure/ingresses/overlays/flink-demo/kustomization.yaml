@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - vault-ingressroute.yaml  # flink-demo only: Vault endpoint
+  - vault-certificate.yaml   # flink-demo only: Vault TLS certificate
+
+patches:
+  - path: argocd-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: argocd-server
+
+  - path: argocd-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: argocd-server-tls
+
+# Cluster-specific labels
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: flink-demo

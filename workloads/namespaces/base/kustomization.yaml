@@ -5,3 +5,4 @@ resources:
   - operator.yaml
   - kafka.yaml
   - flink.yaml
+  - ollama.yaml
