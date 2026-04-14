@@ -125,6 +125,34 @@ The following overlay directories become dead code once their parent Application
 
 **Base directories** (`infrastructure/argocd-ingress/base/`, `infrastructure/vault-ingress/base/`, `workloads/cmf-ingress/base/`, `workloads/controlcenter-ingress/base/`) are left in place; they can be removed in a follow-up cleanup PR once confirmed no future cluster onboarding requires them.
 
+### Template and Scaffolding Changes (`templates/new-cluster/` and `scripts/new-cluster.sh`)
+
+The `new-cluster.sh` script globs all `*.yaml.template` files from `templates/new-cluster/infrastructure/` and `templates/new-cluster/workloads/` into the new cluster directory. It also prints a hardcoded application count and "next steps" message. All of these must be updated.
+
+#### Template file changes
+
+**Remove:**
+- `templates/new-cluster/infrastructure/argocd-ingress.yaml.template`
+- `templates/new-cluster/infrastructure/vault-ingress.yaml.template`
+- `templates/new-cluster/workloads/controlcenter-ingress.yaml.template`
+
+**Add:**
+- `templates/new-cluster/infrastructure/infra-ingresses.yaml.template` — `metadata.name: infra-ingresses`, path `infrastructure/ingresses/overlays/$CLUSTER_NAME`, sync-wave `"80"`
+- `templates/new-cluster/workloads/workload-ingresses.yaml.template` — `metadata.name: workload-ingresses`, path `workloads/ingresses/overlays/$CLUSTER_NAME`, sync-wave `"110"`
+
+**Update:**
+- `templates/new-cluster/infrastructure/kustomization.yaml.template` — replace `argocd-ingress.yaml` and `vault-ingress.yaml` with `infra-ingresses.yaml`
+- `templates/new-cluster/workloads/kustomization.yaml.template` — replace `controlcenter-ingress.yaml` with `workload-ingresses.yaml`
+
+#### `scripts/new-cluster.sh` changes
+
+The script must be extended to scaffold ingress overlay directories outside `clusters/`:
+
+1. Create `infrastructure/ingresses/overlays/$CLUSTER_NAME/` with a stub `kustomization.yaml` listing placeholder resource files.
+2. Create `workloads/ingresses/overlays/$CLUSTER_NAME/` with a stub `kustomization.yaml` listing placeholder resource files.
+3. Update the hardcoded application counts in the success message (currently "12 infrastructure" / "8 workload").
+4. Update the "next steps" output to reference the new consolidated ingress overlay directories instead of the old per-service overlay paths.
+
 ### AppProject Impact
 
 **No changes required** to the bootstrap Helm chart or AppProject definitions:
@@ -173,3 +201,5 @@ No changes to sync-wave ordering. Infra ingresses remain at wave `80`; workload 
 2. All previously deployed IngressRoutes, Certificates, and ServersTransports continue to function identically after the migration.
 3. No orphaned overlay directories remain for the removed Applications.
 4. AppProject definitions require no changes.
+5. `new-cluster.sh` scaffolds `infrastructure/ingresses/overlays/<cluster>/` and `workloads/ingresses/overlays/<cluster>/` stub directories for new clusters.
+6. Template files in `templates/new-cluster/` reflect the consolidated Application names and no longer reference removed standalone ingress apps.
