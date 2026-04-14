@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replaced s3proxy with MinIO in flink-demo cluster; adds reflector for secret distribution and MinIO console UI
+
 ## [0.6.0] - 2026-04-08
 
 ### Changed
