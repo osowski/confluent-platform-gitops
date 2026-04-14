@@ -43,12 +43,6 @@ patches:
       kind: KafkaRestClass
       name: default
 
-  # Schema Registry - ingress
-  - path: schema-registry-ingress-patch.yaml
-    target:
-      kind: IngressRoute
-      name: schema-registry
-
   # Connect - resources and JVM tuning
   # - path: connect-patch.yaml
   #   target:
