@@ -13,7 +13,7 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: workloads/minio/overlays/flink-demo
+    path: infrastructure/minio/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
     namespace: storage
