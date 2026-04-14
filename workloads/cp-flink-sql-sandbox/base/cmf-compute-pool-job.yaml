@@ -26,18 +26,18 @@ spec:
             sleep 5
           done
           echo "CMF is ready!"
-      - name: wait-for-s3proxy
+      - name: wait-for-minio
         image: busybox:1.36
         command:
         - /bin/sh
         - -c
         - |
-          echo "Waiting for s3proxy to be ready..."
-          until nc -z s3proxy.flink.svc.cluster.local 8000; do
-            echo "s3proxy not ready yet, waiting..."
+          echo "Waiting for MinIO to be ready..."
+          until nc -z minio.storage.svc.cluster.local 9000; do
+            echo "MinIO not ready yet, waiting..."
             sleep 5
           done
-          echo "s3proxy is ready!"
+          echo "MinIO is ready!"
       containers:
       - name: create-compute-pool
         image: confluentinc/confluent-cli:4.53.0

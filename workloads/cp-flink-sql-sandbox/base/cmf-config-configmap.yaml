@@ -64,11 +64,9 @@ data:
             "taskmanager.numberOfTaskSlots": "4",
             "state.checkpoints.dir": "s3://warehouse/checkpoints/",
             "state.savepoints.dir": "s3://warehouse/savepoints/",
-            "s3.endpoint": "http://s3proxy.flink.svc.cluster.local:8000",
+            "s3.endpoint": "http://minio.storage.svc.cluster.local:9000",
             "s3.path.style.access": "true",
             "s3.connection.ssl.enabled": "false",
-            "s3.access-key": "admin",
-            "s3.secret-key": "password",
             "state.backend": "filesystem",
             "state.checkpoints.timeout": "600000",
             "execution.checkpointing.min-pause": "5000",
@@ -87,7 +85,27 @@ data:
                   "imagePullPolicy": "IfNotPresent",
                   "securityContext": {
                     "runAsUser": 9999
-                  }
+                  },
+                  "env": [
+                    {
+                      "name": "AWS_ACCESS_KEY_ID",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-user"
+                        }
+                      }
+                    },
+                    {
+                      "name": "AWS_SECRET_ACCESS_KEY",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "name": "minio-credentials",
+                          "key": "root-password"
+                        }
+                      }
+                    }
+                  ]
                 }
               ]
             }
