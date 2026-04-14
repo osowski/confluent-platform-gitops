@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Add Prometheus metrics reporter to `env1` ComputePool, consistent with Flink Application defaults and flink-demo-rbac compute pools.
 - Replaced s3proxy with MinIO in flink-demo cluster; adds reflector for secret distribution and MinIO console UI
 - Consolidated all standalone ingress ArgoCD Applications into `infra-ingresses` and `workload-ingresses` per cluster; updated `new-cluster.sh` to scaffold ingress overlays automatically.
 
