@@ -9,6 +9,7 @@ resources:
 # Cluster-specific patches
 patches:
   - path: ingressroute-patch.yaml
+  - path: secret-patch.yaml
 
 # Cluster-specific labels
 labels:
