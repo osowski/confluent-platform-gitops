@@ -1,0 +1,61 @@
+---
+# Reference: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-af-application
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: flink-agents-workflow
+  namespace: flink
+spec:
+  flinkEnvironment: env1
+  # No tag here — each cluster overlay must patch spec.image with the specific
+  # version tag for that deployment (kustomize images: transformer does not apply
+  # to custom CRD fields; use a JSON patch in the overlay instead).
+  image: quay.io/osowski/flink-agents-demo
+  flinkVersion: v2_1
+  flinkConfiguration:
+    "taskmanager.numberOfTaskSlots": "2"
+    # flink-agents uses jdk.internal.vm.ContinuationScope for Loom-based async execution.
+    # Java 21 requires explicit --add-exports to grant access to this JDK internal package.
+    # ref: https://nightlies.apache.org/flink/flink-docs-stable/docs/deployment/config/#env-java-opts-all
+    "env.java.opts.all": "--add-exports java.base/jdk.internal.vm=ALL-UNNAMED"
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: 1048m
+      cpu: 1
+  taskManager:
+    resource:
+      memory: 1048m
+      cpu: 1
+  job:
+    jarURI: local:///opt/flink/usrlib/flink-agents-examples.jar
+    entryClass: org.apache.flink.agents.examples.WorkflowSingleAgentExample
+    state: running
+    parallelism: 1
+    upgradeMode: stateless
+  podTemplate:
+    spec:
+      initContainers:
+        # Wait for Ollama to be reachable before starting Flink containers.
+        # Prevents the job from failing immediately if Ollama is slow to start.
+        - name: wait-for-ollama
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -sf "${OLLAMA_ENDPOINT}"; do
+                echo "waiting for ollama at ${OLLAMA_ENDPOINT}...";
+                sleep 5;
+              done
+          env:
+            - name: OLLAMA_ENDPOINT
+              value: http://ollama.ollama.svc.cluster.local:11434
+      containers:
+        - name: flink-main-container
+          env:
+            - name: OLLAMA_ENDPOINT
+              value: http://ollama.ollama.svc.cluster.local:11434
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink

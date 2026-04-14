@@ -71,6 +71,10 @@ Refer to these documentation files for details. Claude may read them as needed:
 
 These rules apply *in every session*:
 
+### Design Specs — Local Only
+
+Design specs (brainstorming outputs, implementation specs) written to `docs/superpowers/specs/` are **local working documents only** and must NEVER be committed to git. They are gitignored. Do not stage or commit any file under `docs/superpowers/`.
+
 ### Progressive Disclosure Policy
 Only load task-specific docs when needed. This file is intentionally concise — do not dump entire workflows here; instead, link to the named doc files above.
 
