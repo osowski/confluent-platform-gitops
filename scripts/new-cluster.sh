@@ -191,6 +191,48 @@ create_from_templates() {
     # Copy workloads kustomization template
     cp "$template_dir/workloads/kustomization.yaml.template" "$target_dir/workloads/kustomization.yaml"
 
+    # Scaffold infrastructure ingresses overlay stub
+    local infra_ingresses_dir="infrastructure/ingresses/overlays/$cluster_name"
+    mkdir -p "$infra_ingresses_dir"
+    cat > "$infra_ingresses_dir/kustomization.yaml" <<EOF
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Cluster-specific IngressRoutes and Certificates for $cluster_name infrastructure ingresses
+# Add your cluster-specific resource files here and list them below
+resources: []
+
+# Cluster-specific labels
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: $cluster_name
+EOF
+    success "Created $infra_ingresses_dir/kustomization.yaml (stub — add IngressRoute/Certificate resources)"
+
+    # Scaffold workload ingresses overlay stub
+    local workload_ingresses_dir="workloads/ingresses/overlays/$cluster_name"
+    mkdir -p "$workload_ingresses_dir"
+    cat > "$workload_ingresses_dir/kustomization.yaml" <<EOF
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Cluster-specific IngressRoutes for $cluster_name workload ingresses
+# Add your cluster-specific resource files here and list them below
+resources: []
+
+# Cluster-specific labels
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: $cluster_name
+EOF
+    success "Created $workload_ingresses_dir/kustomization.yaml (stub — add IngressRoute/Certificate resources)"
+
     # Copy README template
     cp "$template_dir/README.md.template" "$target_dir/README.md"
     replace_placeholders "$target_dir/README.md" "$cluster_name" "$domain" "$repo_url"
@@ -305,7 +347,7 @@ main() {
     echo ""
     echo "Generated cluster with full application stack:"
     echo "  - Bootstrap configuration"
-    echo "  - 12 infrastructure applications (ingress, monitoring, secrets, TLS)"
+    echo "  - 11 infrastructure applications (ingress, monitoring, secrets, TLS)"
     echo "  - 8 workload applications (Confluent Platform, Flink, observability)"
     echo ""
     echo "Next steps:"
@@ -314,7 +356,9 @@ main() {
     echo "     - clusters/$CLUSTER_NAME/infrastructure/kustomization.yaml"
     echo "     - clusters/$CLUSTER_NAME/workloads/kustomization.yaml"
     echo "  3. Create cluster-specific overlays as needed (see clusters/$CLUSTER_NAME/README.md)"
-    echo "     - Required: Ingress overlays (argocd, vault, controlcenter)"
+    echo "     - Required: Populate ingress overlay stubs:"
+    echo "         infrastructure/ingresses/overlays/\$CLUSTER_NAME/ (ArgoCD, Vault, etc.)"
+    echo "         workloads/ingresses/overlays/\$CLUSTER_NAME/ (CMF, ControlCenter, etc.)"
     echo "     - Optional: Environment-specific settings (traefik, metrics-server)"
     echo "  4. Commit changes: git add clusters/$CLUSTER_NAME/ && git commit -m 'Add $CLUSTER_NAME cluster'"
     echo "  5. Deploy bootstrap: kubectl apply -f clusters/$CLUSTER_NAME/bootstrap.yaml"
