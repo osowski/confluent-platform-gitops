@@ -4,12 +4,10 @@ kind: IngressRoute
 metadata:
   name: schema-registry
   namespace: kafka
-  annotations:
-    argocd.argoproj.io/sync-wave: "110"
 spec:
   routes:
     - kind: Rule
-      match: Host(`schema-registry.flink-demo.confluentdemo.local`)
+      match: Host(`schema-registry.flink-demo-rbac.confluentdemo.local`)
       services:
         - name: schemaregistry
           port: 8081

@@ -2,11 +2,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Cluster-specific IngressRoutes and Certificates for flink-demo-rbac infrastructure ingresses
 resources:
-- argocd-ingressroute.yaml
-- argocd-certificate.yaml
-- argocd-serverstransport.yaml
+  - ../../base
+
+patches:
+  - path: argocd-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: argocd-server
+
+  - path: argocd-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: argocd-server-tls
 
 # Cluster-specific labels
 labels:

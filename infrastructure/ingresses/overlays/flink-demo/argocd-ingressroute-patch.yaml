@@ -4,8 +4,6 @@ kind: IngressRoute
 metadata:
   name: argocd-server
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "80"
 spec:
   entryPoints:
     - websecure

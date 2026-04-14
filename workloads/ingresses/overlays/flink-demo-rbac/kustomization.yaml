@@ -2,12 +2,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Cluster-specific IngressRoutes for flink-demo-rbac
 resources:
-  - controlcenter-ingressroute.yaml
-  - mds-ingressroute.yaml
-  - cmf-ingressroute.yaml
-  - schema-registry-ingressroute.yaml
+  - ../../base
+  - mds-ingressroute.yaml  # flink-demo-rbac only: MDS endpoint
+
+patches:
+  - path: cmf-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: cmf
+
+  - path: controlcenter-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: controlcenter
+
+  - path: controlcenter-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: controlcenter-tls
+
+  - path: schema-registry-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: schema-registry
 
 # Cluster-specific labels
 labels:

@@ -8,7 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "80"
 spec:
   dnsNames:
-    - argocd.flink-demo.confluentdemo.local
+    - argocd.cluster.confluentdemo.local
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

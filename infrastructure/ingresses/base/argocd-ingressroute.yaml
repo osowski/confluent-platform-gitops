@@ -1,0 +1,21 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`argocd.cluster.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 443
+          scheme: https
+          serversTransport: argocd-server-insecure-transport
+  tls:
+    secretName: argocd-server-tls

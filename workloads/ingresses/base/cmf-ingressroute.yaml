@@ -8,7 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "110"
 spec:
   routes:
-    - match: Host(`cmf.flink-demo-rbac.confluentdemo.local`)
+    - match: Host(`cmf.cluster.confluentdemo.local`)
       kind: Rule
       services:
         - name: cmf-service

@@ -4,8 +4,6 @@ kind: IngressRoute
 metadata:
   name: cmf
   namespace: operator
-  annotations:
-    argocd.argoproj.io/sync-wave: "110"
 spec:
   routes:
     - match: Host(`cmf.flink-demo.confluentdemo.local`)

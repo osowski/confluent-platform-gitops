@@ -4,13 +4,11 @@ kind: IngressRoute
 metadata:
   name: controlcenter
   namespace: kafka
-  annotations:
-    argocd.argoproj.io/sync-wave: "110"
 spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`controlcenter.flink-demo-rbac.confluentdemo.local`)
+    - match: Host(`controlcenter.flink-demo.confluentdemo.local`)
       kind: Rule
       services:
         - name: controlcenter
