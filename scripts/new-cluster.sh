@@ -199,9 +199,19 @@ create_from_templates() {
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Cluster-specific IngressRoutes and Certificates for $cluster_name infrastructure ingresses
-# Add your cluster-specific resource files here and list them below
-resources: []
+resources:
+  - ../../base
+
+patches:
+  - path: argocd-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: argocd-server
+
+  - path: argocd-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: argocd-server-tls
 
 # Cluster-specific labels
 labels:
@@ -210,7 +220,39 @@ labels:
   pairs:
     cluster: $cluster_name
 EOF
-    success "Created $infra_ingresses_dir/kustomization.yaml (stub — add IngressRoute/Certificate resources)"
+    cat > "$infra_ingresses_dir/argocd-ingressroute-patch.yaml" <<EOF
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(\`argocd.$cluster_name.$domain\`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 443
+          scheme: https
+          serversTransport: argocd-server-insecure-transport
+  tls:
+    secretName: argocd-server-tls
+EOF
+    cat > "$infra_ingresses_dir/argocd-certificate-patch.yaml" <<EOF
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-server-tls
+  namespace: argocd
+spec:
+  dnsNames:
+    - argocd.$cluster_name.$domain
+EOF
+    success "Created $infra_ingresses_dir/ (argocd patches for $cluster_name.$domain)"
 
     # Scaffold workload ingresses overlay stub
     local workload_ingresses_dir="workloads/ingresses/overlays/$cluster_name"
@@ -220,9 +262,29 @@ EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Cluster-specific IngressRoutes for $cluster_name workload ingresses
-# Add your cluster-specific resource files here and list them below
-resources: []
+resources:
+  - ../../base
+
+patches:
+  - path: cmf-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: cmf
+
+  - path: controlcenter-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: controlcenter
+
+  - path: controlcenter-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: controlcenter-tls
+
+  - path: schema-registry-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: schema-registry
 
 # Cluster-specific labels
 labels:
@@ -231,7 +293,70 @@ labels:
   pairs:
     cluster: $cluster_name
 EOF
-    success "Created $workload_ingresses_dir/kustomization.yaml (stub — add IngressRoute/Certificate resources)"
+    cat > "$workload_ingresses_dir/cmf-ingressroute-patch.yaml" <<EOF
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cmf
+  namespace: operator
+spec:
+  routes:
+    - match: Host(\`cmf.$cluster_name.$domain\`)
+      kind: Rule
+      services:
+        - name: cmf-service
+          port: 80
+          scheme: http
+EOF
+    cat > "$workload_ingresses_dir/controlcenter-ingressroute-patch.yaml" <<EOF
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(\`controlcenter.$cluster_name.$domain\`)
+      kind: Rule
+      services:
+        - name: controlcenter
+          port: 9021
+          scheme: http
+  tls:
+    secretName: controlcenter-tls
+EOF
+    cat > "$workload_ingresses_dir/controlcenter-certificate-patch.yaml" <<EOF
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: controlcenter-tls
+  namespace: kafka
+spec:
+  dnsNames:
+    - controlcenter.$cluster_name.$domain
+EOF
+    cat > "$workload_ingresses_dir/schema-registry-ingressroute-patch.yaml" <<EOF
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: schema-registry
+  namespace: kafka
+spec:
+  routes:
+    - kind: Rule
+      match: Host(\`schema-registry.$cluster_name.$domain\`)
+      services:
+        - name: schemaregistry
+          port: 8081
+          scheme: http
+EOF
+    success "Created $workload_ingresses_dir/ (cmf, controlcenter, schema-registry patches for $cluster_name.$domain)"
 
     # Copy README template
     cp "$template_dir/README.md.template" "$target_dir/README.md"
