@@ -10,7 +10,9 @@ resources:
 - kube-prometheus-stack-crds.yaml
 - kube-prometheus-stack.yaml
 - metrics-server.yaml
+- reflector.yaml
 - traefik.yaml
+- minio.yaml
 - vault.yaml
 - vault-ingress.yaml
 - vault-config.yaml
