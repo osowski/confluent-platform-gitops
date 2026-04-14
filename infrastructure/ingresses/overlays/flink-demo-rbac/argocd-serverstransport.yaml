@@ -1,0 +1,10 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: argocd-server-insecure-transport
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
+spec:
+  insecureSkipVerify: true
