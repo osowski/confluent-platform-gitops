@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-107/consolidated-ingress-applications
     path: workloads/cp-flink-sql-sandbox/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
