@@ -4,3 +4,4 @@ kind: Kustomization
 
 resources:
   - flink-application-workflow.yaml
+  - flink-application-react.yaml

@@ -9,7 +9,6 @@ kind: Component
 patches:
   - target:
       kind: FlinkApplication
-      name: flink-agents-workflow
     patch: |-
       - op: replace
         path: /spec/podTemplate/spec/initContainers/0/env/0/value
