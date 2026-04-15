@@ -137,7 +137,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources — **manual sync**
-- **flink-agents** (wave 111) - Flink Agents workflow demo (LLM-driven review analysis) — **manual sync**
+- **flink-agents** (wave 111) - Flink Agents workflow demo (LLM-driven review analysis) — **manual sync** — see [Flink Agents README](../../workloads/flink-agents/README.md)
 - **ollama** (wave 110) - In-cluster Ollama LLM backend — **disabled** (run Ollama natively on macOS instead; see [Flink Agents README](../../workloads/flink-agents/README.md))
 
 ## Environment Access
@@ -224,34 +224,6 @@ Add these entries to `/etc/hosts`:
 - **Cyberduck**: Import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile for GUI access
 
 ## Cluster Specific Use Cases
-
-### Flink Agents Demo
-
-The cluster includes a **flink-agents** application that runs the [Flink Agents workflow agent quickstart](https://nightlies.apache.org/flink/flink-agents-docs-release-0.2/docs/get-started/quickstart/workflow_agent/) — an LLM-driven review analysis pipeline backed by Ollama.
-
-**Ollama target:** Configured to use native macOS Ollama via `host.docker.internal:11434` (in-cluster Ollama is disabled for performance). Run Ollama locally before syncing:
-
-```bash
-brew install ollama
-ollama pull qwen3:8b   # must match OLLAMA_MODEL in the flink-agents overlay
-ollama serve
-```
-
-**Sync flink-agents (manual):**
-
-1. In the ArgoCD UI, click on `flink-agents`
-2. Click **Sync** → **Synchronize**
-3. The `wait-for-ollama` initContainer will block until Ollama is reachable at `host.docker.internal:11434`
-
-**Configuration:**
-
-| Parameter | Location | Default |
-|---|---|---|
-| LLM endpoint | `workloads/flink-agents/overlays/flink-demo/kustomization.yaml` (via `ollama-host-mode` component) | `http://host.docker.internal:11434` |
-| Model | `workloads/flink-agents/base/flink-application.yaml` (`OLLAMA_MODEL` env var) | `qwen3:8b` |
-| Image | `workloads/flink-agents/overlays/flink-demo/kustomization.yaml` (`spec.image` patch) | `quay.io/osowski/flink-agents-demo:<sha>` |
-
-See **[Flink Agents README](../../workloads/flink-agents/README.md)** for full deployment options, model selection, and performance tuning.
 
 ### CP Flink SQL Sandbox
 
