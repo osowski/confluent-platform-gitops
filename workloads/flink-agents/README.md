@@ -19,7 +19,7 @@ The `OLLAMA_ENDPOINT` env var on the Flink pod controls where inference requests
 
 ## Option 1: In-Cluster Ollama (default)
 
-Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 111).
+Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121).
 
 **Endpoint (default):** `http://ollama.ollama.svc.cluster.local:11434`
 
