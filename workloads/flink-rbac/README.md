@@ -99,3 +99,4 @@ Apache Flink Kubernetes Operator provides:
 - #85 - This issue (Kubernetes RBAC)
 - #87 - CMF OAuth and internal RBAC configuration
 - #76 - Parent epic for flink-demo-rbac cluster
+- #163 - Flink Agents demo (Phase 4: migration to flink-demo-rbac)
