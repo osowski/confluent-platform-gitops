@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/traefik/base/values.yaml
           - $values/infrastructure/traefik/overlays/flink-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.6.1
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
