@@ -1,6 +1,6 @@
 # Flink Agents — Deployment & Performance Guide
 
-This workload deploys the [Flink Agents workflow agent quickstart](https://nightlies.apache.org/flink/flink-agents-docs-release-0.2/docs/get-started/quickstart/workflow_agent/) as a CMF-managed `FlinkApplication` on the `flink-demo` cluster, using Ollama as the local LLM backend.
+This workload deploys both the [Flink Agents Workflow agent quickstart](https://nightlies.apache.org/flink/flink-agents-docs-release-0.2/docs/get-started/quickstart/workflow_agent/) and the [Flink Agents ReAct agent quickstart](https://nightlies.apache.org/flink/flink-agents-docs-release-0.2/docs/get-started/quickstart/react_agent/) as a CMF-managed `FlinkApplication` on the `flink-demo` cluster, using Ollama as the local LLM backend.
 
 ---
 
