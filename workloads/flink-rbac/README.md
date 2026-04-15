@@ -77,26 +77,3 @@ The two RBAC systems work together:
 ### ClusterRoleBinding
 
 - flink-admin → flink-admin - Cluster-wide admin access
-
-## API Groups Used
-
-### platform.confluent.io (CFK)
-
-Confluent for Kubernetes provides these CRDs:
-- FlinkEnvironment
-- FlinkApplication
-- CMFRestClass
-- Plus all Confluent Platform resources (Kafka, Connect, SchemaRegistry, etc.)
-
-### flink.apache.org (Flink Kubernetes Operator)
-
-Apache Flink Kubernetes Operator provides:
-- FlinkDeployment
-- FlinkSessionJob
-
-## Related Issues
-
-- #85 - This issue (Kubernetes RBAC)
-- #87 - CMF OAuth and internal RBAC configuration
-- #76 - Parent epic for flink-demo-rbac cluster
-- #163 - Flink Agents demo (Phase 4: migration to flink-demo-rbac)
