@@ -56,6 +56,8 @@ spec:
           env:
             - name: OLLAMA_ENDPOINT
               value: http://ollama.ollama.svc.cluster.local:11434
+            - name: OLLAMA_MODEL
+              value: qwen3:8b
   cmfRestClassRef:
     name: cmf-rest-class
     namespace: flink
