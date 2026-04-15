@@ -17,6 +17,30 @@ The `OLLAMA_ENDPOINT` env var on the Flink pod controls where inference requests
 
 ---
 
+## Running the Agent
+
+**1. Sync in ArgoCD:**
+
+In the ArgoCD UI, click `flink-agents` → **Sync** → **Synchronize**. The `wait-for-ollama` initContainer will block until Ollama is reachable before the Flink job starts.
+
+**2. Tail Flink agent output:**
+
+```bash
+kubectl logs -n flink -l component=taskmanager,app=flink-agents-workflow -f
+```
+
+This streams the TaskManager output, including agent actions, LLM responses, and `OutputEvent` results from the workflow DAG.
+
+**3. Tail Ollama logs:**
+
+```bash
+tail -f /opt/homebrew/var/log/ollama.log
+```
+
+Shows incoming inference requests, model load times, and token generation as the agent calls Ollama.
+
+---
+
 ## Option 1: In-Cluster Ollama (default)
 
 Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121).
