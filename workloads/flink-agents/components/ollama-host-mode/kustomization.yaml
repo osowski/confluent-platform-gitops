@@ -1,0 +1,19 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Switches the Ollama endpoint from the in-cluster service to the native
+# macOS host. Used when Ollama runs locally via `brew services` rather than
+# as a Kubernetes workload. Applies to both the init container health check
+# and the main Flink container's OLLAMA_ENDPOINT env var.
+patches:
+  - target:
+      kind: FlinkApplication
+      name: flink-agents-workflow
+    patch: |-
+      - op: replace
+        path: /spec/podTemplate/spec/initContainers/0/env/0/value
+        value: http://host.docker.internal:11434
+      - op: replace
+        path: /spec/podTemplate/spec/containers/0/env/0/value
+        value: http://host.docker.internal:11434

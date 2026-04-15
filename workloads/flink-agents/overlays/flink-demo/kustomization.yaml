@@ -6,6 +6,11 @@ kind: Kustomization
 resources:
   - ../../base
 
+# Use host-mode Ollama component — routes OLLAMA_ENDPOINT to the native macOS
+# host instead of the in-cluster service. Remove this when running Ollama in-cluster.
+components:
+  - ../../components/ollama-host-mode
+
 # Patch spec.image with the SHA tag from the most recent osowski/flink-agents build.
 # kustomize images: transformer does not apply to FlinkApplication's spec.image (custom CRD field).
 # To update: run scripts/build-image.sh in osowski/flink-agents and replace the value below.
@@ -17,7 +22,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/image
-        value: quay.io/osowski/flink-agents-demo:b550df9
+        value: quay.io/osowski/flink-agents-demo:dd28128
 
 # Cluster-specific labels
 labels:
