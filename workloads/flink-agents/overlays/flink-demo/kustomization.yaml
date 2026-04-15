@@ -22,7 +22,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/image
-        value: quay.io/osowski/flink-agents-demo:dd28128
+        value: quay.io/osowski/flink-agents-demo:dea72db
   - target:
       kind: FlinkApplication
       name: flink-agents-react
@@ -30,7 +30,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/image
-        value: quay.io/osowski/flink-agents-demo:dd28128
+        value: quay.io/osowski/flink-agents-demo:dea72db
 
 # Cluster-specific labels
 labels:
