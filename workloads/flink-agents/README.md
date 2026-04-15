@@ -4,16 +4,24 @@ This workload deploys both the [Flink Agents Workflow agent quickstart](https://
 
 ---
 
+## Agent Source
+
+The agents source is maintained in a fork, located at https://github.com/osowski/flink-agents/tree/k8s-main. The images, built with the `scripts/build-image.sh` script, are hosted under [quay.io/osowski/flink-agents-demo](https://quay.io/repository/osowski/flink-agents-demo).
+
+Source modifications enable parameterization the upstream examples don't require: `OLLAMA_ENDPOINT` (can't assume `localhost` in Kubernetes) and `OLLAMA_MODEL` (runtime-configurable without rebuilding). Both are set as env vars on the `FlinkApplication` podTemplate.
+
+---
+
 ## Architecture
 
 ```
-FlinkApplication (flink ns)
-  └─ ReviewAnalysisAgent
-       └─ OLLAMA_ENDPOINT ──► Ollama service (ollama ns)
-                                  └─ qwen3:8b (or configured model)
+flink-agents-workflow (flink ns)        flink-agents-react (flink ns)
+  └─ ReviewAnalysisAgent                  └─ ReActAgent
+       └─ OLLAMA_ENDPOINT ──────────────────────────────► Ollama (ollama ns / macOS host)
+       └─ OLLAMA_MODEL                                        └─ qwen3:8b (or configured model)
 ```
 
-The `OLLAMA_ENDPOINT` env var on the Flink pod controls where inference requests are sent. By default it points to the in-cluster Ollama service. For native macOS Ollama, it is overridden in the cluster overlay.
+Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_ENDPOINT` controls where inference requests are sent — defaulting to the in-cluster Ollama service, overridden per cluster overlay for native macOS. Only one agent should be running at a time to avoid Ollama resource contention.
 
 ---
 
