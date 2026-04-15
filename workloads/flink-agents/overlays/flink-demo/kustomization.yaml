@@ -18,6 +18,12 @@ patches:
       - op: replace
         path: /spec/image
         value: quay.io/osowski/flink-agents-demo:b550df9
+      - op: replace
+        path: /spec/podTemplate/spec/initContainers/0/env/0/value
+        value: http://host.docker.internal:11434
+      - op: replace
+        path: /spec/podTemplate/spec/containers/0/env/0/value
+        value: http://host.docker.internal:11434
 
 # Cluster-specific labels
 labels:
