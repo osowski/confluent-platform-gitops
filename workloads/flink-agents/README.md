@@ -21,7 +21,13 @@ The `OLLAMA_ENDPOINT` env var on the Flink pod controls where inference requests
 
 **1. Sync in ArgoCD:**
 
-In the ArgoCD UI, click `flink-agents` → **Sync** → **Synchronize**. The `wait-for-ollama` initContainer will block until Ollama is reachable before the Flink job starts.
+The `flink-agents` Application manages two FlinkApplications (`flink-agents-workflow` and `flink-agents-react`). **Only sync one at a time** — running both concurrently will contend for the same Ollama instance and degrade inference throughput for both.
+
+In the ArgoCD UI, click `flink-agents` → **Sync**, then select only the resource you want to run:
+- `FlinkApplication/flink-agents-workflow` — Workflow agent quickstart
+- `FlinkApplication/flink-agents-react` — ReAct agent quickstart
+
+The `wait-for-ollama` initContainer will block until Ollama is reachable before the Flink job starts. To stop a running agent, set `spec.job.state: suspended` in the overlay patch or delete the FlinkApplication resource in ArgoCD before syncing the other.
 
 **2. Tail Flink agent output:**
 
