@@ -85,28 +85,15 @@ ollama pull qwen3:8b  # or whichever model is configured (see Model section)
 
 ### Pointing Flink at the native host
 
-Kind pods reach the macOS host via the DNS name `host.docker.internal` (provided by Docker Desktop). Override `OLLAMA_ENDPOINT` in the `flink-demo` overlay:
+Kind pods reach the macOS host via the DNS name `host.docker.internal` (provided by Docker Desktop). Include the `ollama-host-mode` Kustomize component in the cluster overlay:
 
 ```yaml
 # workloads/flink-agents/overlays/flink-demo/kustomization.yaml
-patches:
-  - target:
-      kind: FlinkApplication
-      name: flink-agents-workflow
-      namespace: flink
-    patch: |-
-      - op: replace
-        path: /spec/image
-        value: quay.io/osowski/flink-agents-demo:<sha>
-      - op: replace
-        path: /spec/podTemplate/spec/initContainers/0/env/0/value
-        value: http://host.docker.internal:11434
-      - op: replace
-        path: /spec/podTemplate/spec/containers/0/env/0/value
-        value: http://host.docker.internal:11434
+components:
+  - ../../components/ollama-host-mode
 ```
 
-> **Note:** Both the `wait-for-ollama` initContainer and the `flink-main-container` carry the `OLLAMA_ENDPOINT` env var and must both be updated. The base manifest sets the default in-cluster endpoint; the overlay patches override it.
+This component patches both the `wait-for-ollama` initContainer and `flink-main-container` `OLLAMA_ENDPOINT` values to `http://host.docker.internal:11434`. To revert to in-cluster Ollama, remove the `components:` entry.
 
 After syncing, verify the initContainer can reach the host:
 
@@ -120,25 +107,45 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
 
 ## Model Selection and Flink Agent Impact
 
-The model name is specified in **two places that must stay in sync**:
+The model name must be kept in sync across **two separate locations**. These are owned by different ArgoCD Applications (`ollama` and `flink-agents`) in different namespaces — Kustomize has no mechanism to share a value across separate Applications, so this is an intentional convention rather than a technical enforcement:
 
-| Location | File | Value |
+| Location | File | Key |
 |---|---|---|
-| What Ollama pulls | `workloads/ollama/base/ollama-model-config.yaml` (ConfigMap) | `qwen3:8b` |
-| What the agent requests | `ReviewAnalysisAgent.java` `@ChatModelSetup` | `.addInitialArgument("model", "qwen3:8b")` |
+| What Ollama pulls | `workloads/ollama/base/model-config.yaml` (ConfigMap `data.models`) | `qwen3:8b` |
+| What the agent requests | `workloads/flink-agents/base/flink-application.yaml` (env var) | `OLLAMA_MODEL: qwen3:8b` |
 
 If the model names do not match, Ollama will attempt to pull the requested model on-demand (slow) or fail if there is no internet access.
 
+> **Per-cluster overrides:** To change the model for a specific cluster, patch **both** the `ollama-model-config` ConfigMap in `workloads/ollama/overlays/<cluster>/` and the `OLLAMA_MODEL` env var in `workloads/flink-agents/overlays/<cluster>/`. Always update both together.
+
 ### Changing the model
 
-1. Update the `ollama-model-config` ConfigMap in the Ollama overlay to pull the new model.
-2. Update `ReviewAnalysisAgent.java` to request the same model name, then rebuild and push the image:
-   ```bash
-   # in osowski/flink-agents, branch k8s-main
-   # edit: .addInitialArgument("model", "qwen3:1.7b")
-   bash scripts/build-image.sh
+1. Patch the `ollama-model-config` ConfigMap in the Ollama cluster overlay:
+   ```yaml
+   # workloads/ollama/overlays/flink-demo/kustomization.yaml
+   patches:
+     - target:
+         kind: ConfigMap
+         name: ollama-model-config
+       patch: |-
+         - op: replace
+           path: /data/models
+           value: |
+             qwen3:1.7b
    ```
-3. Update the image SHA tag in `workloads/flink-agents/overlays/flink-demo/kustomization.yaml`.
+2. Patch `OLLAMA_MODEL` in the flink-agents cluster overlay:
+   ```yaml
+   # workloads/flink-agents/overlays/flink-demo/kustomization.yaml
+   patches:
+     - target:
+         kind: FlinkApplication
+         name: flink-agents-workflow
+       patch: |-
+         - op: replace
+           path: /spec/podTemplate/spec/containers/0/env/1/value
+           value: qwen3:1.7b
+   ```
+3. Sync the `ollama` ArgoCD Application first to pull the new model, then sync `flink-agents`.
 
 ### Model tradeoffs
 
