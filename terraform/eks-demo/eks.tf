@@ -62,3 +62,16 @@ module "eks" {
 
   tags = var.common_tags
 }
+
+# Allow the bastion's SOCKS5 proxy to reach the private EKS API endpoint.
+# Without this rule the cluster security group silently drops the traffic,
+# and kubectl through the tunnel gets "connection refused" from 3proxy.
+resource "aws_security_group_rule" "bastion_to_eks_api" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.bastion.id
+  security_group_id        = module.eks.cluster_security_group_id
+  description              = "Bastion SOCKS5 proxy to EKS API"
+}
