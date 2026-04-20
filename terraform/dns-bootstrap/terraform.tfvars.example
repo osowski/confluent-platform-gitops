@@ -1,0 +1,12 @@
+aws_region         = "us-east-1"
+root_domain        = "dspdemos.com"
+platform_subdomain = "platform"
+
+tags = {
+  cflt_environment = "devel"
+  cflt_partition   = "onprem"
+  cflt_service     = "dns-bootstrap"
+  cflt_managed_by  = "terraform"
+  cflt_managed_id  = "rosowski-dns-bootstrap"
+  cflt_protected   = "false"
+}
