@@ -37,3 +37,11 @@ charts/*.tgz
 
 # Local-only working documents (design specs, brainstorming outputs)
 docs/superpowers/
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.backup
+terraform/**/*.tfstate.lock.info
+terraform/**/.terraform.lock.hcl
+terraform/**/terraform.tfvars
