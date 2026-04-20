@@ -33,6 +33,6 @@ resource "aws_route53_record" "platform_ns" {
   zone_id = aws_route53_zone.root.zone_id
   name    = local.platform_domain
   type    = "NS"
-  ttl     = 300
+  ttl     = 3600
   records = aws_route53_zone.platform.name_servers
 }

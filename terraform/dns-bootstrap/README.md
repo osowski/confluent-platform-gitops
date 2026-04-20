@@ -65,7 +65,8 @@ Verify with:
 
 ```bash
 # Query the root zone SOA from one of the Route53 name servers directly
-dig SOA dspdemos.com @ns-123.awsdns-45.com
+# Replace <ns-value> with one of the values from Step 1
+dig SOA dspdemos.com @<ns-value-from-step-1>
 
 # Verify global propagation (uses your default resolver)
 dig NS dspdemos.com
@@ -82,4 +83,5 @@ Once the NS records resolve correctly, proceed to apply the `eks-demo` Terraform
 | `root_zone_id` | Route53 zone ID for `dspdemos.com` |
 | `root_zone_name_servers` | Four NS values to set at your registrar |
 | `platform_zone_id` | Route53 zone ID for `platform.dspdemos.com` — pass to `eks-demo` Terraform as `platform_zone_id` |
+| `platform_zone_name_servers` | Name servers for the platform zone — useful for debugging DNS propagation |
 | `platform_domain` | Fully qualified platform domain (`platform.dspdemos.com`) |
