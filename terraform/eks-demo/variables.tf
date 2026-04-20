@@ -1,16 +1,19 @@
 variable "aws_region" {
-  type    = string
-  default = "us-east-1"
+  description = "AWS region for the deployment"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "cluster_name" {
-  type    = string
-  default = "eks-demo"
+  description = "EKS cluster name — used as a prefix for all named resources"
+  type        = string
+  default     = "eks-demo"
 }
 
 variable "kubernetes_version" {
-  type    = string
-  default = "1.31"
+  description = "Kubernetes version for the EKS cluster"
+  type        = string
+  default     = "1.32"
 }
 
 variable "platform_zone_id" {
@@ -25,32 +28,37 @@ variable "platform_domain" {
 }
 
 variable "vpc_cidr" {
-  type    = string
-  default = "10.0.0.0/16"
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "node_instance_type" {
-  type    = string
-  default = "t3.xlarge"
+  description = "EC2 instance type for EKS managed node group workers"
+  type        = string
+  default     = "t3.xlarge"
 }
 
 variable "node_desired_size" {
-  type    = number
-  default = 2
+  description = "Desired number of worker nodes"
+  type        = number
+  default     = 2
 }
 
 variable "node_min_size" {
-  type    = number
-  default = 2
+  description = "Minimum number of worker nodes"
+  type        = number
+  default     = 2
 }
 
 variable "node_max_size" {
-  type    = number
-  default = 5
+  description = "Maximum number of worker nodes"
+  type        = number
+  default     = 5
 }
 
 variable "common_tags" {
-  description = "Confluent mandatory tags applied to all resources"
+  description = "Confluent mandatory tags applied to all resources. cflt_keep_until is computed and injected automatically — do not set it here."
   type        = map(string)
   default = {
     cflt_environment = "devel"
