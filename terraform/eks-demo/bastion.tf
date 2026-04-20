@@ -46,7 +46,7 @@ resource "aws_iam_instance_profile" "bastion" {
 
 resource "aws_security_group" "bastion" {
   name        = "${var.cluster_name}-bastion"
-  description = "Bastion host — no inbound, SSM outbound only"
+  description = "Bastion host - no inbound, SSM outbound only"
   vpc_id      = module.vpc.vpc_id
 
   # No inbound rules — all access via SSM Session Manager, no SSH
