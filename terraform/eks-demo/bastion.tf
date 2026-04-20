@@ -11,6 +11,11 @@ data "aws_ami" "amazon_linux_2023" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
 }
 
 resource "aws_iam_role" "bastion" {
@@ -51,7 +56,7 @@ resource "aws_security_group" "bastion" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "SSM agent, ECR, EKS API via VPC endpoints"
+    description = "HTTPS only - SSM, EKS API, ECR/S3 via VPC endpoints, and cloning 3proxy from GitHub at boot"
   }
 
   tags = merge(var.common_tags, { Name = "${var.cluster_name}-bastion" })
@@ -65,46 +70,16 @@ resource "aws_instance" "bastion" {
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = false
 
-  # 3proxy built from source — avoids any repo availability uncertainty on AL2023.
-  # Listens on 127.0.0.1:1080 — exposed to the laptop via SSM port forwarding.
-  user_data_base64 = base64encode(<<-EOF
-    #!/bin/bash
-    set -euo pipefail
+  # The bastion is a dumb SOCKS5 relay — operators tunnel through it via SSM
+  # port-forwarding and authenticate to EKS using their local AWS credentials.
+  # Do not run kubectl or AWS CLI on the bastion itself.
+  user_data_base64 = base64encode(templatefile("${path.module}/scripts/bastion-init.sh", {}))
 
-    yum install -y git gcc make
-
-    git clone --depth 1 https://github.com/3proxy/3proxy.git /opt/3proxy
-    cd /opt/3proxy && make -f Makefile.Linux
-    install -m 755 bin/3proxy /usr/local/bin/3proxy
-
-    mkdir -p /etc/3proxy /var/log/3proxy
-
-    cat > /etc/3proxy/3proxy.cfg << 'CONF'
-nscache 65536
-log /var/log/3proxy/3proxy.log D
-logformat "- +_L%t.%.  %N.%p %E %U %C:%c %R:%r %O %I %h %T"
-socks -p1080 -i127.0.0.1
-CONF
-
-    cat > /etc/systemd/system/3proxy.service << 'UNIT'
-[Unit]
-Description=3proxy SOCKS5 proxy
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/3proxy /etc/3proxy/3proxy.cfg
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-    systemctl daemon-reload
-    systemctl enable 3proxy
-    systemctl start 3proxy
-  EOF
-  )
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
 
   tags = merge(var.common_tags, { Name = "${var.cluster_name}-bastion" })
 }
