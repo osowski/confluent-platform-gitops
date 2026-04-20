@@ -28,6 +28,10 @@ provider "aws" {
   default_tags {
     tags = local.mandatory_tags
   }
+  # Ignore tags added by Confluent's Divvy compliance scanner — managed externally
+  ignore_tags {
+    key_prefixes = ["divvy"]
+  }
 }
 
 data "aws_availability_zones" "available" {
