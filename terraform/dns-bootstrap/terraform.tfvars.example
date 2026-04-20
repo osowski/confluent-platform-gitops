@@ -5,8 +5,8 @@ platform_subdomain = "platform"
 tags = {
   cflt_environment = "devel"
   cflt_partition   = "onprem"
-  cflt_service     = "dns-bootstrap"
+  cflt_service     = "osowski/confluent-platform-gitops"
   cflt_managed_by  = "terraform"
-  cflt_managed_id  = "rosowski-dns-bootstrap"
+  cflt_managed_id  = "osowski/confluent-platform-gitops"
   cflt_protected   = "false"
 }
