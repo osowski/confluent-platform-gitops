@@ -55,9 +55,9 @@ variable "common_tags" {
   default = {
     cflt_environment = "devel"
     cflt_partition   = "onprem"
-    cflt_service     = "eks-demo"
+    cflt_service     = "osowski/confluent-platform-gitops"
     cflt_managed_by  = "terraform"
-    cflt_managed_id  = "rosowski-eks-demo"
+    cflt_managed_id  = "osowski/confluent-platform-gitops"
     cflt_protected   = "false"
   }
 }
