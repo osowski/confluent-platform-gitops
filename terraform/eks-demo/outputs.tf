@@ -42,3 +42,8 @@ output "private_subnets" {
   description = "Private subnet IDs — used by bastion and load balancer controller"
   value       = module.vpc.private_subnets
 }
+
+output "bastion_instance_id" {
+  description = "SSM target ID — use with: aws ssm start-session --target <id>"
+  value       = aws_instance.bastion.id
+}
