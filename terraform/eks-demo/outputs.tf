@@ -47,3 +47,23 @@ output "bastion_instance_id" {
   description = "SSM target ID — use with: aws ssm start-session --target <id>"
   value       = aws_instance.bastion.id
 }
+
+output "ebs_csi_driver_role_arn" {
+  description = "IRSA role ARN for the EBS CSI driver"
+  value       = aws_iam_role.ebs_csi_driver.arn
+}
+
+output "cert_manager_role_arn" {
+  description = "IRSA role ARN for cert-manager"
+  value       = aws_iam_role.cert_manager.arn
+}
+
+output "external_dns_role_arn" {
+  description = "IRSA role ARN for ExternalDNS"
+  value       = aws_iam_role.external_dns.arn
+}
+
+output "aws_lb_controller_role_arn" {
+  description = "IRSA role ARN for the AWS Load Balancer Controller"
+  value       = aws_iam_role.aws_lb_controller.arn
+}
