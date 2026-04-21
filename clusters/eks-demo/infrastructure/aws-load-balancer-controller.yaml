@@ -42,3 +42,11 @@ spec:
       kind: MutatingWebhookConfiguration
       jqPathExpressions:
         - .webhooks[].clientConfig.caBundle
+    - group: ""
+      kind: Secret
+      name: aws-load-balancer-tls
+      namespace: kube-system
+      jqPathExpressions:
+        - .data["ca.crt"]
+        - .data["tls.crt"]
+        - .data["tls.key"]
