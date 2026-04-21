@@ -6,7 +6,7 @@ metadata:
   namespace: flink
 spec:
   flinkEnvironment: env1
-  image: confluentinc/cp-flink:1.20.3-cp1
+  image: confluentinc/cp-flink:1.20.3-cp2-java17
   flinkVersion: v1_20
   flinkConfiguration:
     "taskmanager.numberOfTaskSlots": "2"
