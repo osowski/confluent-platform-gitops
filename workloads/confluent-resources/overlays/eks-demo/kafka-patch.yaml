@@ -4,6 +4,8 @@ metadata:
   name: kafka
   namespace: kafka
 spec:
+  storageClass:
+    name: gp3
   listeners:
     # Internal listener — OAuth authentication for inter-broker and client communication
     internal:

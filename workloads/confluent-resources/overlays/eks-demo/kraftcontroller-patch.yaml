@@ -4,6 +4,8 @@ metadata:
   name: kraftcontroller
   namespace: kafka
 spec:
+  storageClass:
+    name: gp3
   podTemplate:
     resources:
       requests:
