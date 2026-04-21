@@ -5,23 +5,19 @@ locals {
 }
 
 # ── EBS CSI Driver ────────────────────────────────────────────────────────────
+# The driver itself is installed via ArgoCD in Task 10 (Issue #185) —
+# infrastructure/aws-ebs-csi-driver with a Kustomize overlay that annotates
+# the ServiceAccount with this role ARN. It is not a managed EKS addon.
 
 resource "aws_iam_role" "ebs_csi_driver" {
-  name = "AmazonEKS_EBS_CSI_DriverRole_${var.cluster_name}"
+  name        = "AmazonEKS_EBS_CSI_DriverRole_${var.cluster_name}"
+  description = "IRSA role for the EBS CSI Driver controller (kube-system/ebs-csi-controller-sa)"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Principal = { Federated = local.oidc_provider_arn }
-      Condition = {
-        StringEquals = {
-          "${local.oidc_provider}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
-          "${local.oidc_provider}:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
+  assume_role_policy = templatefile("${path.module}/trust-policy.tpl", {
+    oidc_provider_arn = local.oidc_provider_arn
+    oidc_provider     = local.oidc_provider
+    namespace         = "kube-system"
+    sa_name           = "ebs-csi-controller-sa"
   })
 
   tags = var.common_tags
@@ -35,21 +31,14 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
 # ── cert-manager (DNS-01 via Route53) ─────────────────────────────────────────
 
 resource "aws_iam_role" "cert_manager" {
-  name = "AmazonEKS_CertManager_${var.cluster_name}"
+  name        = "AmazonEKS_CertManager_${var.cluster_name}"
+  description = "IRSA role for cert-manager DNS-01 Route53 validation (cert-manager/cert-manager)"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Principal = { Federated = local.oidc_provider_arn }
-      Condition = {
-        StringEquals = {
-          "${local.oidc_provider}:sub" = "system:serviceaccount:cert-manager:cert-manager"
-          "${local.oidc_provider}:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
+  assume_role_policy = templatefile("${path.module}/trust-policy.tpl", {
+    oidc_provider_arn = local.oidc_provider_arn
+    oidc_provider     = local.oidc_provider
+    namespace         = "cert-manager"
+    sa_name           = "cert-manager"
   })
 
   tags = var.common_tags
@@ -84,21 +73,14 @@ resource "aws_iam_role_policy" "cert_manager" {
 # ── ExternalDNS ───────────────────────────────────────────────────────────────
 
 resource "aws_iam_role" "external_dns" {
-  name = "ExternalDNS_${var.cluster_name}"
+  name        = "ExternalDNS_${var.cluster_name}"
+  description = "IRSA role for ExternalDNS Route53 record management (external-dns/external-dns)"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Principal = { Federated = local.oidc_provider_arn }
-      Condition = {
-        StringEquals = {
-          "${local.oidc_provider}:sub" = "system:serviceaccount:external-dns:external-dns"
-          "${local.oidc_provider}:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
+  assume_role_policy = templatefile("${path.module}/trust-policy.tpl", {
+    oidc_provider_arn = local.oidc_provider_arn
+    oidc_provider     = local.oidc_provider
+    namespace         = "external-dns"
+    sa_name           = "external-dns"
   })
 
   tags = var.common_tags
@@ -127,31 +109,18 @@ resource "aws_iam_role_policy" "external_dns" {
 
 # ── AWS Load Balancer Controller ──────────────────────────────────────────────
 
-data "aws_iam_policy_document" "aws_lb_controller_trust" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-    principals {
-      type        = "Federated"
-      identifiers = [local.oidc_provider_arn]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "${local.oidc_provider}:sub"
-      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "${local.oidc_provider}:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "aws_lb_controller" {
-  name               = "AWSLoadBalancerController_${var.cluster_name}"
-  assume_role_policy = data.aws_iam_policy_document.aws_lb_controller_trust.json
-  tags               = var.common_tags
+  name        = "AWSLoadBalancerController_${var.cluster_name}"
+  description = "IRSA role for the AWS Load Balancer Controller (kube-system/aws-load-balancer-controller)"
+
+  assume_role_policy = templatefile("${path.module}/trust-policy.tpl", {
+    oidc_provider_arn = local.oidc_provider_arn
+    oidc_provider     = local.oidc_provider
+    namespace         = "kube-system"
+    sa_name           = "aws-load-balancer-controller"
+  })
+
+  tags = var.common_tags
 }
 
 resource "aws_iam_policy" "aws_lb_controller" {
