@@ -163,7 +163,19 @@ All services are private — exposed only within the VPC. Access from your lapto
 
 ### SOCKS5 Proxy Setup
 
-The same SSM tunnel used for kubectl (Prerequisites Step 3) also proxies browser traffic. Once the tunnel is running on `localhost:1080`, configure **FoxyProxy** (or your browser proxy settings) to route `*.platform.dspdemos.com` through `socks5://localhost:1080`.
+The same SSM tunnel used for kubectl (Prerequisites Step 3) also proxies browser traffic. Once the tunnel is running on `localhost:1080`, configure **FoxyProxy** to route `*.platform.dspdemos.com` through the SOCKS5 proxy:
+
+1. Install the [FoxyProxy browser extension](https://getfoxyproxy.org/) if not already installed.
+2. Open FoxyProxy → **Options** → **Proxies** → **Add**.
+3. Fill in the proxy entry fields:
+   - **Title**: `eks-demo SOCKS5`
+   - **Type**: `SOCKS5`
+   - **Hostname**: `localhost`
+   - **Port**: `1080`
+   - Leave **Username** and **Password** blank.
+4. Click **Proxy by Patterns** → **Add Pattern**, and set the pattern to `*.platform.dspdemos.com`.
+5. Save the proxy entry.
+6. In the FoxyProxy toolbar icon, select **Proxy by Patterns** (or enable the `eks-demo SOCKS5` proxy directly).
 
 DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are needed.
 
