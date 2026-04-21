@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "18"  # After traefik/LB (10), before cert-manager-resources/ingresses (75+)
+spec:
+  project: infrastructure
+  sources:
+  - repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.15.0
+    chart: external-dns
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/external-dns/base/values.yaml
+        - $values/infrastructure/external-dns/overlays/eks-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

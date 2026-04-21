@@ -1,0 +1,8 @@
+domainFilters:
+  - platform.dspdemos.com
+
+txtOwnerId: eks-demo
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/ExternalDNS_eks-demo

@@ -12,6 +12,7 @@ resources:
 - metrics-server.yaml
 - aws-ebs-csi-driver.yaml
 - aws-load-balancer-controller.yaml
+- external-dns.yaml
 - reflector.yaml
 - traefik.yaml
 - minio.yaml
