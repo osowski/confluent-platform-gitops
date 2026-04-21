@@ -1,4 +1,6 @@
 # eks-demo cluster-specific overrides for CFK operator
+# Explicit override prevents base changes from silently expanding watch scope.
+# flink-shapes and flink-colors will be added when group namespaces are enabled.
 namespaceList:
   - flink
   - kafka
