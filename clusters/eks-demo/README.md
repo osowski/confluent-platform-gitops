@@ -46,7 +46,7 @@ See [`terraform/eks-demo/README.md`](../../terraform/eks-demo/README.md) for ful
 terraform -chdir=terraform/eks-demo output bastion_instance_id
 
 # Open SSM shell on the bastion
-aws ssm start-session --target <bastion_instance_id>
+aws ssm start-session --region us-east-1 --target <bastion_instance_id>
 
 # On the bastion:
 aws eks update-kubeconfig --region us-east-1 --name eks-demo
@@ -143,6 +143,7 @@ Start an SSM port-forward session from your laptop:
 
 ```bash
 aws ssm start-session \
+  --region us-east-1 \
   --target $(terraform -chdir=terraform/eks-demo output -raw bastion_instance_id) \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
