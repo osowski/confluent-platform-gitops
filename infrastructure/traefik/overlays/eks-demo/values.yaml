@@ -1,0 +1,41 @@
+---
+# EKS overlay: Deployment (not DaemonSet), LoadBalancer service (not NodePort)
+deployment:
+  kind: Deployment
+  replicas: 2
+
+# Remove Kind-specific node selection from base
+nodeSelector: ~
+tolerations: []
+
+service:
+  type: LoadBalancer
+  annotations:
+    # Internal NLB via AWS Load Balancer Controller
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb-ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    # Confluent mandatory tags for NLB resource
+    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "cflt_environment=devel,cflt_partition=onprem,cflt_service=eks-demo,cflt_managed_by=kubernetes,cflt_managed_id=traefik-nlb,cflt_protected=false"
+    # ExternalDNS wildcard: creates *.eks-demo.platform.dspdemos.com → NLB
+    external-dns.alpha.kubernetes.io/hostname: "*.eks-demo.platform.dspdemos.com"
+
+ports:
+  web:
+    port: 80
+  websecure:
+    port: 443
+
+ingressRoute:
+  dashboard:
+    enabled: true
+    matchRule: Host(`traefik.eks-demo.platform.dspdemos.com`)
+    entryPoints:
+      - websecure
+
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true

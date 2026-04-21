@@ -7,12 +7,12 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "10"  # Deploy after cert-manager and storage
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   project: infrastructure
   sources:
   - repoURL: oci://ghcr.io/traefik/helm/traefik
-    targetRevision: 38.0.2  # Pin to specific version
+    targetRevision: 38.0.2
     chart: traefik
     helm:
       ignoreMissingValueFiles: true
@@ -24,18 +24,17 @@ spec:
     ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: ingress
+    namespace: traefik
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true  # Required for CRDs
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  ignoreDifferences: []
