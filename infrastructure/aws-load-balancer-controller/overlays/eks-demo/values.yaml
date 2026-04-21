@@ -1,0 +1,6 @@
+---
+clusterName: eks-demo
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/AWSLoadBalancerController_eks-demo
