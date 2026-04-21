@@ -8,6 +8,7 @@ resources:
 patches:
   - path: ingressroute-patch.yaml
   - path: secret-patch.yaml
+  - path: pvc-patch.yaml
 
 labels:
 - includeSelectors: false

@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: storage
+spec:
+  storageClassName: gp3
