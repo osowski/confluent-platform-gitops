@@ -30,6 +30,11 @@ patches:
       kind: ConfigMap
       name: keycloak-realm
 
+  - path: keycloak-external-service-patch.yaml
+    target:
+      kind: Service
+      name: keycloak-external
+
 labels:
 - includeSelectors: false
   includeTemplates: true

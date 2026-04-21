@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-external
+  namespace: keycloak
+spec:
+  type: ClusterIP
