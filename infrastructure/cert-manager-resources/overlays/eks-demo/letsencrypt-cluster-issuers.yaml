@@ -27,7 +27,7 @@ metadata:
   name: letsencrypt-prod
 spec:
   acme:
-    server: https://acme.letsencrypt.org/directory
+    server: https://acme-v02.api.letsencrypt.org/directory
     email: letsencrypt@dspdemos.com
     privateKeySecretRef:
       name: letsencrypt-prod
