@@ -64,9 +64,24 @@ kubectl get nodes  # Expected: 2+ nodes in Ready state
 
 ## Getting Started
 
-### Deploy Bootstrap
+### Install ArgoCD
+
+ArgoCD must be installed manually before the bootstrap Application can be applied.
 
 With the SOCKS5 tunnel running and `HTTPS_PROXY` set (see Prerequisites Step 3):
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Wait for ArgoCD to be ready
+kubectl wait --namespace argocd \
+  --for=condition=Ready pods \
+  --selector=app.kubernetes.io/name=argocd-application-controller \
+  --timeout=300s
+```
+
+### Deploy Bootstrap
 
 ```bash
 kubectl apply -f clusters/eks-demo/bootstrap.yaml
