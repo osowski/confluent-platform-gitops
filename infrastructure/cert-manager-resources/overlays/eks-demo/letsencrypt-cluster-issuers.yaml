@@ -1,0 +1,38 @@
+---
+# Let's Encrypt staging issuer — use for testing to avoid rate limits.
+# Switch to letsencrypt-prod once DNS-01 is confirmed working.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    # Obtain from: terraform -chdir=terraform/eks-demo output platform_zone_id
+    # Replace with the email that should receive Let's Encrypt expiry notices.
+    email: REPLACE_WITH_ACME_EMAIL
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - dns01:
+          route53:
+            region: us-east-1
+            # Obtain from: terraform -chdir=terraform/dns-bootstrap output platform_zone_id
+            hostedZoneID: REPLACE_WITH_PLATFORM_ZONE_ID
+---
+# Let's Encrypt production issuer — use once staging certificates verify cleanly.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme.letsencrypt.org/directory
+    email: REPLACE_WITH_ACME_EMAIL
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - dns01:
+          route53:
+            region: us-east-1
+            hostedZoneID: REPLACE_WITH_PLATFORM_ZONE_ID
