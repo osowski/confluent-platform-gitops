@@ -66,7 +66,7 @@ kubectl get nodes  # Expected: 2+ nodes in Ready state
 
 ### Install ArgoCD
 
-ArgoCD must be installed manually before the bootstrap Application can be applied (chicken-and-egg: ArgoCD manages itself, but it needs to exist first).
+ArgoCD must be installed manually before the bootstrap Application can be applied.
 
 With the SOCKS5 tunnel running and `HTTPS_PROXY` set (see Prerequisites Step 3):
 
