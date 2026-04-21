@@ -1,0 +1,77 @@
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+    externalUrl: https://alertmanager.eks-demo.platform.dspdemos.com
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+    hosts:
+      - alertmanager.eks-demo.platform.dspdemos.com
+    paths: [/]
+    pathType: Prefix
+    tls:
+      - secretName: alertmanager-tls
+        hosts:
+          - alertmanager.eks-demo.platform.dspdemos.com
+
+grafana:
+  # Replace with an externally-managed Secret reference before production use
+  adminPassword: "prom-operator"
+
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: gp3
+    size: 50Gi
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+    hosts:
+      - grafana.eks-demo.platform.dspdemos.com
+    path: /
+    pathType: Prefix
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.eks-demo.platform.dspdemos.com
+
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 100Gi
+    externalUrl: https://prometheus.eks-demo.platform.dspdemos.com
+    retention: 15d
+    retentionSize: "9GB"
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+    hosts:
+      - prometheus.eks-demo.platform.dspdemos.com
+    paths: [/]
+    pathType: Prefix
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.eks-demo.platform.dspdemos.com

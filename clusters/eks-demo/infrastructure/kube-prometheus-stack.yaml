@@ -26,7 +26,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
   syncPolicy:
-    # automated: disabled # Explicitly NOT auto-sync while under development
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true  # Required for CRDs
@@ -37,24 +39,16 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
-    # Ignore differences in webhook CA bundles (auto-generated)
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
-      jsonPointers:
-        - /webhooks/0/clientConfig/caBundle
+      jqPathExpressions:
+        - .webhooks[].clientConfig.caBundle
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
-      jsonPointers:
-        - /webhooks/0/clientConfig/caBundle
-    # Ignore differences in auto-generated secrets
+      jqPathExpressions:
+        - .webhooks[].clientConfig.caBundle
     - group: ""
       kind: Secret
       name: alertmanager-kube-prometheus-stack-alertmanager
-      jsonPointers:
-        - /data
-    # Ignore Ingress loadBalancer status for NodePort environments (KIND clusters)
-    # NodePort services don't populate status.loadBalancer, causing ArgoCD to stay in Progressing
-    - group: networking.k8s.io
-      kind: Ingress
-      jsonPointers:
-        - /status/loadBalancer
+      jqPathExpressions:
+        - .data
