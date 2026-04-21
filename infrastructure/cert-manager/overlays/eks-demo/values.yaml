@@ -1,0 +1,4 @@
+serviceAccount:
+  annotations:
+    # Obtain from: terraform -chdir=terraform/eks-demo output -raw cert_manager_role_arn
+    eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/AmazonEKS_CertManager_eks-demo
