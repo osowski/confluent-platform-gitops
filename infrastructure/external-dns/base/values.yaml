@@ -1,6 +1,9 @@
 provider:
   name: aws
 
+# Only 'service' is listed — DNS is managed via a wildcard annotation on the Traefik
+# LoadBalancer Service, so per-Ingress record registration is redundant and would
+# cause Route53 write churn and potential TXT record conflicts.
 sources:
   - service
 

@@ -1,6 +1,9 @@
 domainFilters:
   - platform.dspdemos.com
 
+# txtOwnerId scopes all TXT ownership records to this cluster, making policy: sync
+# safe on the shared platform.dspdemos.com zone — ExternalDNS will only delete
+# records it originally created for eks-demo, not records owned by other clusters.
 txtOwnerId: eks-demo
 
 serviceAccount:
