@@ -1,0 +1,6 @@
+# EKS has proper kubelet TLS — do NOT use --kubelet-insecure-tls
+replicas: 2
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
