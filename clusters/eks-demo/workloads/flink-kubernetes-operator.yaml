@@ -12,11 +12,11 @@ spec:
   sources:
     - repoURL: https://packages.confluent.io/helm
       chart: flink-kubernetes-operator
-      targetRevision: 1.130.2
+      targetRevision: 1.140.1
       helm:
         valueFiles:
-          - /workloads/flink-kubernetes-operator/base/values.yaml
-          - /workloads/flink-kubernetes-operator/overlays/eks-demo/values.yaml
+          - $values/workloads/flink-kubernetes-operator/base/values.yaml
+          - $values/workloads/flink-kubernetes-operator/overlays/eks-demo/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
       targetRevision: HEAD

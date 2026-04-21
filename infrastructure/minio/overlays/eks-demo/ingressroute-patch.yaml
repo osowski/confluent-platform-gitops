@@ -1,0 +1,28 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio
+  namespace: storage
+spec:
+  routes:
+    - match: Host(`s3.eks-demo.platform.dspdemos.com`)
+      kind: Rule
+      services:
+        - name: minio
+          port: 9000
+          scheme: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-console
+  namespace: storage
+spec:
+  routes:
+    - match: Host(`s3-console.eks-demo.platform.dspdemos.com`)
+      kind: Rule
+      services:
+        - name: minio
+          port: 9001
+          scheme: http

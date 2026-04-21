@@ -132,7 +132,7 @@ replace_placeholders() {
     # Create temp file, replace placeholders, then move to original
     local temp_file="${file}.tmp"
     CLUSTER_NAME="$cluster_name" DOMAIN="$domain" REPO_URL="$repo_url" \
-        envsubst < "$file" > "$temp_file"
+        envsubst '$CLUSTER_NAME $DOMAIN $REPO_URL' < "$file" > "$temp_file"
     mv "$temp_file" "$file"
 }
 

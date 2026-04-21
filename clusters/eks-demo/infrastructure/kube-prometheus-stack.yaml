@@ -16,8 +16,8 @@ spec:
     chart: kube-prometheus-stack
     helm:
       valueFiles:
-        - /infrastructure/kube-prometheus-stack/base/values.yaml
-        - /infrastructure/kube-prometheus-stack/overlays/eks-demo/values.yaml
+        - $values/infrastructure/kube-prometheus-stack/base/values.yaml
+        - $values/infrastructure/kube-prometheus-stack/overlays/eks-demo/values.yaml
       ignoreMissingValueFiles: true
   - repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD

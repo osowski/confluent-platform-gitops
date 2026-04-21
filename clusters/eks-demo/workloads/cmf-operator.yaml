@@ -12,11 +12,11 @@ spec:
   sources:
     - repoURL: https://packages.confluent.io/helm
       chart: confluent-manager-for-apache-flink
-      targetRevision: 2.2.0
+      targetRevision: 2.3.0
       helm:
         valueFiles:
-          - /workloads/cmf-operator/base/values.yaml
-          - /workloads/cmf-operator/overlays/eks-demo/values.yaml
+          - $values/workloads/cmf-operator/base/values.yaml
+          - $values/workloads/cmf-operator/overlays/eks-demo/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
       targetRevision: HEAD

@@ -17,8 +17,8 @@ spec:
     helm:
       ignoreMissingValueFiles: true
       valueFiles:
-        - /infrastructure/traefik/base/values.yaml
-        - /infrastructure/traefik/overlays/eks-demo/values.yaml
+        - $values/infrastructure/traefik/base/values.yaml
+        - $values/infrastructure/traefik/overlays/eks-demo/values.yaml
   - repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
     ref: values
