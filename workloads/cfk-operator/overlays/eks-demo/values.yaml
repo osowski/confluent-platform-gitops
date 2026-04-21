@@ -1,0 +1,5 @@
+# eks-demo cluster-specific overrides for CFK operator
+namespaceList:
+  - flink
+  - kafka
+  - operator

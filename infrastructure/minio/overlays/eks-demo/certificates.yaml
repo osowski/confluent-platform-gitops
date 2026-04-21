@@ -1,0 +1,28 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minio-tls
+  namespace: storage
+spec:
+  secretName: minio-tls
+  dnsNames:
+    - s3.eks-demo.platform.dspdemos.com
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minio-console-tls
+  namespace: storage
+spec:
+  secretName: minio-console-tls
+  dnsNames:
+    - s3-console.eks-demo.platform.dspdemos.com
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
