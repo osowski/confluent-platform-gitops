@@ -28,7 +28,7 @@ metadata:
 spec:
   acme:
     server: https://acme.letsencrypt.org/directory
-    email: REPLACE_WITH_ACME_EMAIL
+    email: letsencrypt@dspdemos.com
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
