@@ -5,6 +5,7 @@ resources:
   - namespaces.yaml
   - keycloak.yaml
   - cfk-operator.yaml
+  - mds-keygen.yaml
   - confluent-resources.yaml
   - workload-ingresses.yaml
   - flink-kubernetes-operator.yaml
