@@ -14,7 +14,7 @@ alertmanager:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-staging
+      cert-manager.io/cluster-issuer: letsencrypt-prod
     hosts:
       - alertmanager.eks-demo.platform.dspdemos.com
     paths: [/]
@@ -38,7 +38,7 @@ grafana:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-staging
+      cert-manager.io/cluster-issuer: letsencrypt-prod
     hosts:
       - grafana.eks-demo.platform.dspdemos.com
     path: /
@@ -66,7 +66,7 @@ prometheus:
     enabled: true
     ingressClassName: traefik
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-staging
+      cert-manager.io/cluster-issuer: letsencrypt-prod
     hosts:
       - prometheus.eks-demo.platform.dspdemos.com
     paths: [/]
