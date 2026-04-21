@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kafka
+
+resources:
+  - ../../base
+
+patches:
+  - path: kafka-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+
+  - path: kraftcontroller-patch.yaml
+    target:
+      kind: KRaftController
+      name: kraftcontroller
+
+  - path: controlcenter-patch.yaml
+    target:
+      kind: ControlCenter
+      name: controlcenter
+
+  - path: schemaregistry-patch.yaml
+    target:
+      kind: SchemaRegistry
+      name: schemaregistry
+
+  - path: kafkarestclass-patch.yaml
+    target:
+      kind: KafkaRestClass
+      name: default
+
+  # Delete unused base resources
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: Connect
+      metadata:
+        name: connect
+        namespace: kafka
+
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: KsqlDB
+      metadata:
+        name: ksqldb
+        namespace: kafka
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: confluent-platform
+      cluster: eks-demo

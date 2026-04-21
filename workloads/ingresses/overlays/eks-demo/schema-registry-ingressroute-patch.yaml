@@ -5,6 +5,8 @@ metadata:
   name: schema-registry
   namespace: kafka
 spec:
+  entryPoints:
+    - websecure
   routes:
     - kind: Rule
       match: Host(`schema-registry.eks-demo.platform.dspdemos.com`)
@@ -12,3 +14,5 @@ spec:
         - name: schemaregistry
           port: 8081
           scheme: http
+  tls:
+    secretName: schema-registry-tls

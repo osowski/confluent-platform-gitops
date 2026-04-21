@@ -1,0 +1,32 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraftcontroller
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  listeners:
+    controller:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kraft-oauth-client
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          subClaimName: client_id
+
+  configOverrides:
+    jvm:
+      - "-Dorg.apache.kafka.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      - "-Dsasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/certs,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/token"

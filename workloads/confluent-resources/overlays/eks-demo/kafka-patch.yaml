@@ -1,0 +1,102 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  listeners:
+    # Internal listener — OAuth authentication for inter-broker and client communication
+    internal:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kafka-oauth-client
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          subClaimName: client_id
+          groupsClaimName: groups
+
+  podTemplate:
+    resources:
+      requests:
+        cpu: 1500m
+        memory: 1Gi
+      limits:
+        cpu: 2500m
+        memory: 3Gi
+
+  authorization:
+    type: rbac
+    superUsers:
+      - User:admin@dspdemos.com
+      - User:cmf
+      - User:kafka
+
+  services:
+    mds:
+      tokenKeyPair:
+        secretRef: mds-token
+      provider:
+        oauth:
+          configurations:
+            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+            expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+            subClaimName: client_id
+        sso:
+          enabled: true
+          clientCredentials:
+            secretRef: oidc-client-credentials
+          configurations:
+            groupsClaimName: groups
+            subClaimName: email
+            issuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+            authorizeBaseEndpointUri: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/auth
+            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+            tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            refreshToken: false
+            sessionTokenExpiry: 900000
+            sessionMaxTimeout: 21600000
+      impersonation:
+        admins:
+          - User:kafka
+          - User:krp
+          - User:cmf
+          - User:admin@dspdemos.com
+        protectedUsers:
+          - User:mds
+          - User:superadmin
+
+  dependencies:
+    kRaftController:
+      controllerListener:
+        authentication:
+          type: oauth
+          jaasConfig:
+            secretRef: kafka-oauth-client
+          oauthSettings:
+            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      clusterRef:
+        name: kraftcontroller
+
+    kafkaRest:
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kafka-oauth-client
+        oauthSettings:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          subClaimName: client_id
+
+  configOverrides:
+    jvm:
+      - "-Dorg.apache.kafka.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      - "-Dsasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
+      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/certs,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/token,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/auth/device"
+      - "-Dorg.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler.JWKS_ENDPOINT_REFRESH_MS=3600000"
+    server:
+      - confluent.oidc.idp.device.authorization.endpoint.uri=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/auth/device
+      - listener.name.internal.sasl.oauthbearer.groups.claim.name=groups

@@ -1,0 +1,67 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+
+  configOverrides:
+    server:
+      - confluent.controlcenter.ksql.enable=false
+      - confluent.controlcenter.connect.enable=false
+      - confluent.controlcenter.ui.replicator.monitoring.enable=false
+      - confluent.controlcenter.cmf.enable=true
+      - confluent.controlcenter.cmf.url=http://cmf-service.operator.svc.cluster.local:80
+      - confluent.controlcenter.schema.registry.bearer.auth.credentials.source=OAUTHBEARER
+      - confluent.controlcenter.schema.registry.bearer.auth.issuer.endpoint.url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      - confluent.controlcenter.schema.registry.bearer.auth.client.id=controlcenter
+      - confluent.controlcenter.schema.registry.bearer.auth.client.secret=controlcenter-secret
+
+  authorization:
+    type: rbac
+
+  dependencies:
+    connect: null
+    ksqldb: null
+
+    kafka:
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: controlcenter-oauth-client
+        oauthSettings:
+          subClaimName: client_id
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+    mds:
+      ssoProtocol: oidc
+      endpoint: http://kafka.kafka.svc.cluster.local:8090
+      tokenKeyPair:
+        secretRef: mds-token
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: controlcenter-oauth-client
+          configuration:
+            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+            subClaimName: client_id
+
+    schemaRegistry:
+      url: http://schemaregistry.kafka.svc.cluster.local:8081
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: controlcenter-oauth-client
+          configuration:
+            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
