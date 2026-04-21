@@ -10,7 +10,7 @@ spec:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
     # Obtain from: terraform -chdir=terraform/eks-demo output platform_zone_id
     # Replace with the email that should receive Let's Encrypt expiry notices.
-    email: REPLACE_WITH_ACME_EMAIL
+    email: letsencrypt@dspdemos.com
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:
