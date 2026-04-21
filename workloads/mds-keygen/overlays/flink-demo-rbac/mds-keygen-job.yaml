@@ -68,7 +68,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: keygen
-          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066
+          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066  # kubectl v1.35.4
           command:
             - /bin/bash
             - -c
