@@ -11,6 +11,7 @@ resources:
 - kube-prometheus-stack.yaml
 - metrics-server.yaml
 - aws-ebs-csi-driver.yaml
+- aws-load-balancer-controller.yaml
 - reflector.yaml
 - traefik.yaml
 - minio.yaml
