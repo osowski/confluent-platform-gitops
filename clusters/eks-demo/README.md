@@ -39,25 +39,34 @@ terraform init && terraform apply
 
 See [`terraform/eks-demo/README.md`](../../terraform/eks-demo/README.md) for full variable reference and outputs.
 
-### Step 3: Configure kubectl via bastion
+### Step 3: Configure kubectl (run locally)
+
+The EKS Kubernetes API is private — not reachable from the internet. All kubectl traffic must route through the SOCKS5 bastion tunnel. Run these commands on your local machine, not on the bastion.
 
 ```bash
-# Get the bastion instance ID
-terraform -chdir=terraform/eks-demo output bastion_instance_id
-
-# Open SSM shell on the bastion
-aws ssm start-session --region us-east-1 --target <bastion_instance_id>
-
-# On the bastion:
+# Update local kubeconfig (calls the public EKS management API — no tunnel needed)
 aws eks update-kubeconfig --region us-east-1 --name eks-demo
+
+# Start the SOCKS5 tunnel (keep this running in a separate terminal)
+aws ssm start-session \
+  --region us-east-1 \
+  --target $(terraform -chdir=terraform/eks-demo output -raw bastion_instance_id) \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
+
+# Route kubectl through the tunnel (in your working terminal)
+export HTTPS_PROXY=socks5://localhost:1080
 kubectl get nodes  # Expected: 2+ nodes in Ready state
 ```
+
+> [!TIP]
+> Add `HTTPS_PROXY=socks5://localhost:1080` to your shell profile or a `.envrc` file in this repo so it's set automatically whenever the tunnel is active.
 
 ## Getting Started
 
 ### Deploy Bootstrap
 
-From the bastion (or any host with kubectl access to the private cluster API):
+With the SOCKS5 tunnel running and `HTTPS_PROXY` set (see Prerequisites Step 3):
 
 ```bash
 kubectl apply -f clusters/eks-demo/bootstrap.yaml
@@ -139,17 +148,7 @@ All services are private — exposed only within the VPC. Access from your lapto
 
 ### SOCKS5 Proxy Setup
 
-Start an SSM port-forward session from your laptop:
-
-```bash
-aws ssm start-session \
-  --region us-east-1 \
-  --target $(terraform -chdir=terraform/eks-demo output -raw bastion_instance_id) \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
-```
-
-Configure **FoxyProxy** (or your browser proxy settings) to route `*.platform.dspdemos.com` through `socks5://localhost:1080`.
+The same SSM tunnel used for kubectl (Prerequisites Step 3) also proxies browser traffic. Once the tunnel is running on `localhost:1080`, configure **FoxyProxy** (or your browser proxy settings) to route `*.platform.dspdemos.com` through `socks5://localhost:1080`.
 
 DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are needed.
 
