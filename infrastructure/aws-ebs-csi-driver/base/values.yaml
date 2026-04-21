@@ -1,0 +1,24 @@
+controller:
+  serviceAccount:
+    create: true
+    name: ebs-csi-controller-sa
+
+node:
+  serviceAccount:
+    create: true
+    name: ebs-csi-node-sa
+
+# Create the gp3 StorageClass as part of the driver installation.
+# Marked as the cluster default so PVCs without storageClassName use it automatically.
+# WaitForFirstConsumer defers provisioning until a pod is scheduled, which is required
+# in multi-AZ clusters to co-locate the EBS volume in the same AZ as the pod.
+storageClasses:
+  - name: gp3
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+    provisioner: ebs.csi.aws.com
+    volumeBindingMode: WaitForFirstConsumer
+    reclaimPolicy: Delete
+    parameters:
+      type: gp3
+      encrypted: "true"

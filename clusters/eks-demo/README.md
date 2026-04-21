@@ -81,6 +81,27 @@ kubectl wait --namespace argocd \
   --timeout=300s
 ```
 
+### Configure IRSA Role ARNs
+
+Several infrastructure components use IRSA (IAM Roles for Service Accounts) for AWS API access. Fill in the role ARNs from Terraform before deploying:
+
+```bash
+# Get all IRSA role ARNs from Terraform output
+terraform -chdir=terraform/eks-demo output ebs_csi_driver_role_arn
+terraform -chdir=terraform/eks-demo output cert_manager_role_arn
+terraform -chdir=terraform/eks-demo output external_dns_role_arn
+terraform -chdir=terraform/eks-demo output aws_lb_controller_role_arn
+```
+
+Update the placeholder in `infrastructure/aws-ebs-csi-driver/overlays/eks-demo/values.yaml`:
+
+```yaml
+controller:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: <paste ebs_csi_driver_role_arn output here>
+```
+
 ### Deploy Bootstrap
 
 ```bash

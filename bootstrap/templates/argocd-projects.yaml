@@ -23,6 +23,7 @@ spec:
     - oci://quay.io/jetstack/charts/trust-manager
     - https://kubernetes-sigs.github.io/external-dns/
     - https://aws.github.io/eks-charts
+    - https://kubernetes-sigs.github.io/aws-ebs-csi-driver
 
   # Allow deploying to all namespaces
   destinations:

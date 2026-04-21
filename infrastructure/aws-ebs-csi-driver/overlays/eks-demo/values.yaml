@@ -1,0 +1,5 @@
+controller:
+  serviceAccount:
+    annotations:
+      # Obtain from: terraform -chdir=terraform/eks-demo output -raw ebs_csi_driver_role_arn
+      eks.amazonaws.com/role-arn: REPLACE_WITH_EBS_CSI_DRIVER_ROLE_ARN
