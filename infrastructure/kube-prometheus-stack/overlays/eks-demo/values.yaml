@@ -57,7 +57,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 100Gi
     externalUrl: https://prometheus.eks-demo.platform.dspdemos.com
     retention: 15d
     retentionSize: "9GB"
