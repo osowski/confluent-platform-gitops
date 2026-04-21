@@ -18,7 +18,7 @@ spec:
           route53:
             region: us-east-1
             # Obtain from: terraform -chdir=terraform/dns-bootstrap output platform_zone_id
-            hostedZoneID: REPLACE_WITH_PLATFORM_ZONE_ID
+            hostedZoneID: Z09738543N152CE54R8TI
 ---
 # Let's Encrypt production issuer — use once staging certificates verify cleanly.
 apiVersion: cert-manager.io/v1
