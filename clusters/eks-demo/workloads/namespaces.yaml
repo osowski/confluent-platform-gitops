@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: workloads/namespaces/base
+    path: workloads/namespaces/overlays/eks-demo
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -20,3 +20,11 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
