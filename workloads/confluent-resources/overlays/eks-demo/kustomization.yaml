@@ -5,6 +5,9 @@ namespace: kafka
 
 resources:
   - ../../base
+  - oauth-client-secrets.yaml
+  - oidc-client-credentials-secret.yaml
+  - controlcenter-oauth-client-secret.yaml
 
 patches:
   - path: kafka-patch.yaml
