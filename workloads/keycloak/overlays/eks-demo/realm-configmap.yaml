@@ -1,0 +1,381 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: keycloak
+data:
+  confluent-realm.json: |
+    {
+      "realm": "confluent",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false,
+      "resetPasswordAllowed": false,
+      "rememberMe": true,
+      "accessTokenLifespan": 604800,
+      "ssoSessionIdleTimeout": 604800,
+      "ssoSessionMaxLifespan": 604800,
+      "groups": [
+        {
+          "name": "admins",
+          "path": "/admins"
+        },
+        {
+          "name": "shapes",
+          "path": "/shapes"
+        },
+        {
+          "name": "colors",
+          "path": "/colors"
+        }
+      ],
+      "users": [
+        {
+          "username": "admin@dspdemos.com",
+          "enabled": true,
+          "email": "admin@dspdemos.com",
+          "firstName": "Admin",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admin123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/admins"]
+        },
+        {
+          "username": "user-square@dspdemos.com",
+          "enabled": true,
+          "email": "user-square@dspdemos.com",
+          "firstName": "Square",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "square123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-circle@dspdemos.com",
+          "enabled": true,
+          "email": "user-circle@dspdemos.com",
+          "firstName": "Circle",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "circle123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-triangle@dspdemos.com",
+          "enabled": true,
+          "email": "user-triangle@dspdemos.com",
+          "firstName": "Triangle",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "triangle123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-trapezoid@dspdemos.com",
+          "enabled": true,
+          "email": "user-trapezoid@dspdemos.com",
+          "firstName": "Trapezoid",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "trapezoid123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-diamond@dspdemos.com",
+          "enabled": true,
+          "email": "user-diamond@dspdemos.com",
+          "firstName": "Diamond",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "diamond123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/shapes"]
+        },
+        {
+          "username": "user-red@dspdemos.com",
+          "enabled": true,
+          "email": "user-red@dspdemos.com",
+          "firstName": "Red",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "red123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-green@dspdemos.com",
+          "enabled": true,
+          "email": "user-green@dspdemos.com",
+          "firstName": "Green",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "green123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-orange@dspdemos.com",
+          "enabled": true,
+          "email": "user-orange@dspdemos.com",
+          "firstName": "Orange",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "orange123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-blue@dspdemos.com",
+          "enabled": true,
+          "email": "user-blue@dspdemos.com",
+          "firstName": "Blue",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "blue123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        },
+        {
+          "username": "user-yellow@dspdemos.com",
+          "enabled": true,
+          "email": "user-yellow@dspdemos.com",
+          "firstName": "Yellow",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "yellow123",
+              "temporary": false
+            }
+          ],
+          "groups": ["/colors"]
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "cmf",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "authorizationServicesEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "cmf-secret",
+          "protocolMappers": [
+            {
+              "name": "email",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-property-mapper",
+              "consentRequired": false,
+              "config": {
+                "userinfo.token.claim": "true",
+                "user.attribute": "email",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "email",
+                "jsonType.label": "String"
+              }
+            },
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "name": "audience-mapper",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "consentRequired": false,
+              "config": {
+                "included.client.audience": "cmf",
+                "id.token.claim": "true",
+                "access.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "controlcenter",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": true,
+          "redirectUris": [
+            "https://controlcenter.eks-demo.platform.dspdemos.com/api/metadata/security/1.0/oidc/authorization-code/callback"
+          ],
+          "webOrigins": ["*"],
+          "secret": "controlcenter-secret",
+          "attributes": {
+            "oauth2.device.authorization.grant.enabled": "true"
+          },
+          "defaultClientScopes": [
+            "web-origins",
+            "acr",
+            "profile",
+            "roles",
+            "email"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "microprofile-jwt",
+            "offline_access"
+          ],
+          "protocolMappers": [
+            {
+              "name": "email",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-property-mapper",
+              "consentRequired": false,
+              "config": {
+                "userinfo.token.claim": "true",
+                "user.attribute": "email",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "email",
+                "jsonType.label": "String"
+              }
+            },
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "kafka",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "kafka-secret",
+          "protocolMappers": [
+            {
+              "name": "email",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-property-mapper",
+              "consentRequired": false,
+              "config": {
+                "userinfo.token.claim": "true",
+                "user.attribute": "email",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "email",
+                "jsonType.label": "String"
+              }
+            },
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "confluent-sso",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "directAccessGrantsEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "secret": "confluent-sso-secret"
+        }
+      ],
+      "roles": {
+        "realm": [
+          {
+            "name": "flink-admin",
+            "description": "Full Flink administration access"
+          },
+          {
+            "name": "flink-shapes-user",
+            "description": "Access to shapes environment"
+          },
+          {
+            "name": "flink-colors-user",
+            "description": "Access to colors environment"
+          }
+        ]
+      },
+      "clientScopeMappings": {},
+      "defaultRoles": ["offline_access", "uma_authorization"]
+    }

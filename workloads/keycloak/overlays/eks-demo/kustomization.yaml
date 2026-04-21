@@ -25,6 +25,11 @@ patches:
       kind: PersistentVolumeClaim
       name: postgres-pvc
 
+  - path: realm-configmap.yaml
+    target:
+      kind: ConfigMap
+      name: keycloak-realm
+
 labels:
 - includeSelectors: false
   includeTemplates: true
