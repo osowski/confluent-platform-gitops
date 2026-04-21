@@ -8,6 +8,9 @@ locals {
 # The driver itself is installed via ArgoCD in Task 10 (Issue #185) —
 # infrastructure/aws-ebs-csi-driver with a Kustomize overlay that annotates
 # the ServiceAccount with this role ARN. It is not a managed EKS addon.
+# sa_name must match controller.serviceAccount.name in the Helm values for
+# infrastructure/aws-ebs-csi-driver/overlays/eks-demo — changing it there
+# without updating this trust policy will silently break IRSA.
 
 resource "aws_iam_role" "ebs_csi_driver" {
   name        = "AmazonEKS_EBS_CSI_DriverRole_${var.cluster_name}"
@@ -100,7 +103,7 @@ resource "aws_iam_role_policy" "external_dns" {
       },
       {
         Effect   = "Allow"
-        Action   = ["route53:ListHostedZones", "route53:ListResourceRecordSets", "route53:ListTagsForResource"]
+        Action   = ["route53:ListHostedZones", "route53:ListHostedZonesByName", "route53:ListResourceRecordSets", "route53:ListTagsForResource"]
         Resource = ["*"]
       }
     ]
@@ -124,7 +127,10 @@ resource "aws_iam_role" "aws_lb_controller" {
 }
 
 resource "aws_iam_policy" "aws_lb_controller" {
-  name   = "AWSLoadBalancerControllerIAMPolicy_${var.cluster_name}"
+  name        = "AWSLoadBalancerControllerIAMPolicy_${var.cluster_name}"
+  description = "IAM permissions for the AWS Load Balancer Controller — sourced from kubernetes-sigs/aws-load-balancer-controller"
+  # Update aws-lb-controller-iam-policy.json when upgrading the controller Helm chart version;
+  # the policy changes across minor releases.
   policy = file("${path.module}/aws-lb-controller-iam-policy.json")
   tags   = var.common_tags
 }
