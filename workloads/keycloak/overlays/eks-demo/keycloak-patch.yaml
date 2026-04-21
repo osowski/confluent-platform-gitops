@@ -1,0 +1,18 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  template:
+    spec:
+      containers:
+      - name: keycloak
+        env:
+        - name: KC_HOSTNAME
+          value: https://keycloak.eks-demo.platform.dspdemos.com
+        - name: KC_HOSTNAME_ADMIN
+          value: https://keycloak.eks-demo.platform.dspdemos.com
+        - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+          value: "true"
