@@ -18,7 +18,7 @@ Provisions a private EKS cluster on AWS for Confluent Platform and Flink demo de
 | VPC Interface Endpoints | SSM, SSMMessages, EC2Messages, ECR API, ECR DKR, EKS, STS, CloudWatch Logs |
 | VPC Gateway Endpoint | S3 (required for ECR image layer pulls) |
 | EKS Cluster | Kubernetes 1.32, private-only API endpoint, IRSA via OIDC, core add-ons managed |
-| Managed Node Group | AL2023, `t3.xlarge`, 100 GiB gp3 root volume, 2-5 nodes |
+| Managed Node Group | AL2023, `t3.2xlarge`, 100 GiB gp3 root volume, 4-6 nodes (`workers-v2`) |
 | Bastion Host | AL2023 EC2 in private subnet, SSM-only access, 3proxy SOCKS5 on `localhost:1080` |
 | IRSA IAM Roles | EBS CSI Driver, cert-manager, ExternalDNS, AWS Load Balancer Controller |
 
@@ -52,10 +52,10 @@ The apply takes 15-20 minutes, the majority of which is the EKS cluster and node
 | `platform_zone_id` | — | Route53 zone ID for `platform.dspdemos.com`, from dns-bootstrap output |
 | `platform_domain` | `platform.dspdemos.com` | Platform domain used by ExternalDNS and cert-manager |
 | `vpc_cidr` | `10.0.0.0/16` | CIDR block for the VPC |
-| `node_instance_type` | `t3.xlarge` | EC2 instance type for managed node group workers |
-| `node_desired_size` | `2` | Desired number of worker nodes |
-| `node_min_size` | `2` | Minimum number of worker nodes |
-| `node_max_size` | `5` | Maximum number of worker nodes |
+| `node_instance_type` | `t3.2xlarge` | EC2 instance type for managed node group workers |
+| `node_desired_size` | `4` | Desired number of worker nodes |
+| `node_min_size` | `4` | Minimum number of worker nodes |
+| `node_max_size` | `6` | Maximum number of worker nodes |
 | `common_tags` | see below | Confluent mandatory tags applied to all resources |
 | `cflt_keep_until` | *(required)* | Static expiry date tag (YYYY-MM-DD). Set at least one year out. Must be set explicitly to prevent plan drift from computed timestamps. |
 
