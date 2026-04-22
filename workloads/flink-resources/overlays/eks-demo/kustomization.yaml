@@ -11,13 +11,21 @@ patches:
       kind: CMFRestClass
       name: cmf-rest-class
 
-  # Remove base example FlinkApplication — eks-demo manages Flink workloads separately
+  # Remove base example resources — eks-demo manages Flink workloads separately
   - patch: |-
       $patch: delete
       apiVersion: platform.confluent.io/v1beta1
       kind: FlinkApplication
       metadata:
         name: default-flink-app
+        namespace: flink
+
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: FlinkEnvironment
+      metadata:
+        name: env1
         namespace: flink
 
 labels:

@@ -5,7 +5,7 @@ metadata:
   name: flink-rbac
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "100"
+    argocd.argoproj.io/sync-wave: "101" # After namespaces (100), before cfk-operator (105)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
