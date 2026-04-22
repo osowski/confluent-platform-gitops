@@ -86,6 +86,8 @@ terraform output -json > ../../z_scratch/eks-demo-tf-outputs.json
 
 ## Accessing the cluster
 
+<!-- Content in this section intentionally duplicated between this README.md and `clusters/eks-demo/README.md` -->
+
 > [!IMPORTANT]
 > Pay attention to this section if you want to be able to access your cluster!
 
@@ -145,46 +147,6 @@ aws ssm describe-sessions --state Active --region us-east-1 \
 ### Browser access via FoxyProxy
 
 Cluster UIs (ArgoCD, Confluent Control Center, etc.) are accessible through a browser configured to use the SOCKS5 tunnel. FoxyProxy is the recommended browser extension for this. Configure a SOCKS5 proxy rule for `*.platform.dspdemos.com` pointing to `localhost:1080`. When you are done, disable the pattern or switch FoxyProxy back to direct connection. FoxyProxy does not modify system-level proxy settings, so no other cleanup is needed.
-
-## Sharing access with other users
-
-Multiple SEs can use this environment simultaneously. The SSM tunnel and 3proxy are stateless — each person starts their own port-forward session and sets `HTTPS_PROXY` in their own terminal. No coordination required.
-
-The one thing that requires setup is an EKS access entry. `enable_cluster_creator_admin_permissions = true` grants cluster-admin only to the IAM identity that ran `terraform apply`. Any other user will authenticate successfully but get `Unauthorized` on API calls.
-
-### Step 1 — Requesting user finds their role ARN
-
-The user requesting access (e.g. bigbird@confluent.io) runs these two commands and shares the resulting ARN with the cluster owner:
-
-```bash
-# Get the role name from the active SSO session
-ROLE_NAME=$(aws sts get-caller-identity --query Arn --output text | cut -d'/' -f2)
-
-# Resolve the full IAM role ARN including the SSO path prefix
-aws iam get-role --role-name "$ROLE_NAME" --query Role.Arn --output text
-```
-
-### Step 2 — Cluster owner creates the access entry
-
-The cluster owner (who ran `terraform apply`) runs these commands with the ARN received in step 1:
-
-```bash
-SE_ROLE_ARN="<arn-from-requesting-user>"  # e.g. bigbird@confluent.io's role ARN
-
-aws eks create-access-entry \
-  --cluster-name eks-demo \
-  --principal-arn "$SE_ROLE_ARN" \
-  --region us-east-1
-
-aws eks associate-access-policy \
-  --cluster-name eks-demo \
-  --principal-arn "$SE_ROLE_ARN" \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
-  --access-scope type=cluster \
-  --region us-east-1
-```
-
-Once their access entry is in place, the requesting user follows the same tunnel and kubeconfig steps in [Accessing the cluster](#accessing-the-cluster) as any other user.
 
 ## Design decisions
 

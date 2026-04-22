@@ -14,7 +14,9 @@ The `eks-demo` cluster is a fully operational Confluent Platform + Flink deploym
 
 ## Prerequisites
 
-All AWS infrastructure must be provisioned before deploying this cluster.
+- All AWS infrastructure must be provisioned before deploying this cluster.
+- Access to the `AWS Commercial` account via Okta Dashboard.
+- `assume` setup locally to resolve `aws` CLI commands successfully.
 
 ### Step 1: DNS Bootstrap
 
@@ -140,45 +142,9 @@ In the ArgoCD UI:
 1. Click on `flink-resources` → **Sync** → **Synchronize**
 2. Wait for `Healthy` status (~2-3 minutes)
 
-## Applications
-
-### Infrastructure Applications
-
-Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
-
-- **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
-- **aws-ebs-csi-driver** (wave 3) - EBS CSI driver and gp3 StorageClass *(added in Task 10)*
-- **metrics-server** (wave 5) - Kubernetes Metrics Server
-- **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning *(added in Task 11)*
-- **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS *(added in Task N)*
-- **traefik** (wave 10) - Ingress controller deployed on internal AWS NLB
-- **cert-manager** (wave 20) - TLS certificate management (Let's Encrypt DNS-01 via Route53 IRSA)
-- **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
-- **trust-manager** (wave 30) - CA certificate distribution
-- **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
-- **cert-manager-resources** (wave 75) - ClusterIssuers for Let's Encrypt staging and production
-- **infra-ingresses** (wave 80) - Traefik IngressRoute for ArgoCD UI
-- **minio** (wave 85) - Object storage for Flink checkpoints and savepoints
-- **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
-
-### Workload Applications
-
-Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
-
-- **namespaces** (wave 100) - Namespace definitions
-- **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC *(added in Task N)*
-- **cfk-operator** (wave 105) - Confluent for Kubernetes operator
-- **mds-keygen** (wave 107) - MDS token key generation job *(added in Task N)*
-- **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.)
-- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
-- **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
-- **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
-- **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
-- **cmf-operator-secrets** (wave 119) - CMF operator secrets *(added in Task N)*
-- **flink-rbac** (wave 119) - Flink RBAC ConfluentRoleBindings *(added in Task N)*
-- **flink-resources** (wave 120) - Flink integration resources
-
 ## Environment Access
+
+<!-- Content in this section intentionally duplicated between this README.md and `terraform/eks-demo/README.md` -->
 
 All services are private — exposed only within the VPC. Access from your laptop requires the SOCKS5 proxy tunnel.
 
@@ -229,6 +195,84 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 
 **Keycloak** *(added in Task N)*:
 - **URL**: https://keycloak.eks-demo.platform.dspdemos.com
+
+## Sharing Access With Other Users
+
+Multiple SEs can use this environment simultaneously. The SSM tunnel and 3proxy are stateless — each person starts their own port-forward session and sets `HTTPS_PROXY` in their own terminal. No coordination required.
+
+The one thing that requires setup is an EKS access entry. Terraform's `enable_cluster_creator_admin_permissions = true` grants cluster-admin only to the IAM identity that ran `terraform apply`. Any other user will authenticate successfully but get `Unauthorized` on API calls.
+
+### Step 1 — Requesting user finds their role ARN
+
+The user requesting access (e.g. bigbird@confluent.io) runs these two commands and shares the resulting ARN with the cluster owner:
+
+```bash
+# Get the role name from the active SSO session
+ROLE_NAME=$(aws sts get-caller-identity --query Arn --output text | cut -d'/' -f2)
+
+# Resolve the full IAM role ARN including the SSO path prefix
+aws iam get-role --role-name "$ROLE_NAME" --query Role.Arn --output text
+```
+
+### Step 2 — Cluster owner creates the access entry
+
+The cluster owner (who ran `terraform apply`) runs these commands with the ARN received in step 1:
+
+```bash
+SE_ROLE_ARN="<arn-from-requesting-user>"  # e.g. bigbird@confluent.io's role ARN
+
+aws eks create-access-entry \
+  --cluster-name eks-demo \
+  --principal-arn "$SE_ROLE_ARN" \
+  --region us-east-1
+
+aws eks associate-access-policy \
+  --cluster-name eks-demo \
+  --principal-arn "$SE_ROLE_ARN" \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster \
+  --region us-east-1
+```
+
+Once their access entry is in place, the requesting user follows the same tunnel and kubeconfig steps in [Accessing the cluster](#accessing-the-cluster) as any other user.
+
+## Applications
+
+### Infrastructure Applications
+
+Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
+
+- **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
+- **aws-ebs-csi-driver** (wave 3) - EBS CSI driver and gp3 StorageClass *(added in Task 10)*
+- **metrics-server** (wave 5) - Kubernetes Metrics Server
+- **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning *(added in Task 11)*
+- **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS *(added in Task N)*
+- **traefik** (wave 10) - Ingress controller deployed on internal AWS NLB
+- **cert-manager** (wave 20) - TLS certificate management (Let's Encrypt DNS-01 via Route53 IRSA)
+- **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
+- **trust-manager** (wave 30) - CA certificate distribution
+- **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
+- **cert-manager-resources** (wave 75) - ClusterIssuers for Let's Encrypt staging and production
+- **infra-ingresses** (wave 80) - Traefik IngressRoute for ArgoCD UI
+- **minio** (wave 85) - Object storage for Flink checkpoints and savepoints
+- **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
+
+### Workload Applications
+
+Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
+
+- **namespaces** (wave 100) - Namespace definitions
+- **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC *(added in Task N)*
+- **cfk-operator** (wave 105) - Confluent for Kubernetes operator
+- **mds-keygen** (wave 107) - MDS token key generation job *(added in Task N)*
+- **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.)
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
+- **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
+- **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
+- **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
+- **cmf-operator-secrets** (wave 119) - CMF operator secrets *(added in Task N)*
+- **flink-rbac** (wave 119) - Flink RBAC ConfluentRoleBindings *(added in Task N)*
+- **flink-resources** (wave 120) - Flink integration resources
 
 ## Cluster Specific Use Cases
 
