@@ -1,0 +1,27 @@
+# Override producer image for eks-demo (amd64 EKS nodes)
+# Base image is arm64-only; this patch pins the amd64-specific build until
+# multi-arch CI/CD is set up in flink-sandbox (osowski/flink-sandbox#6)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shapes-producer
+  namespace: flink-shapes
+spec:
+  template:
+    spec:
+      containers:
+        - name: producer
+          image: quay.io/osowski/kafka-producer:v0.2.0-avro-amd64
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: colors-producer
+  namespace: flink-colors
+spec:
+  template:
+    spec:
+      containers:
+        - name: producer
+          image: quay.io/osowski/kafka-producer:v0.2.0-avro-amd64
