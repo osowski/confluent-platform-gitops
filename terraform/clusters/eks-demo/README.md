@@ -96,11 +96,3 @@ To provision a second EKS cluster (e.g., `eks-prod`):
 4. Run `terraform init && terraform apply` from the new directory
 
 Each cluster directory is fully independent — separate state, separate apply blast radius.
-
-## References
-
-- [eks-cluster module](../../modules/eks-cluster/)
-- [dns-bootstrap](../../dns-bootstrap/)
-- [ADR-0004: Private EKS API Endpoint with SSM+SOCKS5 Bastion](../../../adrs/0004-private-eks-api-ssm-bastion.md)
-- [ADR-0005: Terraform and ArgoCD Cluster Provisioning Split](../../../adrs/0005-terraform-argocd-cluster-provisioning-split.md)
-- [ADR-0006: Remote Terraform State and Reusable Module Structure](../../../adrs/0006-terraform-remote-state-module-structure.md)

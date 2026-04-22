@@ -46,7 +46,3 @@ Each root writes to a distinct key prefix within the shared bucket:
 |------|-----------|
 | `dns-bootstrap/` | `dns-bootstrap/terraform.tfstate` |
 | `clusters/eks-demo/` | `eks-demo/terraform.tfstate` |
-
-## References
-
-- [ADR-0006: Remote Terraform State and Reusable Module Structure](../adrs/0006-terraform-remote-state-module-structure.md)
