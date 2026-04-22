@@ -46,12 +46,15 @@ cmf:
       oauthbearer.expected.issuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
 
       # Principal claim - use client_id as the user identifier
+      # This works for both service accounts (client_id from service account) and
+      # user accounts (client_id is set by the controlcenter client via protocol mapper)
       oauthbearer.sub.claim.name: client_id
 
       # Groups claim - extract group membership from tokens
       oauthbearer.groups.claim.name: groups
 
       # MDS public key path for validating MDS-signed SSO tokens from Control Center
+      # Control Center uses SSO tokens signed by MDS, not direct OAuth tokens
       public.key.path: /mount/mds/mdsPublicKey.pem
 
       # MDS metadata server URLs for token validation
@@ -61,6 +64,7 @@ cmf:
       confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
 
       # Token endpoint for CMF to obtain its own tokens (internal cluster DNS)
+      # Used when CMF needs to authenticate as a service principal
       confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
 
       # CMF client credentials for authenticating to MDS
@@ -82,9 +86,14 @@ cmf:
       authentication:
         type: oauth
         config:
+          # OAuth bearer credentials provider
           confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+          # Token endpoint to obtain tokens
           confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          # Client ID for CMF service principal
           confluent.metadata.oauthbearer.login.client.id: cmf
+          # Client secret - hard-coded for demo (production should use external-secrets or vault)
+          # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
           confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
 # Mount MDS token secret for public key validation of MDS-signed SSO tokens
