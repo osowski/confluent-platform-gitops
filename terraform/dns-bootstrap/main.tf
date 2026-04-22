@@ -20,6 +20,10 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  # Ignore tags added by Confluent's Divvy compliance scanner — managed externally
+  ignore_tags {
+    key_prefixes = ["divvy"]
+  }
 }
 
 locals {
