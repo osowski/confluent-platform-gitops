@@ -1,0 +1,14 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    authentication:
+      type: oauth
+      oauth:
+        secretRef: cfk-cmf-oauth-client
+        configuration:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          subClaimName: client_id

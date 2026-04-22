@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - cfk-oauth-secret.yaml
+
+patches:
+  - path: cmfrestclass-oauth-patch.yaml
+    target:
+      kind: CMFRestClass
+      name: cmf-rest-class
+
+  # Remove base example FlinkApplication — eks-demo manages Flink workloads separately
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: FlinkApplication
+      metadata:
+        name: default-flink-app
+        namespace: flink
+
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: eks-demo

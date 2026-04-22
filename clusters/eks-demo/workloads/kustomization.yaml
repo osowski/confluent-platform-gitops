@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespaces.yaml
   - keycloak.yaml
+  - flink-rbac.yaml
   - cfk-operator.yaml
   - mds-keygen.yaml
   - confluent-resources.yaml
