@@ -38,14 +38,37 @@ module "eks" {
 
   eks_managed_node_groups = {
     default = {
-      instance_types = [var.node_instance_type]
-      min_size       = var.node_min_size
-      max_size       = var.node_max_size
-      desired_size   = var.node_desired_size
+      instance_types = ["t3.xlarge"]      # pinned to live type; var.node_instance_type now targets workers-v2
+      min_size       = 3                  # pinned to live value; ignore_scaling_changes only covers desired_size
+      max_size       = 5
+      desired_size   = 5
+
+      ignore_scaling_changes = true
 
       ami_type = "AL2023_x86_64_STANDARD"
 
       # 20 GiB default fills rapidly under Confluent Platform image pulls + ephemeral storage.
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 100
+            volume_type           = "gp3"
+            delete_on_termination = true
+            encrypted             = true
+          }
+        }
+      }
+    }
+
+    workers-v2 = {
+      instance_types = [var.node_instance_type]
+      min_size       = 4
+      max_size       = 6
+      desired_size   = 4
+
+      ami_type = "AL2023_x86_64_STANDARD"
+
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
