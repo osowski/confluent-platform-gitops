@@ -1,0 +1,98 @@
+# Confluent Manager for Apache Flink - eks-demo Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod annotations for eks-demo cluster identification
+podAnnotations:
+  cluster: eks-demo
+
+# Encryption key for CMF Secrets - Required for storing Flink SQL secret data
+# CMF uses AES-GCM encryption to store spec.data in its metadata database
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
+# OAuth authentication configuration for CMF REST API
+# Validates bearer tokens from Keycloak for incoming client requests
+# IMPORTANT: CMF validates MDS-signed tokens using the MDS public key
+cmf:
+  # Database configuration - Use PostgreSQL instead of embedded SQLite
+  # SQLite has severe lock contention issues under concurrent operations
+  database:
+    type: jdbc
+    jdbc:
+      engine: postgresql
+      database: cmf
+      url: cmf-postgres.operator.svc.cluster.local
+      user: cmf
+      password:
+        kubernetesSecretName: cmf-postgres-credentials
+        kubernetesSecretProperty: POSTGRES_PASSWORD
+      port: 5432
+      options: ""
+
+  authentication:
+    type: oauth
+    config:
+      # JWKS endpoint for token validation (internal cluster DNS)
+      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+
+      # Token issuer name for MDS-signed tokens
+      token.issuer: Confluent
+
+      # Expected issuer must match the external URL that clients use
+      # This is what appears in the token's "iss" claim
+      # Must match KC_HOSTNAME setting in Keycloak deployment
+      oauthbearer.expected.issuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
+
+      # Principal claim - use client_id as the user identifier
+      oauthbearer.sub.claim.name: client_id
+
+      # Groups claim - extract group membership from tokens
+      oauthbearer.groups.claim.name: groups
+
+      # MDS public key path for validating MDS-signed SSO tokens from Control Center
+      public.key.path: /mount/mds/mdsPublicKey.pem
+
+      # MDS metadata server URLs for token validation
+      confluent.metadata.bootstrap.server.urls: http://kafka.kafka.svc.cluster.local:8090
+
+      # OAuth credentials provider for CMF to authenticate to MDS
+      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+
+      # Token endpoint for CMF to obtain its own tokens (internal cluster DNS)
+      confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+      # CMF client credentials for authenticating to MDS
+      confluent.metadata.oauthbearer.login.client.id: cmf
+      confluent.metadata.oauthbearer.login.client.secret: cmf-secret
+
+  # Kafka-specific OAuth configuration
+  kafka:
+    # OAuth bearer allowed URLs - Required for OAuth authentication
+    # Must include full token endpoint URL paths, not just realm base URLs
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/token,https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent/protocol/openid-connect/certs
+
+# Authorization configuration - connect to MDS for RBAC
+  authorization:
+    mdsRestConfig:
+      # MDS endpoint on Kafka broker (internal cluster DNS)
+      endpoint: http://kafka.kafka.svc.cluster.local:8090
+      # OAuth authentication for CMF to talk to MDS
+      authentication:
+        type: oauth
+        config:
+          confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+          confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          confluent.metadata.oauthbearer.login.client.id: cmf
+          confluent.metadata.oauthbearer.login.client.secret: cmf-secret
+
+# Mount MDS token secret for public key validation of MDS-signed SSO tokens
+mountedVolumes:
+  volumes:
+    - name: mds-token
+      secret:
+        secretName: mds-token
+  volumeMounts:
+    - name: mds-token
+      mountPath: /mount/mds
