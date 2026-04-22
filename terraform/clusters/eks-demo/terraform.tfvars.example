@@ -1,0 +1,11 @@
+aws_region         = "us-east-1"
+cluster_name       = "eks-demo"
+kubernetes_version = "1.32"
+platform_zone_id   = "<output from dns-bootstrap: platform_zone_id>"
+platform_domain    = "platform.dspdemos.com"
+vpc_cidr           = "10.0.0.0/16"
+node_instance_type = "t3.2xlarge"
+node_desired_size  = 4
+node_min_size      = 4
+node_max_size      = 6
+cflt_keep_until    = "YYYY-MM-DD"

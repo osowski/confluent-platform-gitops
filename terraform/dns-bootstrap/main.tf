@@ -6,6 +6,16 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    # Run the bootstrap steps in the README to create these resources before
+    # running terraform init for the first time.
+    bucket         = "<your-terraform-state-bucket>"
+    key            = "dns-bootstrap/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "<your-terraform-lock-table>"
+  }
 }
 
 provider "aws" {

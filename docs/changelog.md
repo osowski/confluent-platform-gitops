@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Terraform remote state and reusable EKS module** ([#254](https://github.com/osowski/confluent-platform-gitops/issues/254)): S3+DynamoDB backend for `dns-bootstrap` and `eks-demo`; EKS cluster resources extracted into `terraform/modules/eks-cluster/` with per-cluster instance roots under `terraform/clusters/`
 - **eks-demo cluster — AWS EKS reference deployment** ([#24](https://github.com/osowski/confluent-platform-gitops/issues/24))
   - Private EKS cluster (Kubernetes 1.32) with Terraform-managed infrastructure — VPC, IAM, IRSA, and EBS CSI driver — accessed exclusively through an SSM+SOCKS5 bastion tunnel with no public Kubernetes API endpoint exposed
   - AWS-native ingress replacing Traefik: AWS Load Balancer Controller (ALB), ExternalDNS with automatic Route53 registration, and ACM-backed TLS for all public service endpoints across `platform.dspdemos.com`
