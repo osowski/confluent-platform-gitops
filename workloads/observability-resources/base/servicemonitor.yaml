@@ -21,10 +21,7 @@ spec:
         - targetLabel: job
           replacement: flink
   namespaceSelector:
-    matchNames:
-      - flink
-      - flink-shapes
-      - flink-colors
+    any: true
   selector:
     matchLabels:
       platform.confluent.io/origin: manual
