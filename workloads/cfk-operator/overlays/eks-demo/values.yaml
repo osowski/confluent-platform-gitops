@@ -1,5 +1,10 @@
 # eks-demo cluster-specific overrides for CFK operator
 # Explicit override prevents base changes from silently expanding watch scope.
+
+# Additional pod annotations for eks-demo cluster identification
+podAnnotations:
+  cluster: eks-demo
+
 namespaceList:
   - flink
   - flink-shapes

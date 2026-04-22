@@ -1,0 +1,13 @@
+---
+# CMF Encryption Key for AES-GCM encryption of Secret spec.data
+# CMF requires this key to encrypt and store Flink SQL secrets in its metadata database
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cmf-encryption-key
+  namespace: operator
+type: Opaque
+stringData:
+  # AES-256 key (32 bytes base64 encoded)
+  # In production, use external-secrets or vault to manage this
+  key: "Y29uZmx1ZW50LWNtZi1lbmNyeXB0aW9uLWtleS0zMmJ5dGVz"

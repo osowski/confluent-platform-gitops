@@ -8,7 +8,8 @@ resources:
   - flink-kubernetes-operator.yaml
   - flink-resources-rbac.yaml
   - flink-rbac.yaml
-  - keycloak.yaml 
+  - cmf-operator-secrets.yaml
+  - keycloak.yaml
   - observability-resources.yaml
   - mds-keygen.yaml
   - namespaces.yaml
