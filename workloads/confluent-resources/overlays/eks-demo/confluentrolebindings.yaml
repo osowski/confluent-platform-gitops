@@ -1,0 +1,767 @@
+# ConfluentRoleBindings for CMF RBAC Authorization
+# These role bindings grant permissions to users and groups for Flink resources
+---
+# CMF service account - SystemAdmin role on CMF cluster
+# CMF itself needs admin permissions to manage Flink resources
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
+# Control Center service account - SystemAdmin role on CMF cluster for Flink UI access
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: controlcenter-cmf-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: controlcenter
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
+# Control Center service account - SystemAdmin role for Kafka cluster management
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: controlcenter-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: controlcenter
+  role: SystemAdmin
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - SystemAdmin role on CMF cluster
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - ClusterAdmin role on CMF cluster
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-clusteradmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - SystemAdmin role on Kafka cluster for Control Center access
+# This is IN ADDITION to the CMF-scoped bindings above
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-kafka-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: SystemAdmin
+  # No clustersScopeByIds = defaults to Kafka cluster
+  kafkaRestClassRef:
+    name: default
+---
+# CMF service account - ClusterAdmin role on shapes-env FlinkEnvironment
+# CMF needs environment-specific permissions to manage FlinkApplications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-clusteradmin-shapes-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: shapes-env
+  kafkaRestClassRef:
+    name: default
+---
+# CMF service account - ClusterAdmin role on colors-env FlinkEnvironment
+# CMF needs environment-specific permissions to manage FlinkApplications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-clusteradmin-colors-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: colors-env
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - ClusterAdmin role on shapes-env FlinkEnvironment
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-clusteradmin-shapes-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: shapes-env
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - ClusterAdmin role on colors-env FlinkEnvironment
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-clusteradmin-colors-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: colors-env
+  kafkaRestClassRef:
+    name: default
+---
+# Shapes group - DeveloperManage on shapes-env FlinkEnvironment resource
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-developermanage-env
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: shapes-env
+      resourceType: FlinkEnvironment
+  kafkaRestClassRef:
+    name: default
+---
+# Shapes group - ClusterAdmin on all FlinkApplications in shapes-env
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-clusteradmin-apps
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: shapes-env
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - DeveloperManage on colors-env FlinkEnvironment resource
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-developermanage-env
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: colors-env
+      resourceType: FlinkEnvironment
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ClusterAdmin on all FlinkApplications in colors-env
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-clusteradmin-apps
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: colors-env
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# FLINK SQL CATALOG & DATABASE RBAC - Handled by FlinkEnvironment permissions
+# ==============================================================================
+# NOTE: KafkaCatalog and KafkaDatabase are CMF-managed resources, not valid
+# Kafka RBAC resource types. Access to these resources is granted through
+# FlinkEnvironment permissions (shapes-developermanage-env, colors-developermanage-env).
+#
+# Databases specify alterEnvironments: ["shapes-env"|"colors-env"], which grants
+# access to users with DeveloperManage role on those environments.
+#
+# Removed rolebindings (were in ERROR state):
+#   - shapes-catalog-owner (KafkaCatalog - invalid resource type)
+#   - shapes-database-owner (KafkaDatabase - invalid resource type)
+#   - colors-catalog-owner (KafkaCatalog - invalid resource type)
+#   - colors-database-owner (KafkaDatabase - invalid resource type)
+---
+# ==============================================================================
+# KAFKA TOPIC RBAC - Group-based topic access control
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* topics
+# Allows shapes group users to create, read, write, and delete topics with shapes- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* topics
+# Allows colors group users to create, read, write, and delete topics with colors- prefix
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# SERVICE ACCOUNT RBAC - Flink service account permissions
+# ==============================================================================
+# Service accounts need direct user-level permissions because MDS identifies
+# principals by client_id claim, not by group membership for authorization.
+#
+# sa-shapes-flink service account - ResourceOwner on shapes-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-flink-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-flink service account - ResourceOwner on colors-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-flink-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-shapes-flink service account - ResourceOwner on shapes-* consumer groups
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-flink-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-flink service account - ResourceOwner on colors-* consumer groups
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-flink-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# sa-shapes-flink service account - ResourceOwner on shapes-* transactional IDs
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-flink-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-flink service account - ResourceOwner on colors-* transactional IDs
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-flink-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-flink
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# sa-shapes-flink service account - ResourceOwner on shapes-* subjects
+# Required for Flink SQL table auto-discovery and Avro deserialization
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-flink-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-flink
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Subject
+---
+# sa-colors-flink service account - ResourceOwner on colors-* subjects
+# Required for Flink SQL table auto-discovery and Avro deserialization
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-flink-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-flink
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Subject
+---
+# ==============================================================================
+# SCHEMA REGISTRY RBAC - Schema Registry operator permissions
+# ==============================================================================
+# The Schema Registry operator (authenticating as 'kafka' user) needs permission
+# to manage Subject resources. This is separate from user-level subject access.
+#
+# NOTE: Subject resources must be scoped at the Schema Registry cluster level,
+# not at the Kafka cluster level (kafkaRestClassRef).
+---
+# Schema Registry operator - ResourceOwner on all subjects
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: schemaregistry-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: kafka
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
+# CMF user - ResourceOwner on all subjects for Flink SQL table discovery
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
+# Control Center - ResourceOwner on all subjects for schema deserialization in UI
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: controlcenter-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: controlcenter
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
+# Admin user - ResourceOwner on all subjects for schema deserialization in Control Center
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
+# Shapes group - ResourceOwner on shapes-* subjects for Flink SQL access
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: "shapes-"
+      resourceType: Subject
+---
+# Colors group - ResourceOwner on colors-* subjects for Flink SQL access
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: "colors-"
+      resourceType: Subject
+---
+# ==============================================================================
+# CONSUMER GROUP RBAC - Required for Flink SQL and streaming applications
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* consumer groups
+# Allows shapes group users to create and manage consumer groups for their Flink applications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* consumer groups
+# Allows colors group users to create and manage consumer groups for their Flink applications
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# TRANSACTIONAL ID RBAC - Required for exactly-once Flink processing
+# ==============================================================================
+# Shapes group - ResourceOwner on shapes-* transactional IDs
+# Allows shapes group Flink applications to use transactions for exactly-once processing
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - ResourceOwner on colors-* transactional IDs
+# Allows colors group Flink applications to use transactions for exactly-once processing
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# ==============================================================================
+# PRODUCER SERVICE ACCOUNT RBAC - OAuth service account permissions
+# ==============================================================================
+# Producer service accounts need direct user-level permissions because MDS
+# identifies principals by client_id claim, not by group membership for authorization.
+#
+# sa-shapes-producer service account - ResourceOwner on shapes-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-producer-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-producer service account - ResourceOwner on colors-* topics
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-producer-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# sa-shapes-producer service account - ResourceOwner on shapes-* subjects
+# Required for schema registration and Avro message production
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-producer-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-producer
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: Subject
+---
+# sa-colors-producer service account - ResourceOwner on colors-* subjects
+# Required for schema registration and Avro message production
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-producer-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-producer
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: Subject
+---
+# sa-shapes-producer service account - ResourceOwner on shapes-* transactional IDs
+# Required for exactly-once semantics (optional for at-least-once)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-shapes-producer-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-shapes-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: shapes-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# sa-colors-producer service account - ResourceOwner on colors-* transactional IDs
+# Required for exactly-once semantics (optional for at-least-once)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-colors-producer-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-colors-producer
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: colors-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default

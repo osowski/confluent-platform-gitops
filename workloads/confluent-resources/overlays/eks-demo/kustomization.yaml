@@ -8,6 +8,7 @@ resources:
   - oauth-client-secrets.yaml
   - oidc-client-credentials-secret.yaml
   - controlcenter-oauth-client-secret.yaml
+  - confluentrolebindings.yaml
 
 patches:
   - path: kafka-patch.yaml
