@@ -17,9 +17,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: flink
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: false
     syncOptions:
       - CreateNamespace=false
     retry:
