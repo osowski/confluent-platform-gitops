@@ -14,6 +14,7 @@ resources:
   - producer-oauth-secrets.yaml
   - producers.yaml
   - schemas.yaml
+  - service.yaml
   - sql-config-configmaps.yaml
   - sql-init-jobs.yaml
   - topics.yaml
