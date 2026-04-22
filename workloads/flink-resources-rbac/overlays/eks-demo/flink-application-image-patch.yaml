@@ -1,0 +1,19 @@
+# Override Flink application image for eks-demo (amd64 EKS nodes)
+# Base image is arm64-only; this patch pins the amd64-specific build until
+# multi-arch CI/CD is set up in flink-sandbox (osowski/flink-sandbox#6)
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: colors
+  namespace: flink-colors
+spec:
+  image: quay.io/osowski/flink-kafka-demo:2.1.1-202604212254-amd
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: shapes
+  namespace: flink-shapes
+spec:
+  image: quay.io/osowski/flink-kafka-demo:2.1.1-202604212254-amd

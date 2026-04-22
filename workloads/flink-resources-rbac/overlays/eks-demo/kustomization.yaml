@@ -4,6 +4,9 @@ kind: Kustomization
 resources:
   - ../../base
 
+patches:
+  - path: flink-application-image-patch.yaml
+
 labels:
 - includeSelectors: false
   includeTemplates: true
