@@ -17,9 +17,8 @@ locals {
     0, 3
   )
 
-  # cflt_keep_until is stable across plan→apply via plantimestamp()
   mandatory_tags = merge(var.common_tags, {
-    cflt_keep_until = formatdate("YYYY-MM-DD", timeadd(plantimestamp(), "8766h"))
+    cflt_keep_until = var.cflt_keep_until
   })
 }
 

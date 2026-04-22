@@ -58,7 +58,7 @@ variable "node_max_size" {
 }
 
 variable "common_tags" {
-  description = "Confluent mandatory tags applied to all resources. cflt_keep_until is computed and injected automatically — do not set it here."
+  description = "Confluent mandatory tags applied to all resources"
   type        = map(string)
   default = {
     cflt_environment = "devel"
@@ -68,4 +68,9 @@ variable "common_tags" {
     cflt_managed_id  = "osowski/confluent-platform-gitops"
     cflt_protected   = "false"
   }
+}
+
+variable "cflt_keep_until" {
+  description = "Static expiry date tag applied to all resources (YYYY-MM-DD). Set to a date at least one year out. Must be set explicitly — no default — to prevent plan drift from computed timestamps."
+  type        = string
 }

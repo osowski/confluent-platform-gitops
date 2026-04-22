@@ -57,9 +57,10 @@ The apply takes 15-20 minutes, the majority of which is the EKS cluster and node
 | `node_min_size` | `2` | Minimum number of worker nodes |
 | `node_max_size` | `5` | Maximum number of worker nodes |
 | `common_tags` | see below | Confluent mandatory tags applied to all resources |
+| `cflt_keep_until` | *(required)* | Static expiry date tag (YYYY-MM-DD). Set at least one year out. Must be set explicitly to prevent plan drift from computed timestamps. |
 
-> [!NOTE]
-> The `cflt_keep_until` tag is computed automatically at plan time using `plantimestamp()` and set one year out. You do not need to set it manually.
+> [!WARNING]
+> `cflt_keep_until` has no default and must be supplied on every apply — either via `terraform.tfvars`, `-var`, or an environment variable. Using a computed value (e.g. `plantimestamp()`) causes a perpetual diff on every `terraform plan`.
 
 ## Outputs
 
