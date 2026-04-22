@@ -5,48 +5,12 @@ Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster`
 ## Prerequisites
 
 - [dns-bootstrap](../../dns-bootstrap/) applied (provides `platform_zone_id` output)
-- S3 bucket and DynamoDB table provisioned (see **Remote State Bootstrap** below)
+- S3 bucket and DynamoDB table provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
 - AWS credentials with EKS, EC2, VPC, IAM, and Route53 permissions
 
 ## Remote State Bootstrap
 
-Run these commands once, before the first `terraform init`. The bucket and table names are yours to choose; update `main.tf` with the values you pick.
-
-```bash
-# 1. Create the S3 bucket with versioning and SSE-S3 encryption
-aws s3api create-bucket \
-  --bucket <your-terraform-state-bucket> \
-  --region us-east-1
-
-aws s3api put-bucket-versioning \
-  --bucket <your-terraform-state-bucket> \
-  --versioning-configuration Status=Enabled
-
-aws s3api put-bucket-encryption \
-  --bucket <your-terraform-state-bucket> \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"},
-      "BucketKeyEnabled": true
-    }]
-  }'
-
-# Block all public access
-aws s3api put-public-access-block \
-  --bucket <your-terraform-state-bucket> \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-
-# 2. Create the DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name <your-terraform-lock-table> \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
-```
-
-After creating the resources, update the `backend "s3"` block in `main.tf` with your actual bucket and table names.
+See [terraform/REMOTE_STATE.md](../../REMOTE_STATE.md) for the one-time S3 bucket and DynamoDB table setup. The bucket and table are shared across all Terraform roots — create them once, then use the same names in the `backend "s3"` block in `main.tf`.
 
 ## Usage
 
