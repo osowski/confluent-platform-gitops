@@ -1,0 +1,28 @@
+# Flink Kubernetes Operator - eks-demo Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Watch additional namespaces for group-based Flink resources
+watchNamespaces:
+  - flink
+  - flink-shapes
+  - flink-colors
+
+# Additional pod labels for eks-demo cluster
+operatorPod:
+  labels:
+    cluster: eks-demo
+
+defaultConfiguration:
+  create: true
+  append: true
+  flink-conf.yaml: |+
+    # Prometheus metrics reporter - exposes metrics at /metrics endpoint
+    kubernetes.operator.metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+    kubernetes.operator.metrics.reporter.prom.port: 9999
+
+    # SLF4J metrics reporter - logs detailed autoscaler metrics
+    kubernetes.operator.metrics.reporter.slf4j.factory.class: org.apache.flink.metrics.slf4j.Slf4jReporterFactory
+    kubernetes.operator.metrics.reporter.slf4j.interval: 5 MINUTE
+
+metrics:
+  port: 9999
