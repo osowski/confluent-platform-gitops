@@ -280,6 +280,53 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - MinIO provides S3-compatible storage for Flink checkpoints/savepoints
 - Reflector replicates secrets across tenant namespaces
 
+### AWS EKS Architecture (eks-demo cluster)
+
+The `eks-demo` cluster is the first cluster in this repository provisioned on real AWS infrastructure rather than a local kind environment. This distinction matters more than it might seem at first glance — kind clusters assume the cluster already exists and let you jump straight to ArgoCD. eks-demo requires an entirely separate provisioning layer for the cluster itself before ArgoCD can do anything. That provisioning layer lives in `terraform/eks-demo/` and is responsible for the VPC, EKS control plane, managed node groups, IAM roles, bastion host, and all the AWS service endpoints the cluster needs to function in a private network.
+
+**Cluster Access — Private API and SSM+SOCKS5 Tunnel:**
+
+The EKS API endpoint is private-only — there is no public Kubernetes API URL. Every `kubectl` command, every ArgoCD sync, and every Terraform operation that talks to the cluster goes through an AWS SSM Session Manager port-forwarding tunnel to a bastion EC2 instance running 3proxy as a SOCKS5 proxy. The bastion itself has no public IP and no inbound security group rules. This is what makes the design work: AWS's control plane handles all the authentication and authorization before traffic ever reaches your infrastructure.
+
+The practical consequence for operators is that you need to start the tunnel before any cluster interaction:
+
+```bash
+aws ssm start-session \
+  --target $BASTION_ID \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
+
+export HTTPS_PROXY=socks5://localhost:1080
+```
+
+Without the tunnel running, `kubectl get nodes` will simply time out — not fail with an auth error, just hang — which can be disorienting the first time you encounter it. See [ADR-0004](../adrs/0004-private-eks-api-ssm-bastion.md) for the full rationale behind this design.
+
+**AWS-Native Ingress (ALB + ExternalDNS + Route53):**
+
+The ingress model for eks-demo is fundamentally different from the kind-based clusters in this repository, which use Traefik with local `.confluentdemo.local` hostnames and `/etc/hosts` entries. On eks-demo, the AWS Load Balancer Controller provisions an Application Load Balancer for each Kubernetes Ingress resource, and ExternalDNS automatically creates Route53 DNS records pointing to those ALBs. TLS certificates are provisioned via ACM and referenced by annotation on the Ingress resources.
+
+The end result is that deploying a new service with an Ingress in eks-demo automatically produces a real public DNS record, a real TLS certificate, and a real load balancer — with no manual AWS console interaction required.
+
+- **Ingress controller**: AWS Load Balancer Controller (sync-wave 25)
+- **DNS automation**: ExternalDNS watching for `Ingress` resources and writing A records to Route53 (sync-wave 26)
+- **TLS**: ACM certificates referenced via `alb.ingress.kubernetes.io/certificate-arn` annotation
+- **Domain pattern**: `<service>.eks-demo.platform.dspdemos.com`
+
+**Storage (EBS CSI Driver):**
+
+eks-demo uses the AWS EBS CSI driver add-on (managed by EKS) for persistent storage rather than Longhorn. EBS volumes are AZ-scoped, which means a pod can only mount a volume from the same availability zone the volume was originally provisioned in. This constraint is worth understanding deeply before draining nodes or resizing nodegroups — rescheduling a stateful pod to a node in a different AZ from its EBS volume will cause the attach to silently fail.
+
+**RBAC and Authorization:**
+
+The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for OAuth/OIDC, MDS for ConfluentRoleBinding enforcement, and group-scoped permissions for `flink-shapes` and `flink-colors`. The same three-layer model applies — see [Multi-Tenant RBAC Architecture (flink-demo-rbac cluster)](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) for the full breakdown. The key operational difference is that eks-demo runs on real public infrastructure, so OAuth redirect URIs and MDS token issuer URLs reference real DNS hostnames rather than `.local` entries that only resolve in a developer's `/etc/hosts`.
+
+**Key differences from flink-demo-rbac:**
+- Cluster infrastructure is provisioned via Terraform (`terraform/eks-demo/`), not assumed to pre-exist — see [ADR-0005](../adrs/0005-terraform-argocd-cluster-provisioning-split.md)
+- Private API endpoint requires SSM tunnel for all `kubectl` access; no public endpoint is exposed under any circumstances
+- Traefik replaced by AWS Load Balancer Controller; Longhorn replaced by EBS CSI driver
+- Route53 + ACM provide real public DNS and TLS instead of self-signed certificates and `/etc/hosts` resolution
+- `workers-v2` managed node group (t3.2xlarge, min=4, max=6) spread across 3 availability zones
+
 ## RBAC Boundaries
 
 ### Infrastructure Project

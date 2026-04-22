@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **eks-demo cluster — AWS EKS reference deployment** ([#24](https://github.com/osowski/confluent-platform-gitops/issues/24))
+  - Private EKS cluster (Kubernetes 1.32) with Terraform-managed infrastructure — VPC, IAM, IRSA, and EBS CSI driver — accessed exclusively through an SSM+SOCKS5 bastion tunnel with no public Kubernetes API endpoint exposed
+  - AWS-native ingress replacing Traefik: AWS Load Balancer Controller (ALB), ExternalDNS with automatic Route53 registration, and ACM-backed TLS for all public service endpoints across `platform.dspdemos.com`
+  - Full Confluent Platform stack with Keycloak OAuth/OIDC SSO, MDS authorization, and 40 ConfluentRoleBindings covering admin, operator service accounts, and group-scoped flink-shapes/flink-colors permissions
+  - CMF operator with PostgreSQL backend and Flink Kubernetes Operator managing FlinkApplications across `flink-shapes` and `flink-colors` namespaces with MinIO providing S3-compatible checkpoint storage
+
 ## [0.6.1] - 2026-04-15
 
 ### Added
