@@ -1,0 +1,297 @@
+# Schema definitions for Flink SQL table discovery via CMF KafkaDatabase
+# Enables automatic creation of Flink SQL tables from Kafka topics
+#
+# Data source: flink-autoscaler from https://github.com/osowski/flink-sandbox
+# Producer: python-producer/producer.py (generates sensor events)
+# Processor: flink-java-app/KafkaFlinkJob.java (adds encoded field to events)
+#
+# Both shapes and colors groups use identical schemas:
+# - Input: SensorEvent (timestamp, type, location, value, status, id)
+# - Output: ProcessedSensorEvent (input fields + encoded/error/original)
+#
+# ConfigMaps are co-located with Schema CRDs in each namespace
+# since configRef is a namespace-scoped lookup
+---
+# ConfigMap: Input schema for shapes namespace
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-event-input-value-avro-schema
+  namespace: flink-shapes
+data:
+  schema: |
+    {
+      "type": "record",
+      "name": "SensorEvent",
+      "namespace": "com.confluent.examples.sensors",
+      "doc": "Sensor event data from Kafka producer - used by both shapes and colors groups",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "string",
+          "doc": "Event timestamp in ISO 8601 format (e.g., 2024-03-23T10:30:45.123456)"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "doc": "Data type (e.g., temperature, pressure, humidity, speed, count)"
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "doc": "Sensor location identifier (e.g., sensor-A, sensor-B, sensor-C)"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "doc": "Numeric sensor reading value (float rounded to 2 decimals)"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "doc": "Sensor status (normal, warning, or critical)"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "doc": "Unique event identifier (8-character alphanumeric)"
+        }
+      ]
+    }
+---
+# ConfigMap: Output schema for shapes namespace
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-event-output-value-avro-schema
+  namespace: flink-shapes
+data:
+  schema: |
+    {
+      "type": "record",
+      "name": "ProcessedSensorEvent",
+      "namespace": "com.confluent.examples.sensors",
+      "doc": "Sensor event enriched by Flink processing - used by both shapes and colors groups",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "string",
+          "doc": "Event timestamp in ISO 8601 format"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "doc": "Data type (e.g., temperature, pressure, humidity)"
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "doc": "Sensor location identifier"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "doc": "Numeric sensor reading value"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "doc": "Sensor status (normal, warning, critical)"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "doc": "Unique event identifier"
+        },
+        {
+          "name": "encoded",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Base64-encoded result of CPU-intensive transformations (added by Flink job)"
+        },
+        {
+          "name": "error",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Error message if processing failed (only present on error)"
+        },
+        {
+          "name": "original",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Original raw value if error occurred (only present on error)"
+        }
+      ]
+    }
+---
+# Schema CRD: shapes-input-value
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: shapes-input-value
+  namespace: flink-shapes
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-input-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+# Schema CRD: shapes-output-value
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: shapes-output-value
+  namespace: flink-shapes
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-output-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+# ConfigMap: Input schema for colors namespace
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-event-input-value-avro-schema
+  namespace: flink-colors
+data:
+  schema: |
+    {
+      "type": "record",
+      "name": "SensorEvent",
+      "namespace": "com.confluent.examples.sensors",
+      "doc": "Sensor event data from Kafka producer - used by both shapes and colors groups",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "string",
+          "doc": "Event timestamp in ISO 8601 format (e.g., 2024-03-23T10:30:45.123456)"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "doc": "Data type (e.g., temperature, pressure, humidity, speed, count)"
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "doc": "Sensor location identifier (e.g., sensor-A, sensor-B, sensor-C)"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "doc": "Numeric sensor reading value (float rounded to 2 decimals)"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "doc": "Sensor status (normal, warning, or critical)"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "doc": "Unique event identifier (8-character alphanumeric)"
+        }
+      ]
+    }
+---
+# ConfigMap: Output schema for colors namespace
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-event-output-value-avro-schema
+  namespace: flink-colors
+data:
+  schema: |
+    {
+      "type": "record",
+      "name": "ProcessedSensorEvent",
+      "namespace": "com.confluent.examples.sensors",
+      "doc": "Sensor event enriched by Flink processing - used by both shapes and colors groups",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "string",
+          "doc": "Event timestamp in ISO 8601 format"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "doc": "Data type (e.g., temperature, pressure, humidity)"
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "doc": "Sensor location identifier"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "doc": "Numeric sensor reading value"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "doc": "Sensor status (normal, warning, critical)"
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "doc": "Unique event identifier"
+        },
+        {
+          "name": "encoded",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Base64-encoded result of CPU-intensive transformations (added by Flink job)"
+        },
+        {
+          "name": "error",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Error message if processing failed (only present on error)"
+        },
+        {
+          "name": "original",
+          "type": ["null", "string"],
+          "default": null,
+          "doc": "Original raw value if error occurred (only present on error)"
+        }
+      ]
+    }
+---
+# Schema CRD: colors-input-value
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: colors-input-value
+  namespace: flink-colors
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-input-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+# Schema CRD: colors-output-value
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: colors-output-value
+  namespace: flink-colors
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-output-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
