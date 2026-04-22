@@ -4,6 +4,8 @@ kind: Kustomization
 # Reference base configuration
 resources:
   - ../../base
+  - flink-application.yaml
+  - flink-environment-env1.yaml
 
 # Cluster-specific labels
 labels:

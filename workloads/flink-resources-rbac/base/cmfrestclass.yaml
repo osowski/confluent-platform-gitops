@@ -1,5 +1,4 @@
-# CMFRestClass OAuth Authentication Patch
-# Configures CFK operator authentication to CMF using OAuth client credentials flow
+# REFERENCE: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-cmf-rest-class
 apiVersion: platform.confluent.io/v1beta1
 kind: CMFRestClass
 metadata:
@@ -7,6 +6,10 @@ metadata:
   namespace: flink
 spec:
   cmfRest:
+    # CMF service endpoint
+    # CMF is deployed in the operator namespace
+    endpoint: http://cmf-service.operator.svc.cluster.local:80
+
     # OAuth authentication for CFK operator to CMF communication
     # This is operator-level authentication, not end-user authentication
     # CFK uses client credentials flow to obtain tokens from Keycloak
