@@ -13,7 +13,7 @@ resources:
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
   - cmf-operator.yaml
-  - flink-resources.yaml
+  - flink-resources-rbac.yaml
 
 # Workload applications are deployed in sync wave order (100-120)
 # Remove any applications you don't need for your cluster

@@ -1,9 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Reference base configuration
+# Pull in shared Flink infrastructure (CMFRestClass, Service, ServiceMonitor, Grafana dashboard)
+# The base example FlinkEnvironment/FlinkApplication are deleted below.
 resources:
-  - ../../base
+  - ../../flink-resources/base
   - cfk-oauth-secret.yaml
   - keycloak-service-account-job.yaml
   - flink-oauth-secrets.yaml
@@ -19,20 +20,13 @@ resources:
   - topics.yaml
   - schemas.yaml
 
-# Cluster-specific patches
 patches:
-  # Update CMFRestClass with OAuth authentication for operator
   - path: cmfrestclass-oauth-patch.yaml
     target:
       kind: CMFRestClass
       name: cmf-rest-class
-  - patch: |-
-      $patch: delete
-      apiVersion: platform.confluent.io/v1beta1
-      kind: FlinkEnvironment
-      metadata:
-        name: env1
-        namespace: flink
+
+  # Remove base example resources — group environments and applications managed above
   - patch: |-
       $patch: delete
       apiVersion: platform.confluent.io/v1beta1
@@ -41,9 +35,10 @@ patches:
         name: default-flink-app
         namespace: flink
 
-# Cluster-specific labels
-labels:
-- includeSelectors: false
-  includeTemplates: true
-  pairs:
-    cluster: flink-demo-rbac
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: FlinkEnvironment
+      metadata:
+        name: env1
+        namespace: flink
