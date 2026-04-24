@@ -7,6 +7,13 @@ PROXY_VERSION="0.9.6"
 
 yum install -y git gcc make
 
+# Wait for internet connectivity before attempting clone
+until curl -s --max-time 5 https://github.com 2>&1 >/dev/null;
+do
+  echo "Waiting for internet connectivity..."
+  sleep 5
+done
+
 git clone --depth 1 --branch "$PROXY_VERSION" \
   https://github.com/3proxy/3proxy.git /opt/3proxy
 
