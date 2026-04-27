@@ -153,14 +153,16 @@ update_files() {
             else
                 # Create backup
                 cp "$file" "$file.bak"
-
+                echo "file: $file"
                 # Use yq to update URLs based on file type
                 if [[ "$file" == "bootstrap/values.yaml" ]]; then
                     # Update bootstrap values
                     yq eval ".git.repoUrl = \"${new_url}\"" -i "$file"
                 else
-                    # Update Application manifests - only repoURL fields matching old_url
-                    yq eval "(.spec.sources[] | select(.repoURL == \"${old_url}\").repoURL) = \"${new_url}\"" -i "$file"
+                    # Application manifests use spec.source (single) or spec.sources (multi-source Helm).
+                    # Updating only spec.sources[] misses the common spec.source case and changes nothing.
+                    yq eval "(.spec.source | select(.repoURL == \"${old_url}\") | .repoURL) = \"${new_url}\"" -i "$file" &&
+                        yq eval "(.spec.sources[]? | select(.repoURL == \"${old_url}\") | .repoURL) = \"${new_url}\"" -i "$file"
                 fi
 
                 # Check if yq succeeded (it validates YAML automatically)
