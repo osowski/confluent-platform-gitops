@@ -1,5 +1,5 @@
 ---
-clusterName: mochi
+clusterName: mochi-eks-cluster
 region: us-east-1
 vpcId: vpc-0ce23294729b71c54
 
