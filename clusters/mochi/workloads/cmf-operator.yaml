@@ -18,8 +18,8 @@ spec:
           - $values/workloads/cmf-operator/base/values.yaml
           - $values/workloads/cmf-operator/overlays/mochi/values.yaml
         ignoreMissingValueFiles: true
-    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+    - repoURL: https://github.com/jeremyber/confluent-platform-gitops.git
+      targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc

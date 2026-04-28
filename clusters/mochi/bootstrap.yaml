@@ -11,8 +11,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    repoURL: https://github.com/jeremyber/confluent-platform-gitops.git
+    targetRevision: main
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,8 @@ spec:
           name: mochi
           domain: platform.dspdemos.com
         git:
-          targetRevision: "HEAD"
+          repoUrl: "https://github.com/jeremyber/confluent-platform-gitops.git"
+          targetRevision: "main"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

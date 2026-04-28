@@ -19,8 +19,8 @@ spec:
         - $values/infrastructure/kube-prometheus-stack/base/values.yaml
         - $values/infrastructure/kube-prometheus-stack/overlays/mochi/values.yaml
       ignoreMissingValueFiles: true
-  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+  - repoURL: https://github.com/jeremyber/confluent-platform-gitops.git
+    targetRevision: main
     ref: values
   destination:
     server: https://kubernetes.default.svc
