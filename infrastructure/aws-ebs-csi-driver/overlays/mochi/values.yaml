@@ -1,3 +1,4 @@
-serviceAccount:
-  annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/AmazonEKS_EBS_CSI_DriverRole_mochi-eks-cluster
+controller:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/AmazonEKS_EBS_CSI_DriverRole_mochi-eks-cluster
