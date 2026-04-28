@@ -222,19 +222,54 @@ The cluster owner (who ran `terraform apply`) runs these commands with the ARN r
 SE_ROLE_ARN="<arn-from-requesting-user>"  # e.g. bigbird@confluent.io's role ARN
 
 aws eks create-access-entry \
-  --cluster-name mochi \
+  --cluster-name mochi-eks-cluster \
   --principal-arn "$SE_ROLE_ARN" \
   --region us-east-1
 
 aws eks associate-access-policy \
-  --cluster-name mochi \
+  --cluster-name mochi-eks-cluster \
   --principal-arn "$SE_ROLE_ARN" \
   --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster \
   --region us-east-1
 ```
 
-Once their access entry is in place, the requesting user follows the same tunnel and kubeconfig steps in [Accessing the cluster](#accessing-the-cluster) as any other user.
+### Step 3 — Cluster owner shares connection details
+
+The cluster owner shares these details with the requesting user:
+
+- **Cluster Name**: `mochi-eks-cluster`
+- **Region**: `us-east-1`
+- **Bastion Instance ID**: `i-0db3d63ca2bc5048a`
+
+Or they can get these from Terraform:
+
+```bash
+cd terraform/clusters/mochi
+terraform output cluster_name
+terraform output bastion_instance_id
+```
+
+### Step 4 — Requesting user connects to the cluster
+
+Once their access entry is in place, the requesting user configures kubectl and starts the SSM tunnel:
+
+```bash
+# Update kubeconfig
+aws eks update-kubeconfig --name mochi-eks-cluster --region us-east-1
+
+# Start SOCKS5 tunnel (keep running in separate terminal)
+aws ssm start-session \
+  --target i-0db3d63ca2bc5048a \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
+
+# In working terminal, set proxy and test
+export HTTPS_PROXY=socks5h://localhost:1080
+kubectl get nodes
+```
+
+Then configure FoxyProxy as described in [Environment Access](#environment-access) to access the web UIs.
 
 ## Applications
 
