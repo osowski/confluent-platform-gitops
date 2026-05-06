@@ -16,6 +16,10 @@ encryption:
 # Validates bearer tokens from Keycloak for incoming client requests
 # IMPORTANT: CMF validates MDS-signed tokens using the MDS public key
 cmf:
+  sql:
+    examples-catalog:
+      enabled: true
+
   # Database configuration - Use PostgreSQL instead of embedded SQLite
   # SQLite has severe lock contention issues under concurrent operations
   database:
