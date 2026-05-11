@@ -4,3 +4,8 @@
 # Additional pod annotations for flink-demo cluster identification
 podAnnotations:
   cluster: flink-demo
+
+cmf:
+  sql:
+    examples-catalog:
+      enabled: true
