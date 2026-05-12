@@ -1,0 +1,39 @@
+# Base configuration for External Secrets Operator
+# https://external-secrets.io/latest/
+#
+# Installs only the operator itself. ClusterSecretStores and SecretStores
+# are managed separately by cluster operators after installation.
+
+installCRDs: true
+
+# Resource limits for demo/homelab clusters
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+# Metrics via Prometheus ServiceMonitor (disabled by default)
+serviceMonitor:
+  enabled: true
+
+# Webhook and cert-controller are included by default; keep them enabled
+webhook:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 25m
+      memory: 64Mi
+
+certController:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 25m
+      memory: 64Mi

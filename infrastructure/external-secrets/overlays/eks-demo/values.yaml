@@ -1,0 +1,3 @@
+# eks-demo cluster overrides for External Secrets Operator
+# No cluster-specific overrides required at this time.
+# ClusterSecretStores and SecretStores are managed manually by cluster operators.

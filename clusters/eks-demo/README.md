@@ -251,6 +251,7 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 - **cert-manager** (wave 20) - TLS certificate management (Let's Encrypt DNS-01 via Route53 IRSA)
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **trust-manager** (wave 30) - CA certificate distribution
+- **external-secrets** (wave 30) - External Secrets Operator for syncing secrets from external providers
 - **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
 - **cert-manager-resources** (wave 75) - ClusterIssuers for Let's Encrypt staging and production
 - **infra-ingresses** (wave 80) - Traefik IngressRoute for ArgoCD UI
@@ -284,6 +285,53 @@ Document anything unique to this cluster:
 - Let's Encrypt certificate lifecycle and renewal
 - SSM+SOCKS5 bastion access patterns
 -->
+
+### Configuring External Secrets
+
+The External Secrets Operator is installed as a baseline infrastructure component but **does not configure any secret stores by default**. You must create `ClusterSecretStore` or `SecretStore` resources manually to connect it to an external secrets backend (e.g. AWS Secrets Manager, HashiCorp Vault, Parameter Store).
+
+Example `ClusterSecretStore` for AWS Secrets Manager using IRSA:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: aws-secrets-manager
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets
+            namespace: external-secrets
+```
+
+Once a store is configured, create `ExternalSecret` resources in any namespace to sync secrets:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: my-secret
+  namespace: kafka
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: my-secret
+  data:
+    - secretKey: password
+      remoteRef:
+        key: /eks-demo/my-secret
+        property: password
+```
+
+See the [External Secrets Operator documentation](https://external-secrets.io/latest/) for supported providers and full API reference.
 
 ## Troubleshooting
 

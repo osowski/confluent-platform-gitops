@@ -166,6 +166,7 @@ confluent-platform-gitops/
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **cert-manager** (wave 20) - TLS certificate management
 - **trust-manager** (wave 30) - cert-manager trust distribution for CA bundles
+- **external-secrets** (wave 30) - External Secrets Operator for syncing secrets from external providers
 - **vault** (wave 40) - HashiCorp Vault secrets management (dev mode)
 - **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
 - **vault-config** (wave 50) - Vault transit engine configuration

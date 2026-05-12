@@ -13,6 +13,7 @@ resources:
 - aws-ebs-csi-driver.yaml
 - aws-load-balancer-controller.yaml
 - external-dns.yaml
+- external-secrets.yaml
 - reflector.yaml
 - traefik.yaml
 - minio.yaml
