@@ -38,6 +38,20 @@ resource "aws_iam_role_policy_attachment" "bastion_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy" "bastion_s3" {
+  name = "bastion-infra-binaries-s3"
+  role = aws_iam_role.bastion.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject"]
+      Resource = ["arn:aws:s3:::${var.infra_binaries_bucket}/binaries/*"]
+    }]
+  })
+}
+
 resource "aws_iam_instance_profile" "bastion" {
   name = "${var.cluster_name}-bastion"
   role = aws_iam_role.bastion.name
@@ -73,7 +87,10 @@ resource "aws_instance" "bastion" {
   # The bastion is a dumb SOCKS5 relay — operators tunnel through it via SSM
   # port-forwarding and authenticate to EKS using their local AWS credentials.
   # Do not run kubectl or AWS CLI on the bastion itself.
-  user_data_base64 = base64encode(templatefile("${path.module}/scripts/bastion-init.sh", {}))
+  user_data_base64 = base64encode(templatefile("${path.module}/scripts/bastion-init.sh", {
+    infra_binaries_bucket = var.infra_binaries_bucket
+    proxy_version         = var.proxy_version
+  }))
 
   metadata_options {
     http_endpoint               = "enabled"

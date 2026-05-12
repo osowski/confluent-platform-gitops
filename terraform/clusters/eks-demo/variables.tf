@@ -74,3 +74,15 @@ variable "cflt_keep_until" {
   description = "Static expiry date tag applied to all resources (YYYY-MM-DD). Set to a date at least one year out. Must be set explicitly — no default — to prevent plan drift from computed timestamps."
   type        = string
 }
+
+variable "infra_binaries_bucket" {
+  description = "S3 bucket containing pre-built infrastructure binaries for bastion bootstrap"
+  type        = string
+  default     = "confluent-platform-gitops-tfstate"
+}
+
+variable "proxy_version" {
+  description = "3proxy version to download at bastion boot — must match the binary at infra_binaries_bucket/binaries/3proxy-<version>-linux-x86_64"
+  type        = string
+  default     = "0.9.6"
+}
