@@ -42,7 +42,8 @@ systemctl daemon-reload
 systemctl enable 3proxy
 systemctl start 3proxy
 
-# Ensure SSM agent is running — AL2023 ships with it pre-installed but the
-# service may not be active if it failed to reach IMDS during early boot.
+# Install SSM agent explicitly — the al2023-ami-minimal variant does not include
+# it, and even the standard AMI may need a restart after IMDS becomes available.
+dnf install -y amazon-ssm-agent
 systemctl enable amazon-ssm-agent
-systemctl restart amazon-ssm-agent
+systemctl start amazon-ssm-agent
