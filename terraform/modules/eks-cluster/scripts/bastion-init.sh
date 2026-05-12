@@ -41,3 +41,8 @@ UNIT
 systemctl daemon-reload
 systemctl enable 3proxy
 systemctl start 3proxy
+
+# Ensure SSM agent is running — AL2023 ships with it pre-installed but the
+# service may not be active if it failed to reach IMDS during early boot.
+systemctl enable amazon-ssm-agent
+systemctl restart amazon-ssm-agent
