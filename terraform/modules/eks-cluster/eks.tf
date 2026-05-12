@@ -22,6 +22,12 @@ module "eks" {
   # Critical for a private cluster where CloudWatch is the primary debug path.
   enabled_log_types = ["audit", "api", "authenticator", "controllerManager", "scheduler"]
 
+  # STANDARD lets AWS force a control-plane upgrade at end of standard support
+  # (~14 months). EXTENDED costs extra; demo clusters have no reason to use it.
+  upgrade_policy = {
+    support_type = "STANDARD"
+  }
+
   # Core add-ons — vpc-cni and kube-proxy must be installed before nodes join
   # (before_compute = true) or nodes will have no CNI and pods will never schedule.
   addons = {
