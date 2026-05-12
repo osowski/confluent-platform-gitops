@@ -52,3 +52,14 @@ variable "common_tags" {
   description = "Tags applied to all resources — provider default_tags adds cflt_keep_until on top of these"
   type        = map(string)
 }
+
+variable "infra_binaries_bucket" {
+  description = "S3 bucket containing pre-built infrastructure binaries (e.g. 3proxy). Must be accessible via the VPC S3 Gateway endpoint."
+  type        = string
+}
+
+variable "proxy_version" {
+  description = "3proxy version to download from S3 — must match the binary uploaded to infra_binaries_bucket/binaries/3proxy-<version>-linux-x86_64"
+  type        = string
+  default     = "0.9.6"
+}

@@ -44,9 +44,11 @@ module "eks_cluster" {
   platform_zone_id   = var.platform_zone_id
   platform_domain    = var.platform_domain
   vpc_cidr           = var.vpc_cidr
-  node_instance_type = var.node_instance_type
-  node_desired_size  = var.node_desired_size
-  node_min_size      = var.node_min_size
-  node_max_size      = var.node_max_size
-  common_tags        = var.common_tags
+  node_instance_type    = var.node_instance_type
+  node_desired_size     = var.node_desired_size
+  node_min_size         = var.node_min_size
+  node_max_size         = var.node_max_size
+  common_tags           = var.common_tags
+  infra_binaries_bucket = var.infra_binaries_bucket
+  proxy_version         = var.proxy_version
 }
