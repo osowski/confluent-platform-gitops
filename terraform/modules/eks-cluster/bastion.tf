@@ -70,7 +70,7 @@ resource "aws_security_group" "bastion" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS only - SSM, EKS API, ECR/S3 via VPC endpoints, and cloning 3proxy from GitHub at boot"
+    description = "HTTPS only - SSM, EKS API, ECR/S3 via VPC endpoints"
   }
 
   tags = merge(var.common_tags, { Name = "${var.cluster_name}-bastion" })
@@ -87,10 +87,11 @@ resource "aws_instance" "bastion" {
   # The bastion is a dumb SOCKS5 relay — operators tunnel through it via SSM
   # port-forwarding and authenticate to EKS using their local AWS credentials.
   # Do not run kubectl or AWS CLI on the bastion itself.
-  user_data_base64 = base64encode(templatefile("${path.module}/scripts/bastion-init.sh", {
+  user_data_base64            = base64encode(templatefile("${path.module}/scripts/bastion-init.sh", {
     infra_binaries_bucket = var.infra_binaries_bucket
     proxy_version         = var.proxy_version
   }))
+  user_data_replace_on_change = true
 
   metadata_options {
     http_endpoint               = "enabled"
