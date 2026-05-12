@@ -24,6 +24,7 @@ spec:
     - https://kubernetes-sigs.github.io/external-dns/
     - https://aws.github.io/eks-charts
     - https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+    - https://charts.external-secrets.io
 
   # Allow deploying to all namespaces
   destinations:
