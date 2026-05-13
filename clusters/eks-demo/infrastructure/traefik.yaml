@@ -11,17 +11,17 @@ metadata:
 spec:
   project: infrastructure
   sources:
-  - repoURL: oci://ghcr.io/traefik/helm/traefik
-    targetRevision: 38.0.2
-    chart: traefik
-    helm:
-      ignoreMissingValueFiles: true
-      valueFiles:
-        - $values/infrastructure/traefik/base/values.yaml
-        - $values/infrastructure/traefik/overlays/eks-demo/values.yaml
-  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
-    ref: values
+    - repoURL: oci://ghcr.io/traefik/helm/traefik
+      targetRevision: 38.0.2
+      chart: traefik
+      helm:
+        ignoreMissingValueFiles: true
+        valueFiles:
+          - $values/infrastructure/traefik/base/values.yaml
+          - $values/infrastructure/traefik/overlays/eks-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: v0.7.0
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik

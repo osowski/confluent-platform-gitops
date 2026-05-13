@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: v0.7.0
     path: workloads/flink-rbac/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
