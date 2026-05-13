@@ -10,10 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Terraform remote state and reusable EKS module** ([#254](https://github.com/osowski/confluent-platform-gitops/issues/254)): S3+DynamoDB backend for `dns-bootstrap` and `eks-demo`; EKS cluster resources extracted into `terraform/modules/eks-cluster/` with per-cluster instance roots under `terraform/clusters/`
 - **eks-demo cluster — AWS EKS reference deployment** ([#24](https://github.com/osowski/confluent-platform-gitops/issues/24))
-  - Private EKS cluster (Kubernetes 1.32) with Terraform-managed infrastructure — VPC, IAM, IRSA, and EBS CSI driver — accessed exclusively through an SSM+SOCKS5 bastion tunnel with no public Kubernetes API endpoint exposed
+  - Private EKS cluster (Kubernetes 1.35) with Terraform-managed infrastructure — VPC, IAM, IRSA, and EBS CSI driver — accessed exclusively through an SSM+SOCKS5 bastion tunnel with no public Kubernetes API endpoint exposed
   - AWS-native ingress replacing Traefik: AWS Load Balancer Controller (ALB), ExternalDNS with automatic Route53 registration, and ACM-backed TLS for all public service endpoints across `platform.dspdemos.com`
   - Full Confluent Platform stack with Keycloak OAuth/OIDC SSO, MDS authorization, and 40 ConfluentRoleBindings covering admin, operator service accounts, and group-scoped flink-shapes/flink-colors permissions
   - CMF operator with PostgreSQL backend and Flink Kubernetes Operator managing FlinkApplications across `flink-shapes` and `flink-colors` namespaces with MinIO providing S3-compatible checkpoint storage
+  - External-secrets operator added as infrastructure application; Schema Registry replicas set to 2 for drain-safe node upgrades
+- **`clone-cluster.sh` script**: Clone an existing cluster's GitOps configuration as the starting point for a new cluster
+- **`cmf-examples-catalog` added to all cluster overlays**: Enables Flink SQL and streaming example catalogs across all demo clusters
+
+### Changed
+- **flink-demo-rbac component upgrades**: CMF 2.2.0 → 2.3, CFK → 3.2.1, Control Center 2.4.0 → 2.5.0 (required for CMF 2.3 compatibility)
 
 ## [0.6.1] - 2026-04-15
 
