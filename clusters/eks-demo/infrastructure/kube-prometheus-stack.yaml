@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "20" # Deploy after cert-manager and storage
+    argocd.argoproj.io/sync-wave: "20"  # Deploy after cert-manager and storage
 spec:
   project: infrastructure
   sources:
-    - repoURL: https://prometheus-community.github.io/helm-charts
-      targetRevision: 81.6.1 # Pin to specific version
-      chart: kube-prometheus-stack
-      helm:
-        valueFiles:
-          - $values/infrastructure/kube-prometheus-stack/base/values.yaml
-          - $values/infrastructure/kube-prometheus-stack/overlays/eks-demo/values.yaml
-        ignoreMissingValueFiles: true
-    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.7.0
-      ref: values
+  - repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 81.6.1  # Pin to specific version
+    chart: kube-prometheus-stack
+    helm:
+      valueFiles:
+        - $values/infrastructure/kube-prometheus-stack/base/values.yaml
+        - $values/infrastructure/kube-prometheus-stack/overlays/eks-demo/values.yaml
+      ignoreMissingValueFiles: true
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -31,7 +31,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true # Required for CRDs
+      - ServerSideApply=true  # Required for CRDs
     retry:
       limit: 5
       backoff:

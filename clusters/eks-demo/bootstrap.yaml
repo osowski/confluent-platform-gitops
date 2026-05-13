@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: v0.7.0
+    targetRevision: HEAD
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,7 @@ spec:
           name: eks-demo
           domain: platform.dspdemos.com
         git:
-          targetRevision: "v0.7.0"
+          targetRevision: "HEAD"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

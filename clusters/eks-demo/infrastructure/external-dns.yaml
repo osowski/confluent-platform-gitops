@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "18" # After traefik/LB (10), before cert-manager-resources/ingresses (75+)
+    argocd.argoproj.io/sync-wave: "18"  # After traefik/LB (10), before cert-manager-resources/ingresses (75+)
 spec:
   project: infrastructure
   sources:
-    - repoURL: https://kubernetes-sigs.github.io/external-dns/
-      targetRevision: 1.15.0 # Pin to specific version
-      chart: external-dns
-      helm:
-        ignoreMissingValueFiles: true
-        valueFiles:
-          - $values/infrastructure/external-dns/base/values.yaml
-          - $values/infrastructure/external-dns/overlays/eks-demo/values.yaml
-    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.7.0
-      ref: values
+  - repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.15.0  # Pin to specific version
+    chart: external-dns
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/external-dns/base/values.yaml
+        - $values/infrastructure/external-dns/overlays/eks-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

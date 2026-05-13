@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/kube-prometheus-stack/overlays/flink-demo/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.7.0
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc

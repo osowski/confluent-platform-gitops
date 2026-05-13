@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/metrics-server/base/values.yaml
           - $values/infrastructure/metrics-server/overlays/flink-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.7.0
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
