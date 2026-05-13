@@ -4,6 +4,7 @@ metadata:
   name: schemaregistry
   namespace: kafka
 spec:
+  replicas: 2
   podTemplate:
     resources:
       requests:
