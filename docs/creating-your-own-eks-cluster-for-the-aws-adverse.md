@@ -111,7 +111,7 @@ node_max_size      = 6
 cflt_keep_until    = "YYYY-MM-DD"              # one year from today
 ```
 
-> [!CRITICAL]
+> [!WARNING]
 > **Set `platform_zone_id = "Z09738543N152CE54R8TI"`** — this is the Route53 zone ID for `platform.dspdemos.com` (same for all clusters). Do not leave placeholder text like `<output from dns-bootstrap: platform_zone_id>`. Terraform will succeed but cert-manager and ExternalDNS will fail later with `AccessDenied`. If you already ran `terraform apply` with a placeholder, fix the value and run `terraform apply` again.
 
 **`platform_zone_id`** — This is the Route53 hosted zone ID for `platform.dspdemos.com`. You can copy it directly from `terraform/clusters/eks-demo/terraform.tfvars` where it is already set, or ask Rick Osowski if that file is not available to you.
