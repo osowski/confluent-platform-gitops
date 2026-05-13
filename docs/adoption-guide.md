@@ -235,14 +235,56 @@ START: What do you want to do?
 - `clusters/*/workloads/*.yaml` - Workload applications
 
 **Manual approach:**
-```bash
-# Update all references to your fork URL
-find clusters/ -type f -name "*.yaml" -exec sed -i '' \
-  's|https://github.com/osowski/confluent-platform-gitops|https://github.com/<your-org>/confluent-platform-gitops|g' {} +
 
-# Verify changes
+**Step 2.1: Update Application manifest repository URLs**
+
+```bash
+# Replace osowski with your GitHub org/username
+YOUR_ORG="<your-org>"
+
+# Update all repoURL references in Application manifests
+find clusters/ -type f -name "*.yaml" -exec sed -i '' \
+  "s|https://github.com/osowski/confluent-platform-gitops.git|https://github.com/$YOUR_ORG/confluent-platform-gitops.git|g" {} +
+
+# Update targetRevision from HEAD to main (or pin to a release tag like v0.4.0)
+find clusters/ -type f -name "*.yaml" -exec sed -i '' \
+  "s|targetRevision: HEAD|targetRevision: main|g" {} +
+```
+
+**Step 2.2: Update bootstrap.yaml git repository URL**
+
+Each cluster's `bootstrap.yaml` needs the fork URL in the Helm values:
+
+```bash
+# Edit clusters/<cluster-name>/bootstrap.yaml
+# Add git.repoUrl to valuesObject:
+```
+
+```yaml
+valuesObject:
+  cluster:
+    name: <cluster-name>
+    domain: <cluster-domain>
+  git:
+    repoUrl: "https://github.com/<your-org>/confluent-platform-gitops.git"
+    targetRevision: "main"  # or pin to a release tag
+```
+
+**Step 2.3: Verify all changes**
+
+```bash
+# Check bootstrap files
+grep -r "repoUrl" clusters/*/bootstrap.yaml
+
+# Check Application manifests
+grep -r "github.com" clusters/ | grep -v "\.git/"
+
+# Review all changes
 git diff
 ```
+
+> [!IMPORTANT]
+> **Missing this step causes deployment failures.** ArgoCD will try to sync from osowski's repository instead of your fork. Applications will fail with "app path does not exist" or sync from stale configurations not matching your cluster setup.
 
 **Automation opportunity:** A script would automate this process - see [GitHub Issue #44](#automation-opportunity-update-repo-urls).
 

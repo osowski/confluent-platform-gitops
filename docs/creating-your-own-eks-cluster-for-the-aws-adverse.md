@@ -111,6 +111,9 @@ node_max_size      = 6
 cflt_keep_until    = "YYYY-MM-DD"              # one year from today
 ```
 
+> [!WARNING]
+> **Set `platform_zone_id = "Z09738543N152CE54R8TI"`** — this is the Route53 zone ID for `platform.dspdemos.com` (same for all clusters). Do not leave placeholder text like `<output from dns-bootstrap: platform_zone_id>`. Terraform will succeed but cert-manager and ExternalDNS will fail later with `AccessDenied`. If you already ran `terraform apply` with a placeholder, fix the value and run `terraform apply` again.
+
 **`platform_zone_id`** — This is the Route53 hosted zone ID for `platform.dspdemos.com`. You can copy it directly from `terraform/clusters/eks-demo/terraform.tfvars` where it is already set, or ask Rick Osowski if that file is not available to you.
 
 **`vpc_cidr`** — Choose a `/16` CIDR block that does not overlap with any other cluster in this repository. To see what is already in use:
@@ -140,6 +143,9 @@ terraform apply
 `terraform init` connects to the S3 backend and downloads the `eks-cluster` module. `terraform plan` shows every resource that will be created — a new VPC, subnets across three availability zones, a NAT gateway, VPC interface endpoints for SSM and ECR, an EKS control plane, a managed node group, a bastion host, and four IRSA IAM roles. `terraform apply` provisions all of it.
 
 The full apply takes approximately 15–20 minutes, the majority of which is waiting for the EKS control plane to become available. This is normal.
+
+> [!WARNING]
+> **If you applied Terraform with placeholder values** (like `platform_zone_id = "<output from dns-bootstrap...>"`), fix the value in `terraform.tfvars` and run `terraform apply` again. Terraform will update the IAM policies without recreating other resources.
 
 ### 6. Capture the Terraform Outputs
 
@@ -189,7 +195,7 @@ Leave this running. It forwards port 1080 on your local machine to the SOCKS5 pr
 ### 8. Configure kubectl and Set the Proxy
 
 > [!WARNING]
-> `HTTPS_PROXY=socks5://localhost:1080` must be exported in every terminal session where you run `kubectl` against this cluster. The EKS API endpoint is private and unreachable without it. If you open a new terminal and `kubectl` commands hang or time out, this is the first thing to check.
+> `HTTPS_PROXY=socks5h://localhost:1080` must be exported in every terminal session where you run `kubectl` against this cluster. The EKS API endpoint is private and unreachable without it. If you open a new terminal and `kubectl` commands hang or time out, this is the first thing to check.
 
 In your second terminal, from `terraform/clusters/new-eks-cluster`:
 
@@ -198,8 +204,11 @@ aws eks update-kubeconfig \
   --name $(terraform output -raw cluster_name) \
   --region us-east-1
 
-export HTTPS_PROXY=socks5://localhost:1080
+export HTTPS_PROXY=socks5h://localhost:1080
 ```
+
+> [!NOTE]
+> The `h` in `socks5h://` forces DNS resolution through the proxy. Without it, your machine tries to resolve the private EKS hostname locally and fails.
 
 Verify you can reach the cluster:
 
@@ -235,13 +244,19 @@ When the script finishes, it prints an **AUDIT REQUIRED** section listing every 
 
 Four IAM roles were created by Terraform in Step 5, one for each AWS-integrated cluster component. The clone script renamed the role references (they now end in `new-eks-cluster`) but could not know the actual ARNs that Terraform just assigned. Replace the placeholder ARNs with the real outputs from Step 6.
 
+> [!WARNING]
+> **Verify you are using the correct role ARN for each component.** Copy-paste errors (like using the ExternalDNS role for the EBS CSI driver) will cause failures with `no EC2 IMDS role found` or `AccessDenied`. Double-check the role name in each ARN matches the component.
+
 **`infrastructure/aws-ebs-csi-driver/overlays/new-eks-cluster/values.yaml`**
 
 ```yaml
-serviceAccount:
-  annotations:
-    eks.amazonaws.com/role-arn: <ebs_csi_driver_role_arn>
+controller:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: <ebs_csi_driver_role_arn>
 ```
+
+Must be nested under `controller:`. If `serviceAccount:` is at root level, the annotation won't apply.
 
 **`infrastructure/cert-manager/overlays/new-eks-cluster/values.yaml`**
 
@@ -262,13 +277,15 @@ serviceAccount:
 **`infrastructure/aws-load-balancer-controller/overlays/new-eks-cluster/values.yaml`**
 
 ```yaml
+clusterName: new-eks-cluster-eks-cluster
+region: <aws_region from terraform.tfvars>
 vpcId: <vpc_id>
 serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: <aws_lb_controller_role_arn>
 ```
 
-Note that the Load Balancer Controller overlay also contains the VPC ID from Step 6 — update both values in that file at the same time.
+**`clusterName` must be the full EKS cluster name** (`new-eks-cluster-eks-cluster`), not just `new-eks-cluster`. Verify with `terraform output cluster_name`. Mismatch causes `unable to resolve at least one subnet` errors.
 
 ### 11. Update the Route53 Hosted Zone ID
 
@@ -376,6 +393,9 @@ Then add a URL pattern that routes all `platform.dspdemos.com` traffic through t
 | Type | Wildcard |
 | Proxy | _(the SOCKS5 entry you just created)_ |
 
+> [!WARNING]
+> **Ensure no other proxy patterns overlap with `*.platform.dspdemos.com`.** If multiple proxy configurations are active with conflicting patterns, connections may route through the wrong proxy or fail. Disable other proxy patterns or use FoxyProxy's "Proxy by Patterns" mode and verify `*.platform.dspdemos.com` routes to the correct SOCKS5 proxy.
+
 With this in place, your browser will automatically route any request to `*.platform.dspdemos.com` through the tunnel while leaving the rest of your browsing unaffected. The tunnel from Step 7 must be running for the browser to reach the services — FoxyProxy only handles the routing, not the connection itself.
 
 ### 18. Access ArgoCD
@@ -431,13 +451,21 @@ Terraform handles the resource dependency sequencing automatically. The full des
 
 All services are exposed through Traefik at subdomains of `new-eks-cluster.platform.dspdemos.com`. ExternalDNS automatically registers DNS records in Route53 as each service's IngressRoute and Certificate become available — no `/etc/hosts` configuration is required.
 
-| Service | URL |
-|---------|-----|
-| ArgoCD | `https://argocd.new-eks-cluster.platform.dspdemos.com` |
-| Confluent Control Center | `https://controlcenter.new-eks-cluster.platform.dspdemos.com` |
-| Grafana | `https://grafana.new-eks-cluster.platform.dspdemos.com` |
-| Prometheus | `https://prometheus.new-eks-cluster.platform.dspdemos.com` |
-| Alertmanager | `https://alertmanager.new-eks-cluster.platform.dspdemos.com` |
-| MinIO Console | `https://s3-console.new-eks-cluster.platform.dspdemos.com` |
-| Keycloak | `https://keycloak.new-eks-cluster.platform.dspdemos.com` |
-| CMF | `https://cmf.new-eks-cluster.platform.dspdemos.com` |
+| Service | URL | Username | Password |
+|---------|-----|----------|----------|
+| ArgoCD | `https://argocd.new-eks-cluster.platform.dspdemos.com` | `admin` | `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" \| base64 -d` |
+| Confluent Control Center | `https://controlcenter.new-eks-cluster.platform.dspdemos.com` | `admin@dspdemos.com` | `admin123` |
+| Grafana | `https://grafana.new-eks-cluster.platform.dspdemos.com` | `admin` | `prom-operator` |
+| Prometheus | `https://prometheus.new-eks-cluster.platform.dspdemos.com` | — | — |
+| Alertmanager | `https://alertmanager.new-eks-cluster.platform.dspdemos.com` | — | — |
+| MinIO Console | `https://s3-console.new-eks-cluster.platform.dspdemos.com` | — | — |
+| Keycloak Admin Console | `https://keycloak.new-eks-cluster.platform.dspdemos.com` | `flink-admin` | `admin123` |
+| CMF | `https://cmf.new-eks-cluster.platform.dspdemos.com` | — | — |
+
+> [!NOTE]
+> **Keycloak has two sets of credentials:**
+> 
+> - **Keycloak Admin Console** (`/admin`): Use `flink-admin` / `admin123` to manage realms and OIDC clients.
+> - **Confluent Platform services** (Control Center, CMF, etc.): Use `admin@dspdemos.com` / `admin123` to log in via SSO. This is a user in the `confluent` Keycloak realm, not the Keycloak admin account.
+> 
+> Logging in to Control Center with `flink-admin` will fail with `user_not_found` — that account only exists as a Keycloak administrator.
