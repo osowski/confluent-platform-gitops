@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-13
+
 ### Added
 - **Terraform remote state and reusable EKS module** ([#254](https://github.com/osowski/confluent-platform-gitops/issues/254)): S3+DynamoDB backend for `dns-bootstrap` and `eks-demo`; EKS cluster resources extracted into `terraform/modules/eks-cluster/` with per-cluster instance roots under `terraform/clusters/`
 - **eks-demo cluster — AWS EKS reference deployment** ([#24](https://github.com/osowski/confluent-platform-gitops/issues/24))
@@ -384,7 +386,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.1...v0.5.2
