@@ -158,15 +158,11 @@ update_files() {
                     # Update bootstrap values
                     yq eval ".git.repoUrl = \"${new_url}\"" -i "$file"
                 else
-                    # Application manifests use spec.source (single) or spec.sources (multi-source Helm).
-                    # Updating only spec.sources[] misses the common spec.source case and changes nothing.
+                    # Update spec.source (single-source) or spec.sources (multi-source Helm), never both.
+                    # with() scopes the mutation only when the selector matches, avoiding spurious field creation.
                     yq eval '
-                        (if (.spec | has("source")) then
-                        (.spec.source | select(.repoURL == "'"${old_url}"'") | .repoURL) = "'"${new_url}"'"
-                        else . end) |
-                        (if (.spec | has("sources")) then
-                        (.spec.sources[] | select(.repoURL == "'"${old_url}"'") | .repoURL) = "'"${new_url}"'"
-                        else . end)
+                        with(select(.spec | has("source")); .spec.source | select(.repoURL == "'"${old_url}"'") | .repoURL = "'"${new_url}"'") |
+                        with(select(.spec | has("sources")); .spec.sources[] | select(.repoURL == "'"${old_url}"'") | .repoURL = "'"${new_url}"'")
                     ' -i "$file"
                 fi
 
