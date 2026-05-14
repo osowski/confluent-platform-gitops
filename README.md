@@ -31,14 +31,46 @@ If you have experience with GitOps or want to understand how the inner workings 
 
 ### Prerequisites
 
-- Kubernetes cluster with Argo CD installed
-  - https://argo-cd.readthedocs.io/en/stable/getting_started/#1-install-argo-cd
+#### Always Required
+
+| Tool | Minimum Version | Install |
+|------|----------------|---------|
+| `git` | v2.28+ | `brew install git` |
+| `kubectl` | v1.29+ | `brew install kubectl` |
+| `helm` | v3.8+ | `brew install helm` |
+| `yq` (mikefarah) | v4.18+ | `brew install yq` |
+| `jq` | v1.6+ | `brew install jq` |
+
+> [!IMPORTANT]
+> `yq` must be [mikefarah/yq](https://github.com/mikefarah/yq) — **not** python-yq. Verify with `yq --version`; it should report `yq (https://github.com/mikefarah/yq/)`. All scripts require v4.18+ for `with()` expression support. The `helm` minimum of v3.8 is required for OCI chart sources (`oci://` protocol).
+
+#### For Scripts (`scripts/`)
+
+| Tool | Minimum Version | Install | Used By |
+|------|----------------|---------|---------|
+| `gh` | v2.0+ | `brew install gh` | Issue and PR management |
+
+#### For Local Development Clusters (Kind)
+
+| Tool | Minimum Version | Install |
+|------|----------------|---------|
+| `colima` | v0.5+ | `brew install colima` |
+| `kind` | v0.20+ | `brew install kind` |
+
+See [Getting Started for the Uninitiated](docs/getting-started-for-the-uninitiated.md) for the full local cluster walkthrough.
+
+#### For EKS Clusters
+
+See [Creating Your Own EKS Cluster](docs/creating-your-own-eks-cluster-for-the-aws-adverse.md) for EKS-specific tooling (`terraform`, `aws` CLI, SSM plugin).
+
+#### Kubernetes Cluster with Argo CD
+
+A running Kubernetes cluster with Argo CD installed is required to deploy anything. Install Argo CD:
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
-  kubectl create namespace argocd
-  kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
-- `kubectl` configured with cluster access
-- `helm` CLI installed
 
 ### Bootstrap a Cluster
 
