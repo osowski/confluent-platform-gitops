@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/trust-manager/base/values.yaml
           - $values/infrastructure/trust-manager/overlays/flink-demo-rbac-mtls/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: feature-272/flink-demo-rbac-mtls-pki
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
