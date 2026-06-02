@@ -12,8 +12,6 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    # TEMP(test-only): pinned to feature branch for pre-merge live verification.
-    # REVERT to HEAD before merging PR for #272.
     targetRevision: feature-272/flink-demo-rbac-mtls-pki
     path: bootstrap
     helm:
@@ -22,7 +20,6 @@ spec:
           name: flink-demo-rbac-mtls
           domain: confluentdemo.local
         git:
-          # TEMP(test-only): pinned to feature branch; REVERT to "HEAD" before merge.
           targetRevision: "feature-272/flink-demo-rbac-mtls-pki"
   destination:
     server: https://kubernetes.default.svc
