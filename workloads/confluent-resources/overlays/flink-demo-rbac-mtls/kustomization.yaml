@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kafka
+
+# Additional resources for MDS/RBAC
+resources:
+  - ../../base
+  - oauth-client-secrets.yaml
+  - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
+  - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
+  - confluentrolebindings.yaml
+
+# Cluster-specific patches
+patches:
+  # Kafka broker - consolidated configuration (external listener, MDS/RBAC, KRaft auth, SSO/OIDC)
+  - path: kafka-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+
+  # KRaft controller - consolidated configuration (resources, OAuth, RBAC, MDS dependency)
+  - path: kraftcontroller-patch.yaml
+    target:
+      kind: KRaftController
+      name: kraftcontroller
+
+  # Control Center - consolidated configuration (resources, OAuth/RBAC, OIDC SSO)
+  - path: controlcenter-patch.yaml
+    target:
+      kind: ControlCenter
+      name: controlcenter
+
+  # Schema Registry - consolidated configuration (resources, OAuth/RBAC)
+  - path: schemaregistry-patch.yaml
+    target:
+      kind: SchemaRegistry
+      name: schemaregistry
+
+  # KafkaRestClass - OAuth authentication for RBAC/MDS
+  - path: kafkarestclass-patch.yaml
+    target:
+      kind: KafkaRestClass
+      name: default
+
+  # Connect - resources and JVM tuning
+  # - path: connect-patch.yaml
+  #   target:
+  #     kind: Connect
+  #     name: connect
+
+  # ksqlDB - resources and JVM tuning
+  # - path: ksqldb-patch.yaml
+  #   target:
+  #     kind: KsqlDB
+  #     name: ksqldb
+
+  # Explicitly delete Connect from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: Connect
+      metadata:
+        name: connect
+        namespace: kafka
+
+  # Explicitly delete ksqlDB from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: KsqlDB
+      metadata:
+        name: ksqldb
+        namespace: kafka
