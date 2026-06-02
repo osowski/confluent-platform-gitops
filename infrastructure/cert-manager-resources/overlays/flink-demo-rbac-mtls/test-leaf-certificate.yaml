@@ -1,0 +1,26 @@
+---
+# THROWAWAY: validates that the CA ClusterIssuer mints a usable leaf whose
+# Secret keys are consumable by CFK. Deleted at the end of Phase 0.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mtls-pki-smoketest
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+spec:
+  commonName: kafka
+  secretName: mtls-pki-smoketest
+  duration: 2160h
+  renewBefore: 360h
+  dnsNames:
+    - kafka.kafka.svc.cluster.local
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
