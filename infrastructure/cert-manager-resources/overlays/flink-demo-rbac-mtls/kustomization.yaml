@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - ../../base
   - mtls-ca.yaml
+  - trust-bundle.yaml

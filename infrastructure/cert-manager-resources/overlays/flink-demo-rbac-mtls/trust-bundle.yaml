@@ -1,0 +1,20 @@
+---
+# Distributes the root CA public cert as a ConfigMap into target namespaces,
+# so every Confluent component can trust mTLS peers. Re-syncs on CA rotation.
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: rbac-mtls-ca-bundle
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  sources:
+    - secret:
+        name: rbac-mtls-ca
+        key: tls.crt
+  target:
+    configMap:
+      key: ca.crt
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: kafka
