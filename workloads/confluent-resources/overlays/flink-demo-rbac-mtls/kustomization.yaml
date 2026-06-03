@@ -10,6 +10,7 @@ resources:
   - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
   - confluentrolebindings.yaml
+  - mtls-certificates.yaml  # Phase 1: broker + KRaft controller mTLS identity certs
 
 # Cluster-specific patches
 patches:

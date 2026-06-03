@@ -1,0 +1,68 @@
+---
+# KRaft controller server/identity cert for the controller (quorum) listener.
+# CN=kafka maps to User:kafka via the listener's principalMappingRules.
+# SANs cover the headless pod DNS CFK uses for controller-to-controller and
+# broker-to-controller connections.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kraftcontroller-mtls
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  commonName: kafka
+  secretName: kraftcontroller-mtls
+  duration: 2160h     # 90 days
+  renewBefore: 720h   # 30 days
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  dnsNames:
+    - kraftcontroller.kafka.svc.cluster.local
+    - "*.kraftcontroller.kafka.svc.cluster.local"
+    - kafka.kafka.svc.cluster.local
+    - "*.kafka.svc.cluster.local"
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+---
+# Kafka broker server/identity cert. Used both to serve TLS and as the client
+# identity when brokers connect to the KRaft controller over mTLS.
+# CN=kafka maps to User:kafka (existing RBAC superuser).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-broker-mtls
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  commonName: kafka
+  secretName: kafka-broker-mtls
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  dnsNames:
+    - kafka.kafka.svc.cluster.local
+    - "*.kafka.kafka.svc.cluster.local"
+    - "*.kafka.svc.cluster.local"
+    - kraftcontroller.kafka.svc.cluster.local
+    - "*.kraftcontroller.kafka.svc.cluster.local"
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
