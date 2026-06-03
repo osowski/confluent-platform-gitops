@@ -1,0 +1,123 @@
+# Confluent Manager for Apache Flink - flink-demo-rbac-mtls Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod annotations for flink-demo-rbac-mtls cluster identification
+podAnnotations:
+  cluster: flink-demo-rbac-mtls
+
+# Debug logging for authorization troubleshooting
+env:
+  - name: LOGGING_LEVEL_IO_CONFLUENT_CMF
+    value: DEBUG
+  - name: LOGGING_LEVEL_IO_CONFLUENT_RBAC
+    value: DEBUG
+  - name: LOGGING_LEVEL_IO_CONFLUENT_COMMON_SECURITY
+    value: DEBUG
+
+# Encryption key for CMF Secrets - Required for storing Flink SQL secret data
+# CMF uses AES-GCM encryption to store spec.data in its metadata database
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
+# OAuth authentication configuration for CMF REST API
+# Validates bearer tokens from Keycloak for incoming client requests
+# IMPORTANT: CMF validates MDS-signed tokens using the MDS public key
+cmf:
+  # Enable stack traces in error responses for debugging authorization issues
+  stackTraceLogging: true
+
+  sql:
+    examples-catalog:
+      enabled: true
+
+  # Database configuration - Use PostgreSQL instead of embedded SQLite
+  # SQLite has severe lock contention issues under concurrent operations
+  database:
+    type: jdbc
+    jdbc:
+      engine: postgresql
+      database: cmf
+      url: cmf-postgres.operator.svc.cluster.local
+      user: cmf
+      password:
+        kubernetesSecretName: cmf-postgres-credentials
+        kubernetesSecretProperty: POSTGRES_PASSWORD
+      port: 5432
+      options: ""
+
+  authentication:
+    type: oauth
+    config:
+      # JWKS endpoint for token validation (internal cluster DNS)
+      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+
+      # Token issuer name for MDS-signed tokens
+      token.issuer: Confluent
+
+      # Expected issuer must match the external URL that clients use
+      # This is what appears in the token's "iss" claim
+      # Must match KC_HOSTNAME setting in Keycloak deployment
+      oauthbearer.expected.issuer: https://keycloak.flink-demo-rbac-mtls.confluentdemo.local/realms/confluent
+
+      # Principal claim - use client_id as the user identifier
+      # This works for both service accounts (client_id from service account) and
+      # user accounts (client_id is set by the controlcenter client via protocol mapper)
+      oauthbearer.sub.claim.name: client_id
+
+      # Groups claim - extract group membership from tokens
+      oauthbearer.groups.claim.name: groups
+
+      # MDS public key path for validating MDS-signed SSO tokens from Control Center
+      # Control Center uses SSO tokens signed by MDS, not direct OAuth tokens
+      public.key.path: /mount/mds/mdsPublicKey.pem
+
+      # MDS metadata server URLs for token validation
+      confluent.metadata.bootstrap.server.urls: http://kafka.kafka.svc.cluster.local:8090
+
+      # OAuth credentials provider for CMF to authenticate to MDS
+      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+
+      # Token endpoint for CMF to obtain its own tokens (internal cluster DNS)
+      # Used when CMF needs to authenticate as a service principal
+      confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+      # CMF client credentials for authenticating to MDS
+      confluent.metadata.oauthbearer.login.client.id: cmf
+      confluent.metadata.oauthbearer.login.client.secret: cmf-secret
+
+  # Kafka-specific OAuth configuration
+  kafka:
+    # OAuth bearer allowed URLs - Required for OAuth authentication
+    # Must include full token endpoint URL paths, not just realm base URLs
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.flink-demo-rbac-mtls.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/token,http://keycloak.flink-demo-rbac-mtls.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/certs
+
+# Authorization configuration - connect to MDS for RBAC
+  authorization:
+    mdsRestConfig:
+      # MDS endpoint on Kafka broker (internal cluster DNS)
+      endpoint: http://kafka.kafka.svc.cluster.local:8090
+      # OAuth authentication for CMF to talk to MDS
+      authentication:
+        type: oauth
+        config:
+          # OAuth bearer credentials provider
+          confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+          # Token endpoint to obtain tokens
+          confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          # Client ID for CMF service principal
+          confluent.metadata.oauthbearer.login.client.id: cmf
+          # Client secret - hard-coded for demo (production should use external-secrets or vault)
+          # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
+          confluent.metadata.oauthbearer.login.client.secret: cmf-secret
+
+# Mount MDS token secret for public key validation of MDS-signed SSO tokens
+mountedVolumes:
+  volumes:
+    - name: mds-token
+      secret:
+        secretName: mds-token
+  volumeMounts:
+    - name: mds-token
+      mountPath: /mount/mds

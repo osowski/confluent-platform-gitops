@@ -299,7 +299,9 @@ verify_update() {
     while IFS= read -r file; do
         # Check if multi-source or single-source
         local has_sources
+        local has_source
         has_sources=$(yq eval 'has("spec") and .spec | has("sources")' "$file" 2>/dev/null)
+        has_source=$(yq eval 'has("spec") and .spec | has("source")' "$file" 2>/dev/null)
 
         if [ "$has_sources" = "true" ]; then
             # Multi-source: only check git source targetRevisions (sources with ref field)
