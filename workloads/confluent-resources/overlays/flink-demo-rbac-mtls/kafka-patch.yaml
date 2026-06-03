@@ -16,6 +16,14 @@ metadata:
   namespace: kafka
 spec:
   # ==============================================================================
+  # SERVER TLS - broker identity from cert-manager; also used as the client cert
+  # when brokers connect to the KRaft controller over mTLS (Phase 1, #273).
+  # TLS is opt-in per listener; internal/external remain OAuth/plaintext this phase.
+  # ==============================================================================
+  tls:
+    secretRef: kafka-broker-mtls
+
+  # ==============================================================================
   # EXTERNAL LISTENER - NodePort for kind cluster access
   # ==============================================================================
   # Enables external access via kind's port mapping:
@@ -124,15 +132,14 @@ spec:
   # DEPENDENCIES - KRaft controller and Kafka REST authentication
   # ==============================================================================
   dependencies:
-    # Broker-to-KRaft controller OAuth authentication
+    # Broker-to-KRaft controller mTLS authentication (Phase 1, #273).
+    # Broker presents its spec.tls cert (CN=kafka) as the client identity.
     kRaftController:
       controllerListener:
+        tls:
+          enabled: true
         authentication:
-          type: oauth
-          jaasConfig:
-            secretRef: kafka-oauth-client
-          oauthSettings:
-            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          type: mtls
       clusterRef:
         name: kraftcontroller
 
