@@ -9,7 +9,9 @@ metadata:
   name: kraftcontroller-mtls
   namespace: kafka
   annotations:
-    argocd.argoproj.io/sync-wave: "9"
+    # Issue before the Confluent CRs (KRaftController is wave 0) so spec.tls
+    # secretRef targets exist when CFK reconciles the components.
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   commonName: kafka
   secretName: kraftcontroller-mtls
@@ -42,7 +44,9 @@ metadata:
   name: kafka-broker-mtls
   namespace: kafka
   annotations:
-    argocd.argoproj.io/sync-wave: "9"
+    # Issue before the Confluent CRs (KRaftController is wave 0) so spec.tls
+    # secretRef targets exist when CFK reconciles the components.
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   commonName: kafka
   secretName: kafka-broker-mtls

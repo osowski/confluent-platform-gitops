@@ -6,8 +6,8 @@
 # - Resource limits for local demo environment
 # - MDS/RBAC configuration with OAuth provider (Keycloak)
 # - SSO/OIDC configuration for browser-based authentication (Control Center)
-# - Broker-to-KRaft controller OAuth authentication
-# - Internal listener OAuth authentication
+# - Broker-to-KRaft controller mTLS authentication (Phase 1, #273)
+# - Internal listener OAuth authentication (unchanged this phase)
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka

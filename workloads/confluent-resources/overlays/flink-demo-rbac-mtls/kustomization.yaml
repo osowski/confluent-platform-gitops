@@ -20,7 +20,7 @@ patches:
       kind: Kafka
       name: kafka
 
-  # KRaft controller - consolidated configuration (resources, OAuth, RBAC, MDS dependency)
+  # KRaft controller - consolidated configuration (resources, TLS + mTLS controller listener)
   - path: kraftcontroller-patch.yaml
     target:
       kind: KRaftController

@@ -40,6 +40,10 @@ spec:
         type: mtls
         principalMappingRules:
           - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
+        mtls:
+          # Mandatory client-cert auth (reject anonymous). The controller has no
+          # authorizer, so enforcing cert presentation is the access boundary.
+          sslClientAuthentication: required
 
   # ==============================================================================
   # SERVER TLS - controller identity from cert-manager (CFK TLS Group 3 keys)
