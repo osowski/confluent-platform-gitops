@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Label the kafka namespace as a participant in the mTLS trust mesh so the
+# trust-manager Bundle (rbac-mtls-ca-bundle) distributes the CA ConfigMap here.
+# Later phases add this label to flink/operator to extend trust to those namespaces.
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: kafka
+        labels:
+          mtls-trust: enabled

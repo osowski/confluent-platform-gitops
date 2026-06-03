@@ -9,12 +9,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "7"
 spec:
   sources:
+    # ca.crt is the conventional trust-anchor key and stays correct if the root
+    # CA later becomes intermediate-signed (see mTLS design future-migration note).
     - secret:
         name: rbac-mtls-ca
-        key: tls.crt
+        key: ca.crt
   target:
     configMap:
       key: ca.crt
+    # Select participating namespaces by purpose label so extending the mTLS
+    # trust mesh to flink/operator in later phases is a one-line namespace change.
     namespaceSelector:
       matchLabels:
-        kubernetes.io/metadata.name: kafka
+        mtls-trust: enabled

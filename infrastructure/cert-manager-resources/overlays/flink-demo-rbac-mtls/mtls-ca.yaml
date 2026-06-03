@@ -10,7 +10,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   isCA: true
-  commonName: flink-demo-rbac-mtls-ca
+  commonName: rbac-mtls-ca
   secretName: rbac-mtls-ca
   duration: 87600h    # 10 years
   renewBefore: 720h   # 30 days
