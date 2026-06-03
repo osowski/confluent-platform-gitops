@@ -9,11 +9,26 @@ The `flink-demo-rbac-mtls` cluster demonstrates a complete Confluent Platform de
 - **Kafka Cluster**: KRaft-based Kafka with Schema Registry, Control Center, and MDS for authorization
 - **Flink Integration**: Flink Kubernetes Operator with CMF, group-scoped catalogs and compute pools
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
-- **Security**: Keycloak for SSO/OAuth, MDS for RBAC, cert-manager for TLS, Reflector for secret replication
+- **Security**: Keycloak for SSO/OAuth, MDS for RBAC, cert-manager for TLS, Reflector for secret replication, and **mTLS** on the Kafka↔KRaft controller path (see [mTLS](#mtls))
 - **Networking**: Traefik ingress controller with local DNS resolution
 - **Storage**: MinIO for S3-compatible object storage (Flink checkpoints and savepoints)
 
 **Domain**: `*.flink-demo-rbac-mtls.confluentdemo.local`
+
+## mTLS
+
+This variant layers cert-manager-automated TLS + mutual TLS on top of the existing OIDC/RBAC model. OAuth/OIDC remains the authentication principal for service accounts and human SSO; mTLS is applied to machine-to-machine paths where there is no human identity.
+
+**PKI (cluster-wide):** a self-signed root CA (`rbac-mtls-ca`) backs a CA `ClusterIssuer` (`rbac-mtls-ca-issuer`); cert-manager mints leaf certs and `trust-manager` distributes the CA (`rbac-mtls-ca-bundle`) to namespaces labeled `mtls-trust: enabled`. CFK converts the PEM secrets to PKCS12 internally.
+
+**Phase 1 — Kafka ↔ KRaft controller (implemented):**
+- KRaft **controller** listener serves TLS and requires client certs (`authentication.type: mtls`); the cert CN maps to `User:kafka` (an existing RBAC superuser) via `principalMappingRules`.
+- Brokers present `kafka-broker-mtls` as their client identity when connecting to the controller.
+- Verify on a running cluster — controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener.
+- **Not yet mTLS (later phases):** internal inter-broker listener and external NodePort listener remain OAuth/plaintext; Schema Registry still authenticates to Kafka via OAuth.
+
+> [!IMPORTANT]
+> **Changing listener auth requires a clean redeploy, not an in-place roll.** Flipping a CFK quorum/inter-broker listener between OAuth and mTLS cannot be done by rolling restart — the KRaft quorum cannot re-form across a mixed-auth window. To (re)apply mTLS listener changes: delete the CFK CRs (`kafka`, `kraftcontroller`, `schemaregistry`, `controlcenter`, `kafkarestclass`) and their PVCs, then re-sync `confluent-resources` so the stack comes up mTLS-from-start. `confluent-resources` is a **manual-sync** ArgoCD application.
 
 ## Getting Started
 
