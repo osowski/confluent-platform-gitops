@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-273/controller-mtls
     path: infrastructure/ingresses/overlays/flink-demo-rbac-mtls
   destination:
     server: https://kubernetes.default.svc
