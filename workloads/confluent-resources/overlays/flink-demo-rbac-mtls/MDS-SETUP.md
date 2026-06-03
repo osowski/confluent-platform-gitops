@@ -74,8 +74,7 @@ The following secrets should exist with credentials matching Keycloak:
 # Check Kafka OAuth client
 kubectl get secret kafka-oauth-client -n kafka -o yaml
 
-# Check KRaft OAuth client
-kubectl get secret kraft-oauth-client -n kafka -o yaml
+# (KRaft controller uses mTLS, not OAuth — see kraftcontroller-mtls cert)
 
 # Check CMF MDS OAuth client
 kubectl get secret cmf-mds-oauth-client -n operator -o yaml

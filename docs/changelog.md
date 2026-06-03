@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **flink-demo-rbac-mtls — Kafka↔KRaft controller mTLS** ([#273](https://github.com/osowski/confluent-platform-gitops/issues/273)): controller quorum listener now uses cert-manager-issued mTLS (cert CN→`User:kafka`) while OIDC/RBAC stays for all other auth. Changing listener auth requires a clean CFK redeploy (see cluster README).
+
 ## [0.7.0] - 2026-05-13
 
 ### Added
