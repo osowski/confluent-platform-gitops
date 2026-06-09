@@ -190,10 +190,93 @@ Add these entries to `/etc/hosts`:
 
 <!-- Add any additional services or port-forwarding fallbacks specific to this cluster -->
 
+## Authenticating to CMF and Running Flink
+
+CMF in this cluster validates **Keycloak-issued OIDC bearer tokens** (no MDS, no RBAC). You authenticate by obtaining a token from Keycloak and presenting it to the **CMF REST API**.
+
+> [!IMPORTANT]
+> **The `confluent flink` CLI does not work against this cluster.** The on-premises `confluent flink` commands authenticate to CMF only via an **MDS login session** or **mTLS client certificates** — neither exists here (MDS is removed; CMF uses OIDC, not mTLS). The CLI has no bearer-token option, so every call returns `401` (verified with Confluent CLI v4.57.0, including with `CONFLUENT_CMF_ACCESS_TOKEN` set). Use the REST API below. See [Using the CLI anyway](#using-the-confluent-flink-cli-anyway-optional) if you need the CLI UX.
+
+### 1. Reach the CMF API
+
+Port-forward CMF (works regardless of ingress / `/etc/hosts`):
+
+```bash
+kubectl -n operator port-forward svc/cmf-service 8080:80
+```
+
+CMF is now reachable at `http://localhost:8080`, REST base path `/cmf/api/v1`. (Or use the ingress URL `http://cmf.flink-demo-authn.confluentdemo.local`.)
+
+### 2. Get a Keycloak token
+
+Any valid Keycloak token is accepted (no authorization — **allow-all**). The simplest is the `cmf` service client via the client-credentials grant. Port-forward Keycloak in a second terminal:
+
+```bash
+kubectl -n keycloak port-forward svc/keycloak 8081:8080
+```
+
+```bash
+export TOKEN=$(curl -s -X POST \
+  http://localhost:8081/realms/confluent/protocol/openid-connect/token \
+  -d grant_type=client_credentials \
+  -d client_id=cmf -d client_secret=cmf-secret | jq -r .access_token)
+```
+
+> The token's `iss` claim is `https://keycloak.flink-demo-authn.confluentdemo.local/realms/confluent` (set by Keycloak's `KC_HOSTNAME`), which matches CMF's `oauthbearer.expected.issuer` — so requesting the token over a port-forward on a different local port is fine.
+
+To authenticate as a **human user** instead of the service client, use the password grant:
+
+```bash
+export TOKEN=$(curl -s -X POST \
+  http://localhost:8081/realms/confluent/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=controlcenter -d client_secret=controlcenter-secret \
+  -d username=<user> -d password=<pass> | jq -r .access_token)
+```
+
+### 3. Call the CMF REST API
+
+List environments (`shapes-env` and `colors-env` are pre-created by the `flink-resources-rbac` workload):
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/cmf/api/v1/environments | jq .
+```
+
+Common endpoints (base `http://localhost:8080/cmf/api/v1`):
+
+| Action | Method + path |
+|---|---|
+| List / describe environments | `GET /environments`, `GET /environments/{env}` |
+| List / create applications | `GET` / `POST /environments/{env}/applications` |
+| List compute pools | `GET /environments/{env}/compute-pools` |
+| Manage secrets & mappings | `/secrets`, `/environments/{env}/secret-mappings` |
+| Kafka catalogs / databases | `/catalogs/kafka`, `/catalogs/kafka/{catalog}/databases` |
+
+Example — create a FlinkApplication in `shapes-env` from a JSON file:
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -X POST http://localhost:8080/cmf/api/v1/environments/shapes-env/applications \
+  -d @my-application.json | jq .
+```
+
+> Keycloak access tokens are short-lived. When a call starts returning `401`, re-run step 2 to refresh `$TOKEN`.
+
+### Using the `confluent flink` CLI anyway (optional)
+
+The CLI cannot send a bearer token, but it can target a local endpoint that injects one. Run a small local reverse proxy that adds `Authorization: Bearer $TOKEN` to every request and forwards to CMF, then point the CLI at the proxy:
+
+```bash
+confluent logout    # on-prem flink commands require being logged out of Confluent Cloud
+confluent flink environment list --url http://localhost:<proxy-port>
+```
+
+This is a local-dev convenience only (the pinned token expires). A maintained helper script is not yet provided — the proper fix is native CLI OIDC support for CMF.
+
 ## Cluster Specific Use Cases
 
 - **Authentication without authorization:** see the [Security Model](#security-model-oidc-authentication-no-authorization) above. All OAuth/OIDC tokens are issued by Keycloak and validated directly against its JWKS endpoint (no MDS-signed tokens).
-- **CMF access:** the CFK operator authenticates to CMF via a `CMFRestClass` using OAuth client-credentials; CLI/REST clients pass a Keycloak bearer token to the CMF REST API.
+- **CMF access:** the CFK operator authenticates to CMF via a `CMFRestClass` using OAuth client-credentials; human/automation clients use the **CMF REST API with a Keycloak bearer token** — see [Authenticating to CMF and Running Flink](#authenticating-to-cmf-and-running-flink). The `confluent flink` CLI is **not** usable here (no bearer-token support).
 - **Pre-created Flink resources:** the `flink-resources-rbac` workload provisions Flink environments, applications, and the CP Flink SQL Sandbox (shapes/colors demos) — identical to `flink-demo-rbac` but without role bindings.
 
 ## Troubleshooting
