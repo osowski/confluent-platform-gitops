@@ -61,8 +61,13 @@ spec:
       clusterRef:
         name: kraftcontroller
 
-    # Kafka REST OAuth authentication
+    # Kafka REST (Admin REST API server) OAuth authentication.
+    # bootstrapEndpoint MUST be set explicitly here: without MDS, CFK cannot
+    # auto-resolve the Admin REST server's Kafka client endpoint, so it must
+    # point at the OAuth internal listener (port 9071) for the auth type to
+    # match. (In flink-demo-rbac, services.mds provided this resolution.)
     kafkaRest:
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:
         type: oauth
         jaasConfig:
