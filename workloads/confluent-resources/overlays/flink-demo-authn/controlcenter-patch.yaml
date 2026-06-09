@@ -33,6 +33,19 @@ spec:
       - confluent.controlcenter.schema.registry.bearer.auth.issuer.endpoint.url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
       - confluent.controlcenter.schema.registry.bearer.auth.client.id=controlcenter
       - confluent.controlcenter.schema.registry.bearer.auth.client.secret=controlcenter-secret
+      # Internal Streams/command-store Kafka client OAuth (Keycloak, direct).
+      # Without MDS, CFK does not auto-wire OAuth login for C3's internal clients,
+      # so configure them explicitly here (otherwise they fall back to the
+      # unsecured callback handler and fail with "No principal name in JWT claim: sub").
+      - confluent.controlcenter.streams.security.protocol=SASL_PLAINTEXT
+      - confluent.controlcenter.streams.sasl.mechanism=OAUTHBEARER
+      - confluent.controlcenter.streams.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
+      - confluent.controlcenter.streams.sasl.oauthbearer.token.endpoint.url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      - confluent.controlcenter.streams.sasl.oauthbearer.sub.claim.name=client_id
+      - confluent.controlcenter.streams.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId="controlcenter" clientSecret="controlcenter-secret";
+    jvm:
+      # Allow C3's OAuth clients to call the Keycloak token endpoint (required CP 8.0+)
+      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
 
   # NO authorization block (RBAC removed).
   # NO dependencies.mds block (MDS/SSO removed) => anonymous browser access.
