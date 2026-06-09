@@ -1,0 +1,52 @@
+# Confluent Manager for Apache Flink - flink-demo-authn Cluster Overlay
+# OIDC authentication via Keycloak. NO authorization (RBAC), NO MDS.
+
+podAnnotations:
+  cluster: flink-demo-authn
+
+env:
+  - name: LOGGING_LEVEL_IO_CONFLUENT_CMF
+    value: DEBUG
+
+encryption:
+  key:
+    kubernetesSecretName: cmf-encryption-key
+    kubernetesSecretProperty: key
+
+cmf:
+  stackTraceLogging: true
+
+  sql:
+    examples-catalog:
+      enabled: true
+
+  database:
+    type: jdbc
+    jdbc:
+      engine: postgresql
+      database: cmf
+      url: cmf-postgres.operator.svc.cluster.local
+      user: cmf
+      password:
+        kubernetesSecretName: cmf-postgres-credentials
+        kubernetesSecretProperty: POSTGRES_PASSWORD
+      port: 5432
+      options: ""
+
+  # Authentication ONLY — validate Keycloak bearer tokens directly via JWKS.
+  # NO public.key.path, NO confluent.metadata.*, NO token.issuer (those were
+  # for MDS-signed Control Center SSO tokens, which no longer exist).
+  authentication:
+    type: oauth
+    config:
+      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+      oauthbearer.expected.issuer: https://keycloak.flink-demo-authn.confluentdemo.local/realms/confluent
+      oauthbearer.sub.claim.name: client_id
+      oauthbearer.groups.claim.name: groups
+
+  # Kafka OAuth allowed URLs (token + certs endpoints, internal + external)
+  kafka:
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.flink-demo-authn.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/token,http://keycloak.flink-demo-authn.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/certs
+
+# NO cmf.authorization block (MDS/RBAC removed).
+# NO mountedVolumes for mds-token (no MDS public key to validate).

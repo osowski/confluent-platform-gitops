@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kafka
+
+# OAuth authentication only — NO MDS, NO RBAC, NO role bindings.
+resources:
+  - ../../base
+  - oauth-client-secrets.yaml
+  - controlcenter-oauth-client-secret.yaml
+
+patches:
+  # Kafka broker - OAuth listeners, NO MDS, NO authorization (allow-all)
+  - path: kafka-patch.yaml
+    target:
+      kind: Kafka
+      name: kafka
+
+  # KRaft controller - OAuth listener auth (already MDS-free)
+  - path: kraftcontroller-patch.yaml
+    target:
+      kind: KRaftController
+      name: kraftcontroller
+
+  # Control Center - Next-Gen image, OAuth to Kafka/SR, anonymous UI, NO MDS/SSO/RBAC
+  - path: controlcenter-patch.yaml
+    target:
+      kind: ControlCenter
+      name: controlcenter
+
+  # Schema Registry - OAuth authN, NO RBAC
+  - path: schemaregistry-patch.yaml
+    target:
+      kind: SchemaRegistry
+      name: schemaregistry
+
+  # KafkaRestClass - OAuth authentication
+  - path: kafkarestclass-patch.yaml
+    target:
+      kind: KafkaRestClass
+      name: default
+
+  # Explicitly delete Connect from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: Connect
+      metadata:
+        name: connect
+        namespace: kafka
+
+  # Explicitly delete ksqlDB from this cluster overlay
+  - patch: |-
+      $patch: delete
+      apiVersion: platform.confluent.io/v1beta1
+      kind: KsqlDB
+      metadata:
+        name: ksqldb
+        namespace: kafka

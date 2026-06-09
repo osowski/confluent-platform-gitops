@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-resources-rbac
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "120"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  source:
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: feature-279/test-authn-with-no-authz
+    path: workloads/flink-resources-rbac/overlays/flink-demo-authn
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flink
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

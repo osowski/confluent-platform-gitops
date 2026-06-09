@@ -1,0 +1,34 @@
+# ==============================================================================
+# Schema Registry Configuration for flink-demo-authn Cluster
+# ==============================================================================
+# OAuth authentication to Kafka via Keycloak. NO MDS dependency, NO RBAC.
+# ==============================================================================
+apiVersion: platform.confluent.io/v1beta1
+kind: SchemaRegistry
+metadata:
+  name: schemaregistry
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # NO authorization block (RBAC removed).
+  # NO dependencies.mds block (MDS removed).
+
+  dependencies:
+    # Kafka connection with OAuth authentication
+    kafka:
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: kafka-oauth-client
+        oauthSettings:
+          subClaimName: client_id
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token

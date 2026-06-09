@@ -327,6 +327,10 @@ The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for O
 - Route53 + ACM provide real public DNS and TLS instead of self-signed certificates and `/etc/hosts` resolution
 - `workers-v2` managed node group (t3.2xlarge, min=4, max=6) spread across 3 availability zones
 
+### Authentication-Only Variant (flink-demo-authn cluster)
+
+The `flink-demo-authn` cluster is a variant of `flink-demo-rbac` that keeps Keycloak OIDC **authentication** on every tier but removes **authorization** entirely. There is no MDS and no Confluent RBAC: Kafka, KRaft, Schema Registry, and CMF validate Keycloak-issued tokens directly via JWKS, and with no Kafka authorizer any authenticated principal is allowed (allow-all). Because Control Center SSO requires MDS, its UI runs anonymously; the CFK operator reaches CMF through a `CMFRestClass` using OAuth client-credentials. This removes the entire three-layer model described in [Multi-Tenant RBAC Architecture (flink-demo-rbac cluster)](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster); Kubernetes RBAC (`flink-rbac`) is retained as it is unrelated to Confluent authorization. See `clusters/flink-demo-authn/README.md` for the security model and access details.
+
 ## RBAC Boundaries
 
 ### Infrastructure Project
