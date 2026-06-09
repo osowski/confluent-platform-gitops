@@ -1,18 +1,30 @@
 # flink-demo-authn Cluster
 
-$CLUSTER_DESCRIPTION
+A Confluent Platform + Apache Flink demo cluster that authenticates every principal via Keycloak OIDC but performs **no authorization** — no MDS, no RBAC. It is a variant of `flink-demo-rbac` with the MDS service and all authorization stripped out.
 
 ## Overview
 
 The `flink-demo-authn` cluster provides:
 
-- **Kafka Cluster**: $KAFKA_DESCRIPTION
-- **Flink Integration**: $FLINK_DESCRIPTION
+- **Kafka Cluster**: KRaft-based Kafka with OAuth/OIDC authentication (Keycloak) on all listeners and **no authorizer** (any authenticated principal is allowed).
+- **Flink Integration**: Confluent Manager for Apache Flink (CMF) authenticating clients via Keycloak OIDC; the CFK operator manages Flink through a `CMFRestClass` using OAuth client-credentials.
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
-- **Security**: $SECURITY_DESCRIPTION
+- **Security**: Keycloak OIDC authentication everywhere; **NO authorization/RBAC, NO MDS** — see [Security Model](#security-model-oidc-authentication-no-authorization) below.
 - **Networking**: Traefik ingress controller with local DNS resolution
 
 **Domain**: `*.flink-demo-authn.confluentdemo.local`
+
+## Security Model: OIDC Authentication, NO Authorization
+
+This cluster authenticates every principal via Keycloak OIDC but performs **no authorization**. There is no Kafka authorizer and no MDS/RBAC.
+
+> [!WARNING]
+> **Allow-all:** any principal that presents a valid Keycloak token can perform any action on Kafka, Schema Registry, and CMF. Do not use this variant where tenant isolation or least-privilege is required.
+
+### Accessing the platform
+- **CLI/REST:** obtain a token directly from Keycloak (client-credentials, or device flow against Keycloak) and pass it as a bearer token. The MDS-hosted `confluent login` device-grant flow used by `flink-demo-rbac` is **not available** here (MDS is removed).
+- **Control Center UI:** anonymous access (no login). SSO/OIDC for Control Center requires MDS and is intentionally omitted; C3 still connects to Kafka and Schema Registry using service-account OAuth.
+- **What is removed vs. `flink-demo-rbac`:** Kafka `authorization: rbac` + `services.mds`, CMF `authorization` + MDS-coupled auth config, the `mds-keygen` job and `mds-token` secret, all `ConfluentRolebinding` resources, and Control Center's MDS/SSO dependency. Kubernetes RBAC for Flink (`flink-rbac`) is retained — it is unrelated to Confluent authorization.
 
 ## Getting Started
 
@@ -180,18 +192,9 @@ Add these entries to `/etc/hosts`:
 
 ## Cluster Specific Use Cases
 
-<!--
-Document anything unique to this cluster that doesn't fit the standard template.
-Examples:
-- RBAC naming conventions and permission model
-- Pre-created topics, schemas, or Flink resources
-- Special authentication flows (e.g., Keycloak SSO, MDS device-grant)
-- Token lifecycle management
-- Demo/sandbox environments (e.g., CP Flink SQL Sandbox)
-
-Remove this comment block and replace with cluster-specific content.
-If this cluster has no unique use cases, remove this section entirely.
--->
+- **Authentication without authorization:** see the [Security Model](#security-model-oidc-authentication-no-authorization) above. All OAuth/OIDC tokens are issued by Keycloak and validated directly against its JWKS endpoint (no MDS-signed tokens).
+- **CMF access:** the CFK operator authenticates to CMF via a `CMFRestClass` using OAuth client-credentials; CLI/REST clients pass a Keycloak bearer token to the CMF REST API.
+- **Pre-created Flink resources:** the `flink-resources-rbac` workload provisions Flink environments, applications, and the CP Flink SQL Sandbox (shapes/colors demos) — identical to `flink-demo-rbac` but without role bindings.
 
 ## Troubleshooting
 
