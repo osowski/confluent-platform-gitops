@@ -1,0 +1,63 @@
+# ==============================================================================
+# Control Center (Next-Gen) Configuration for flink-demo-authn Cluster
+# ==============================================================================
+# Anonymous UI access (OIDC SSO requires MDS, which is removed). C3 still
+# connects to Kafka and Schema Registry using service-account OAuth.
+# NO authorization (RBAC), NO MDS dependency.
+# ==============================================================================
+apiVersion: platform.confluent.io/v1beta1
+kind: ControlCenter
+metadata:
+  name: controlcenter
+  namespace: kafka
+spec:
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+
+  configOverrides:
+    server:
+      - confluent.controlcenter.ksql.enable=false
+      - confluent.controlcenter.connect.enable=false
+      - confluent.controlcenter.ui.replicator.monitoring.enable=false
+      # Enable CMF integration
+      - confluent.controlcenter.cmf.enable=true
+      - confluent.controlcenter.cmf.url=http://cmf-service.operator.svc.cluster.local:80
+      # Schema Registry OAuth bearer authentication
+      - confluent.controlcenter.schema.registry.bearer.auth.credentials.source=OAUTHBEARER
+      - confluent.controlcenter.schema.registry.bearer.auth.issuer.endpoint.url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      - confluent.controlcenter.schema.registry.bearer.auth.client.id=controlcenter
+      - confluent.controlcenter.schema.registry.bearer.auth.client.secret=controlcenter-secret
+
+  # NO authorization block (RBAC removed).
+  # NO dependencies.mds block (MDS/SSO removed) => anonymous browser access.
+
+  dependencies:
+    connect: null
+    ksqldb: null
+
+    # Kafka connection with OAuth (service account)
+    kafka:
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
+      authentication:
+        type: oauth
+        jaasConfig:
+          secretRef: controlcenter-oauth-client
+        oauthSettings:
+          subClaimName: client_id
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+
+    # Schema Registry connection with OAuth (service account)
+    schemaRegistry:
+      url: http://schemaregistry.kafka.svc.cluster.local:8081
+      authentication:
+        type: oauth
+        oauth:
+          secretRef: controlcenter-oauth-client
+          configuration:
+            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
