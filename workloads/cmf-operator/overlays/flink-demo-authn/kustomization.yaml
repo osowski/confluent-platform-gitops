@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: operator
 
 resources:
+  - cmf-mds-oauth-secret.yaml   # Keycloak OAuth client for CMF REST API (used by sql-init Jobs; NOT MDS)
   - cmf-encryption-key.yaml
   - postgres-secret.yaml
   - postgres.yaml
