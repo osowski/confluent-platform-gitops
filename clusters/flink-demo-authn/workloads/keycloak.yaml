@@ -1,10 +1,11 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: observability-resources
+  name: keycloak
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "117" # After Flink operator (wave 116)
+    argocd.argoproj.io/sync-wave: "102"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -12,13 +13,19 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: workloads/observability-resources/base
+    path: workloads/keycloak/overlays/flink-demo-authn
   destination:
     server: https://kubernetes.default.svc
-    namespace: operator
+    namespace: keycloak
   syncPolicy:
     automated:
       prune: true
       selfHeal: false
     syncOptions:
-      - CreateNamespace=false # Namespace should already exist from wave 100
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
