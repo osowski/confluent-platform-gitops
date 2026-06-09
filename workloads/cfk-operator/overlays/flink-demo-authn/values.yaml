@@ -1,0 +1,14 @@
+# Confluent for Kubernetes - flink-demo-authn Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod annotations for flink-demo-authn cluster identification
+podAnnotations:
+  cluster: flink-demo-authn
+
+# Watch additional namespaces for group-based Flink resources
+namespaceList:
+  - flink
+  - flink-shapes
+  - flink-colors
+  - kafka
+  - operator
