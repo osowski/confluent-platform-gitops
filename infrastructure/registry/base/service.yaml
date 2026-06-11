@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: registry
+  labels:
+    app: registry
+spec:
+  # Pinned ClusterIP inside kind's default service CIDR (10.96.0.0/16).
+  # This is the single address reachable by the same name from both in-cluster
+  # pods (normal ClusterIP routing) and node containerd (kube-proxy DNAT) —
+  # kind nodes cannot resolve cluster DNS, so a stable IP is required for
+  # consistent image refs (10.96.0.50:5000/<image>).
+  # Must match the address written by infrastructure/registry-hosts.
+  clusterIP: 10.96.0.50
+  selector:
+    app: registry
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http

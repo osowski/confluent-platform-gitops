@@ -1,0 +1,80 @@
+---
+# Writes the per-node containerd hosts.toml that marks the in-cluster
+# registry (infrastructure/registry, pinned ClusterIP 10.96.0.50:5000) as
+# insecure-pullable. Requires containerd's registry config_path to be set at
+# cluster-create time (see clusters/<cluster>/kind-config.yaml
+# containerdConfigPatches) — with that in place, no containerd restart is
+# needed for the file to take effect.
+#
+# Mechanism: an ArgoCD PostSync-hook Job instead of a DaemonSet — no
+# perpetually-sleeping pods. The required podAntiAffinity on
+# kubernetes.io/hostname lands exactly one pod per node;
+# completions/parallelism must equal the cluster node count (patched per
+# cluster overlay to match the kind-config topology). BeforeHookCreation
+# re-runs the Job on every sync, re-applying after any cluster refresh.
+#
+# NOTE: privileged container with a writable hostPath — acceptable for a
+# local kind demo platform only.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: registry-hosts
+  namespace: registry
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  completions: 1
+  parallelism: 1
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app: registry-hosts
+    spec:
+      restartPolicy: OnFailure
+      # Tolerate everything so a pod also lands on the control-plane node
+      tolerations:
+        - operator: Exists
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: registry-hosts
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: write-hosts-toml
+          image: busybox:1.37
+          securityContext:
+            privileged: true
+          env:
+            # Must match the pinned ClusterIP of the registry Service
+            # (infrastructure/registry/base/service.yaml)
+            - name: REGISTRY_ADDR
+              value: "10.96.0.50:5000"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              mkdir -p "/host-certs.d/${REGISTRY_ADDR}"
+              cat > "/host-certs.d/${REGISTRY_ADDR}/hosts.toml" <<EOF
+              server = "http://${REGISTRY_ADDR}"
+
+              [host."http://${REGISTRY_ADDR}"]
+                capabilities = ["pull", "resolve"]
+              EOF
+              echo "Wrote hosts.toml for ${REGISTRY_ADDR} on node ${NODE_NAME}"
+          volumeMounts:
+            - name: certs-d
+              mountPath: /host-certs.d
+      volumes:
+        - name: certs-d
+          hostPath:
+            path: /etc/containerd/certs.d
+            type: DirectoryOrCreate
