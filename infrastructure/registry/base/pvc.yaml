@@ -11,6 +11,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      # Sized for several CI-built images including large Flink base layers
-      # (confluentinc/cp-flink is ~2GB+ compressed per base version)
+      # Sized for several CI-built images; cp-flink base layers are ~2GB+ each
       storage: 20Gi

@@ -1,20 +1,8 @@
 ---
-# Writes the per-node containerd hosts.toml that marks the in-cluster
-# registry (infrastructure/registry, pinned ClusterIP 10.96.0.50:5000) as
-# insecure-pullable. Requires containerd's registry config_path to be set at
-# cluster-create time (see clusters/<cluster>/kind-config.yaml
-# containerdConfigPatches) — with that in place, no containerd restart is
-# needed for the file to take effect.
-#
-# Mechanism: an ArgoCD PostSync-hook Job instead of a DaemonSet — no
-# perpetually-sleeping pods. The required podAntiAffinity on
-# kubernetes.io/hostname lands exactly one pod per node;
-# completions/parallelism must equal the cluster node count (patched per
-# cluster overlay to match the kind-config topology). BeforeHookCreation
-# re-runs the Job on every sync, re-applying after any cluster refresh.
-#
-# NOTE: privileged container with a writable hostPath — acceptable for a
-# local kind demo platform only.
+# Writes the per-node containerd hosts.toml marking the in-cluster registry
+# insecure. Requires config_path set at cluster-create time (kind-config.yaml);
+# no containerd restart needed. Privileged + writable hostPath — local kind
+# demo only. See ADR 0007.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -24,6 +12,8 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
+  # Must equal the node count so the podAntiAffinity lands exactly one pod
+  # per node; patched per cluster overlay
   completions: 1
   parallelism: 1
   backoffLimit: 6

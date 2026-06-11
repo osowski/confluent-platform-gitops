@@ -1,9 +1,7 @@
 ---
-# Holds the registry address consumed by the registry-hosts Job, and — just as
-# important — gives this Application a non-hook resource. An ArgoCD app whose
-# only resources are hooks is trivially Synced and its automated sync (and
-# therefore the PostSync hook) never fires; this ConfigMap is what triggers
-# the initial sync that runs the Job.
+# Supplies the registry address to the registry-hosts Job and gives this
+# Application a non-hook resource: an app containing only hooks is trivially
+# Synced, so automated sync (and the PostSync hook) would never fire.
 apiVersion: v1
 kind: ConfigMap
 metadata:

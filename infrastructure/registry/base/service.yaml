@@ -7,12 +7,10 @@ metadata:
   labels:
     app: registry
 spec:
-  # Pinned ClusterIP inside kind's default service CIDR (10.96.0.0/16).
-  # This is the single address reachable by the same name from both in-cluster
-  # pods (normal ClusterIP routing) and node containerd (kube-proxy DNAT) —
-  # kind nodes cannot resolve cluster DNS, so a stable IP is required for
-  # consistent image refs (10.96.0.50:5000/<image>).
-  # Must match the address written by infrastructure/registry-hosts.
+  # Pinned ClusterIP in kind's default service CIDR (10.96.0.0/16): the one
+  # address reachable identically from pods and node containerd (kube-proxy
+  # DNAT), since kind nodes cannot resolve cluster DNS. Must match
+  # infrastructure/registry-hosts.
   clusterIP: 10.96.0.50
   selector:
     app: registry

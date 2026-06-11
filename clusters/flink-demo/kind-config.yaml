@@ -1,10 +1,8 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-# Tell each node's containerd to read per-registry config (hosts.toml) from
-# /etc/containerd/certs.d at startup. Set at create time so no containerd
-# restart is ever needed to register the in-cluster image registry later
-# (see infrastructure/registry and infrastructure/registry-hosts).
-# Inert on its own: no effect until files exist under certs.d.
+# containerd reads per-registry hosts.toml from /etc/containerd/certs.d
+# (written by infrastructure/registry-hosts). Set at create time so no
+# containerd restart is needed; inert until certs.d files exist.
 containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry]

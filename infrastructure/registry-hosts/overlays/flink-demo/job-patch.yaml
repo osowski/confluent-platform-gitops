@@ -1,8 +1,6 @@
 ---
 # completions/parallelism = flink-demo node count (1 control-plane + 3
-# workers). MUST stay in sync with the node topology declared in
-# clusters/flink-demo/kind-config.yaml so the podAntiAffinity lands exactly
-# one pod per node.
+# workers); MUST stay in sync with clusters/flink-demo/kind-config.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
