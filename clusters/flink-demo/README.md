@@ -123,6 +123,8 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI
 - **minio** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
+- **registry** (wave 85) - In-cluster image registry at pinned ClusterIP `10.96.0.50:5000`
+- **registry-hosts** (wave 86) - PostSync Job writing per-node containerd `hosts.toml` for the registry
 
 ### Workload Applications
 
@@ -222,6 +224,12 @@ Add these entries to `/etc/hosts`:
 - **Bucket**: `warehouse`
 - **Purpose**: Backend storage for Flink state management (checkpoints, savepoints, HA)
 - **Cyberduck**: Import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile for GUI access
+
+**In-Cluster Image Registry:**
+- **Address**: `10.96.0.50:5000` (pinned ClusterIP — reachable by the same address from pods and node containerd)
+- **Purpose**: In-cluster image build/push/pull for CI pipelines (e.g., kaniko in Tekton) without an external registry
+- **Image refs**: push and pull as `10.96.0.50:5000/<image>:<tag>` (HTTP/insecure; per-node `hosts.toml` is written by the `registry-hosts` PostSync Job)
+- **Note**: requires a freshly created kind cluster so containerd picks up the `config_path` setting from `kind-config.yaml`; the `registry-hosts` Job is privileged with a writable `hostPath` — acceptable for this local kind demo platform only
 
 ## Cluster Specific Use Cases
 

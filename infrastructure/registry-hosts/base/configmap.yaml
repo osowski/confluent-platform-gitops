@@ -1,0 +1,12 @@
+---
+# Supplies the registry address to the registry-hosts Job and gives this
+# Application a non-hook resource ensuring the PostSync hook fires.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: registry-hosts-config
+  namespace: registry
+data:
+  # Must match the pinned ClusterIP of the registry Service
+  # (infrastructure/registry/base/service.yaml)
+  REGISTRY_ADDR: "10.96.0.50:5000"

@@ -1,0 +1,10 @@
+---
+# completions/parallelism = flink-demo node count (1 control-plane + 3
+# workers); MUST stay in sync with clusters/flink-demo/kind-config.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: registry-hosts
+spec:
+  completions: 4
+  parallelism: 4

@@ -215,6 +215,8 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 75 | cert-manager-resources | Self-signed ClusterIssuer and certificate resources |
 | 80 | argocd-ingress | Traefik IngressRoute for ArgoCD UI access |
 | 85 | argocd-config | ArgoCD ConfigMap patches for custom health checks |
+| 85 | registry | In-cluster OCI image registry at a pinned ClusterIP (kind clusters) |
+| 86 | registry-hosts | PostSync Job writing per-node containerd `hosts.toml` for the in-cluster registry |
 | 100 | workloads (parent) | Workloads App of Apps |
 | 105 | cfk-operator | Confluent for Kubernetes operator (CRDs and webhooks) |
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |

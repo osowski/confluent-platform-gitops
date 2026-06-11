@@ -1,0 +1,72 @@
+---
+# Writes the per-node containerd hosts.toml marking the in-cluster registry
+# insecure. Local kind demo only. See ADR 0007.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: registry-hosts
+  namespace: registry
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  # Must equal the node count so the podAntiAffinity lands exactly one pod
+  # per node; patched per cluster overlay
+  completions: 1
+  parallelism: 1
+  backoffLimit: 6
+  # Garbage-collect the finished Job and its pods after an hour;
+  # BeforeHookCreation still recreates it on the next sync regardless
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: registry-hosts
+    spec:
+      restartPolicy: OnFailure
+      # Tolerate everything so a pod also lands on the control-plane node
+      tolerations:
+        - operator: Exists
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: registry-hosts
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: write-hosts-toml
+          image: busybox:1.37
+          securityContext:
+            privileged: true
+          env:
+            - name: REGISTRY_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: registry-hosts-config
+                  key: REGISTRY_ADDR
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              mkdir -p "/host-certs.d/${REGISTRY_ADDR}"
+              cat > "/host-certs.d/${REGISTRY_ADDR}/hosts.toml" <<EOF
+              server = "http://${REGISTRY_ADDR}"
+
+              [host."http://${REGISTRY_ADDR}"]
+                capabilities = ["pull", "resolve"]
+              EOF
+              echo "Wrote hosts.toml for ${REGISTRY_ADDR} on node ${NODE_NAME}"
+          volumeMounts:
+            - name: certs-d
+              mountPath: /host-certs.d
+      volumes:
+        - name: certs-d
+          hostPath:
+            path: /etc/containerd/certs.d
+            type: DirectoryOrCreate

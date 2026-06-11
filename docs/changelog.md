@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **flink-demo — in-cluster image registry** ([#281](https://github.com/osowski/confluent-platform-gitops/issues/281)): `registry:2` at pinned ClusterIP `10.96.0.50:5000`, with per-node containerd `hosts.toml` written by an ArgoCD PostSync-hook Job. Requires a freshly created kind cluster to pick up the new containerd `config_path` setting.
 - **flink-demo-rbac-mtls — Kafka↔KRaft controller mTLS** ([#273](https://github.com/osowski/confluent-platform-gitops/issues/273)): controller quorum listener now uses cert-manager-issued mTLS (cert CN→`User:kafka`) while OIDC/RBAC stays for all other auth. Changing listener auth requires a clean CFK redeploy (see cluster README).
 
 ## [0.7.0] - 2026-05-13
