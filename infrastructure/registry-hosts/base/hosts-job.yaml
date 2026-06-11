@@ -49,10 +49,11 @@ spec:
           securityContext:
             privileged: true
           env:
-            # Must match the pinned ClusterIP of the registry Service
-            # (infrastructure/registry/base/service.yaml)
             - name: REGISTRY_ADDR
-              value: "10.96.0.50:5000"
+              valueFrom:
+                configMapKeyRef:
+                  name: registry-hosts-config
+                  key: REGISTRY_ADDR
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
