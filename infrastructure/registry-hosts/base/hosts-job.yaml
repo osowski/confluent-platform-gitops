@@ -27,6 +27,9 @@ spec:
   completions: 1
   parallelism: 1
   backoffLimit: 6
+  # Garbage-collect the finished Job and its pods after an hour;
+  # BeforeHookCreation still recreates it on the next sync regardless
+  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       labels:
