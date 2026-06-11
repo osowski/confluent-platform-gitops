@@ -1,8 +1,6 @@
 ---
 # Writes the per-node containerd hosts.toml marking the in-cluster registry
-# insecure. Requires config_path set at cluster-create time (kind-config.yaml);
-# no containerd restart needed. Privileged + writable hostPath — local kind
-# demo only. See ADR 0007.
+# insecure. Local kind demo only. See ADR 0007.
 apiVersion: batch/v1
 kind: Job
 metadata:

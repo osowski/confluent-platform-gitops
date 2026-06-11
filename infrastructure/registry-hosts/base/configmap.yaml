@@ -1,7 +1,6 @@
 ---
 # Supplies the registry address to the registry-hosts Job and gives this
-# Application a non-hook resource: an app containing only hooks is trivially
-# Synced, so automated sync (and the PostSync hook) would never fire.
+# Application a non-hook resource ensuring the PostSync hook fires.
 apiVersion: v1
 kind: ConfigMap
 metadata:
