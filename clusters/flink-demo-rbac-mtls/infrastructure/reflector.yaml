@@ -20,7 +20,7 @@ spec:
           # Current use case: Replicate mds-token secret from kafka to operator namespace
           # for CMF to validate MDS-signed SSO tokens from Control Center
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: feature-274/inter-broker-mtls
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
