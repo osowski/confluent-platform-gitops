@@ -23,12 +23,26 @@ This variant layers cert-manager-automated TLS + mutual TLS on top of the existi
 
 **Phase 1 — Kafka ↔ KRaft controller (implemented):**
 - KRaft **controller** listener serves TLS and requires client certs (`authentication.type: mtls`); the cert CN maps to `User:kafka` (an existing RBAC superuser) via `principalMappingRules`.
-- Brokers present `kafka-broker-mtls` as their client identity when connecting to the controller.
+- Brokers present `kafka-broker-mtls` as their client identity when connecting to the controller (the broker does not serve TLS to its own clients this phase).
 - Verify on a running cluster — controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener.
-- **Not yet mTLS (later phases):** internal inter-broker listener and external NodePort listener remain OAuth/plaintext; Schema Registry still authenticates to Kafka via OAuth.
+
+**Phase 2 — Kafka inter-broker replication (implemented):**
+- The **`REPLICATION`** listener (port 9072, the actual inter-broker path) serves TLS and requires client certs; peer brokers and the KRaft controller's embedded clients authenticate with their CN=kafka certs.
+- Verify: broker config shows `REPLICATION:SSL` in `listener.security.protocol.map` and `listener.name.replication.ssl.client.auth=required`; under-replicated partitions stay at 0.
+- **Not yet mTLS (later phases):** the `INTERNAL` client listener (SR/C3/CMF — still OAuth over plaintext), external NodePort listener, and Schema Registry's own API.
+
+### Certificate renewal — what to expect (safe, automatic)
+
+Routine cert renewal is **not** the same as changing a listener's auth type, and it requires no operator action:
+
+1. cert-manager renews each leaf cert in place at ~2/3 of its 90-day lifetime (same Secret name, new content).
+2. CFK tracks every Secret referenced by the Kafka/KRaft CRs; on content change it starts an operator-controlled **rolling restart, one broker at a time**, gated by readiness/URP pre-checks between pods (observed live: `starting kafka roll workflow` → `cluster not rollable from roll pre checks` → waits until replicas are back in sync before the next pod).
+3. Clients are unaffected; the new cert chains to the same CA distributed by trust-manager.
+
+To force a renewal for demonstration: temporarily patch the Certificate's `renewBefore` close to its `duration` (or use `cmctl renew`), watch the roll, then re-sync `confluent-resources` to restore the declared value.
 
 > [!IMPORTANT]
-> **Changing listener auth requires a clean redeploy, not an in-place roll.** Flipping a CFK quorum/inter-broker listener between OAuth and mTLS cannot be done by rolling restart — the KRaft quorum cannot re-form across a mixed-auth window. To (re)apply mTLS listener changes: delete the CFK CRs (`kafka`, `kraftcontroller`, `schemaregistry`, `controlcenter`, `kafkarestclass`) and their PVCs, then re-sync `confluent-resources` so the stack comes up mTLS-from-start. `confluent-resources` is a **manual-sync** ArgoCD application.
+> **Changing listener auth (OAuth ↔ mTLS) requires a clean redeploy, not an in-place roll.** The KRaft quorum cannot re-form across a mixed-auth window. To (re)apply mTLS listener changes: delete the CFK CRs (`kafka`, `kraftcontroller`, `schemaregistry`, `controlcenter`, `kafkarestclass`) and their PVCs, then re-sync `confluent-resources` so the stack comes up mTLS-from-start. `confluent-resources` is a **manual-sync** ArgoCD application. (Routine cert renewal, above, is safe and automatic — do not tear down for renewals.)
 
 ## Getting Started
 

@@ -43,7 +43,8 @@ spec:
           enabled: false
 
     # ==============================================================================
-    # INTERNAL LISTENER - OAuth authentication for inter-broker communication
+    # INTERNAL LISTENER - OAuth authentication for internal clients (SR, C3, CMF)
+    # Unchanged in Phase 2; client mTLS migration is a later phase.
     # ==============================================================================
     internal:
       authentication:
@@ -56,6 +57,24 @@ spec:
           jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
           subClaimName: client_id
           groupsClaimName: groups
+
+    # ==============================================================================
+    # REPLICATION LISTENER - TLS + mTLS for inter-broker traffic (Phase 2, #274)
+    # Peers are brokers (kafka-broker-mtls) and the KRaft controller's embedded
+    # clients (kraftcontroller-mtls); both certs carry CN=kafka -> User:kafka
+    # (existing RBAC superuser), so no new role bindings are needed.
+    # ==============================================================================
+    replication:
+      tls:
+        enabled: true
+      authentication:
+        type: mtls
+        principalMappingRules:
+          - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
+        mtls:
+          # Mandatory client-cert auth (reject anonymous), matching the
+          # controller listener hardening from Phase 1.
+          sslClientAuthentication: required
 
   # ==============================================================================
   # RESOURCE LIMITS - Tuned for 24GB total cluster memory
