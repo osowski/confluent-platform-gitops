@@ -266,7 +266,7 @@ spec:
                 fi
               fi
 
-              echo "[6/7] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/7] Creating/updating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -276,7 +276,19 @@ spec:
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
               elif [ "$HTTP_CODE" = "409" ]; then
-                echo "  -> Already exists (HTTP 409), skipping"
+                echo "  -> Exists, updating pool config (PUT)..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/shapes-env/compute-pools/shapes-pool \
+                  -d @/config/pool/compute-pool.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                  echo "  -> Updated: HTTP $HTTP_CODE"
+                else
+                  # Pool updates are rejected while a statement runs on the pool; non-fatal,
+                  # the [7/7] step deletes a FAILED statement so the next sync can apply config.
+                  echo "  -> WARN: pool update HTTP $HTTP_CODE (running statement?); continuing"
+                fi
               else
                 echo "  -> Error: HTTP $HTTP_CODE"
                 echo "  -> $RESPONSE_BODY"

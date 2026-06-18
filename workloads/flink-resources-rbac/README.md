@@ -144,3 +144,10 @@ kubectl -n kafka exec -it <kafka-pod> -- kafka-avro-console-consumer \
 > (`1.19-cp8` at time of writing — verify with `skopeo list-tags docker://confluentinc/cp-flink-sql`).
 > The SQL functions in the statement (`TO_BASE64`, `ENCODE`, `CONCAT`) target Flink 1.19;
 > validate at deploy time if bumping the image.
+
+> **OAuth allow-list:** the `cp-flink-sql` image's (shaded) Kafka client enforces an OAUTHBEARER
+> token-endpoint allow-list that defaults to empty, so the compute pool sets
+> `env.java.opts.all: -Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=<keycloak token url>`.
+> Without it the statement's Flink job crash-loops with "URL cannot be accessed due to restrictions".
+> Changing compute-pool `flinkConfiguration` is applied via PUT on re-sync; if a statement is
+> running on the pool, delete the statement first so the update is accepted.

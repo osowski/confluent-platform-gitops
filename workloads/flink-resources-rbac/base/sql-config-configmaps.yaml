@@ -69,7 +69,8 @@ data:
             "execution.checkpointing.max-concurrent-checkpoints": "1",
             "high-availability.type": "kubernetes",
             "high-availability.storageDir": "s3://warehouse/ha/shapes/",
-            "state.checkpoints.num-retained": "10"
+            "state.checkpoints.num-retained": "10",
+            "env.java.opts.all": "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
           },
           "podTemplate": {
             "spec": {
@@ -216,7 +217,8 @@ data:
             "execution.checkpointing.max-concurrent-checkpoints": "1",
             "high-availability.type": "kubernetes",
             "high-availability.storageDir": "s3://warehouse/ha/colors/",
-            "state.checkpoints.num-retained": "10"
+            "state.checkpoints.num-retained": "10",
+            "env.java.opts.all": "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
           },
           "podTemplate": {
             "spec": {
