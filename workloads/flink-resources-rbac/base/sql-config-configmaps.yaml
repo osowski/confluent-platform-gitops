@@ -123,9 +123,11 @@ data:
     }
 ---
 # Shapes Flink SQL Statement
-# Continuous INSERT INTO enrichment: reads shapes-sql-input, writes shapes-sql-output.
-# Mirrors the JAR job's enrichment by adding an 'encoded' column; error/original are NULL
-# on the happy path. SQL functions target Flink 1.19 (cp-flink-sql:1.19-cp8) — validate at deploy.
+# Continuous INSERT INTO enrichment: reads the existing shapes-input topic (shared with the
+# JAR FlinkApplication) and writes enriched records to the dedicated shapes-sql-output topic.
+# Adds an 'encoded' column mirroring the JAR job; error/original are NULL on the happy path.
+# An explicit column list is used so the inferred sink's leading raw `key` (BYTES) column is
+# left NULL. SQL functions target Flink 1.19 (cp-flink-sql:1.19-cp8) — validate at deploy.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -140,7 +142,7 @@ data:
         "name": "shapes-sql-enrich"
       },
       "spec": {
-        "statement": "INSERT INTO `shapes-sql-output` SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `shapes-sql-input`;",
+        "statement": "INSERT INTO `shapes-sql-output` (`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`) SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `shapes-input`;",
         "properties": {
           "sql.current-catalog": "shapes-catalog",
           "sql.current-database": "shapes-database"

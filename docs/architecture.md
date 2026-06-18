@@ -282,7 +282,7 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - MinIO provides S3-compatible storage for Flink checkpoints/savepoints
 - Reflector replicates secrets across tenant namespaces
 
-**Flink SQL statement pipeline:** Alongside the JAR-based `FlinkApplication` jobs, the shapes environment runs a standalone Flink SQL statement created through the CMF Statements API (`POST /environments/shapes-env/statements`) by the `shapes-sql-init` PostSync hook. A continuous `INSERT INTO` reads the dedicated `shapes-sql-input` topic and writes enriched records to `shapes-sql-output` — both kept under the `shapes-` prefix so the `sa-shapes-flink` ResourceOwner bindings authorize the statement's Kafka I/O. The pipeline is fully isolated from the JAR topics. See [flink-resources-rbac README](../workloads/flink-resources-rbac/README.md#flink-sql-statement-pipeline).
+**Flink SQL statement pipeline:** Alongside the JAR-based `FlinkApplication` jobs, the shapes environment runs a standalone Flink SQL statement created through the CMF Statements API (`POST /environments/shapes-env/statements`) by the `shapes-sql-init` PostSync hook. A continuous `INSERT INTO` reads the existing `shapes-input` topic (shared with the JAR job) and writes enriched records to a dedicated `shapes-sql-output` topic — kept under the `shapes-` prefix so the `sa-shapes-flink` ResourceOwner bindings authorize the statement's Kafka I/O. The same input thus feeds both the JAR pipeline (→ `shapes-output`) and the SQL pipeline (→ `shapes-sql-output`), while never writing to the JAR output topics. See [flink-resources-rbac README](../workloads/flink-resources-rbac/README.md#flink-sql-statement-pipeline).
 
 ### AWS EKS Architecture (eks-demo cluster)
 

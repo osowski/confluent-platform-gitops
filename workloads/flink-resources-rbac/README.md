@@ -99,35 +99,39 @@ This ensures users can only manage Flink resources in their assigned environment
 
 ## Flink SQL Statement Pipeline
 
-A standalone, RBAC-secured Flink SQL pipeline runs alongside the JAR-based `FlinkApplication`
-jobs in the shapes environment. It is fully isolated — it does **not** write to the JAR
-pipeline topics (`shapes-output`, `shapes-state`).
+A standalone, RBAC-secured Flink SQL statement runs alongside the JAR-based `FlinkApplication`
+jobs in the shapes environment. It **reads the existing `shapes-input` topic** (shared with the
+JAR job) and writes enriched records to a dedicated `shapes-sql-output` topic — so the same
+input feeds both the JAR pipeline (→ `shapes-output`) and the SQL pipeline (→ `shapes-sql-output`),
+demonstrating JAR/SQL parity. It does **not** write to the JAR output topics (`shapes-output`,
+`shapes-state`).
 
 **Resources** (all in `flink-shapes`):
 
 | Resource | Name | Notes |
 |----------|------|-------|
-| Input topic | `shapes-sql-input` | dedicated; `shapes-` prefix for RBAC |
+| Input topic | `shapes-input` | existing JAR-pipeline topic, read-only here |
 | Output topic | `shapes-sql-output` | dedicated; `shapes-` prefix for RBAC |
-| Input schema | `shapes-sql-input-value` | reuses `SensorEvent` ConfigMap |
 | Output schema | `shapes-sql-output-value` | reuses `ProcessedSensorEvent` ConfigMap |
 | Statement | `shapes-sql-enrich` | continuous `INSERT INTO`, on `shapes-pool` |
-| Producer | `shapes-sql-producer` | Deployment, `replicas: 0` by default |
+| Producer | `shapes-producer` | existing Deployment, `replicas: 0` by default |
 
 **How it works:**
 1. The `shapes-sql-init` PostSync-hook Job (step `[7/7]`) POSTs the statement JSON from the
    `shapes-statement-config` ConfigMap to `POST /cmf/api/v1/environments/shapes-env/statements`.
-   Idempotent: a `409` (already exists) is treated as success.
-2. The statement reads the inferred `shapes-sql-input` table, adds an `encoded` column
-   (mirroring the JAR enrichment), and writes `ProcessedSensorEvent` records to
-   `shapes-sql-output`. The Kafka tables are auto-inferred from the registered SR schemas.
+   Idempotent on re-sync: a `409` is left in place; a statement left in `FAILED` is deleted and
+   recreated (statement SQL is immutable in CMF).
+2. The statement reads the inferred `shapes-input` table, adds an `encoded` column (mirroring the
+   JAR enrichment), and writes `ProcessedSensorEvent` records to `shapes-sql-output`. The Kafka
+   tables are auto-inferred from the registered SR schemas; an explicit `INSERT` column list
+   leaves the inferred sink's leading raw `key` (BYTES) column NULL.
 3. Topic/consumer-group/transactional-ID access is authorized via the `sa-shapes-flink`
    service account's `ResourceOwner` PREFIXED `shapes-` bindings.
 
 **Validate end-to-end:**
 ```bash
-# Feed the dedicated input
-kubectl -n flink-shapes scale deploy/shapes-sql-producer --replicas=1
+# Feed shapes-input (shared with the JAR job)
+kubectl -n flink-shapes scale deploy/shapes-producer --replicas=1
 # Confirm the statement is RUNNING
 confluent --environment shapes-env flink statement list
 # Inspect transformed output

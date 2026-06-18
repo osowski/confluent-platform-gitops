@@ -283,9 +283,26 @@ spec:
                 exit 1
               fi
 
-              # Create the Flink SQL statement (INSERT INTO shapes-sql-output
-              # SELECT ... FROM shapes-sql-input). Idempotent: POST, treat 409 as already-exists.
+              # Create the Flink SQL statement: continuous INSERT INTO shapes-sql-output
+              # SELECT ... FROM shapes-input. Statement SQL is immutable in CMF, so a prior
+              # statement left in FAILED is deleted first to allow a clean recreate on re-sync.
               echo "[7/7] Creating Flink SQL Statement: shapes-sql-enrich on shapes-pool"
+              EXIST_RESPONSE=$(curl --silent -w "\n%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich)
+              EXIST_CODE=$(echo "$EXIST_RESPONSE" | tail -n1)
+              EXIST_BODY=$(echo "$EXIST_RESPONSE" | head -n -1)
+              if [ "$EXIST_CODE" = "200" ]; then
+                EXIST_PHASE=$(echo "$EXIST_BODY" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+                echo "  -> Statement already exists (phase=${EXIST_PHASE:-unknown})"
+                if [ "$EXIST_PHASE" = "FAILED" ]; then
+                  echo "  -> Deleting FAILED statement before recreate..."
+                  curl --silent -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                    -X DELETE ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich >/dev/null
+                  sleep 5
+                fi
+              fi
+
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/statements \
@@ -295,7 +312,7 @@ spec:
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
               elif [ "$HTTP_CODE" = "409" ]; then
-                echo "  -> Already exists (HTTP 409), skipping create"
+                echo "  -> Already exists (HTTP 409), leaving in place"
               else
                 echo "  -> Error: HTTP $HTTP_CODE"
                 echo "  -> $RESPONSE_BODY"
