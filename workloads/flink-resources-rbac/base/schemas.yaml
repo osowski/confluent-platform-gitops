@@ -154,6 +154,38 @@ spec:
     format: avro
   compatibilityLevel: BACKWARD
 ---
+# Schema CRD: shapes-sql-input-value
+# Reuses the SensorEvent ConfigMap; subject backs the inferred shapes-sql-input Flink table
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: shapes-sql-input-value
+  namespace: flink-shapes
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-input-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+# Schema CRD: shapes-sql-output-value
+# Reuses the ProcessedSensorEvent ConfigMap; subject backs the inferred shapes-sql-output Flink table
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: shapes-sql-output-value
+  namespace: flink-shapes
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: sensor-event-output-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
 # ConfigMap: Input schema for colors namespace
 apiVersion: v1
 kind: ConfigMap

@@ -51,7 +51,7 @@ data:
         "type": "DEDICATED",
         "clusterSpec": {
           "flinkVersion": "v1_19",
-          "image": "confluentinc/cp-flink-sql:1.19-cp7",
+          "image": "confluentinc/cp-flink-sql:1.19-cp8",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",
@@ -122,6 +122,35 @@ data:
       }
     }
 ---
+# Shapes Flink SQL Statement
+# Continuous INSERT INTO enrichment: reads shapes-sql-input, writes shapes-sql-output.
+# Mirrors the JAR job's enrichment by adding an 'encoded' column; error/original are NULL
+# on the happy path. SQL functions target Flink 1.19 (cp-flink-sql:1.19-cp8) — validate at deploy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shapes-statement-config
+  namespace: flink-shapes
+data:
+  statement.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "Statement",
+      "metadata": {
+        "name": "shapes-sql-enrich"
+      },
+      "spec": {
+        "statement": "INSERT INTO `shapes-sql-output` SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `shapes-sql-input`;",
+        "properties": {
+          "sql.current-catalog": "shapes-catalog",
+          "sql.current-database": "shapes-database"
+        },
+        "computePoolName": "shapes-pool",
+        "parallelism": 1,
+        "stopped": false
+      }
+    }
+---
 # Colors Database - References Kafka cluster
 apiVersion: v1
 kind: ConfigMap
@@ -167,7 +196,7 @@ data:
         "type": "DEDICATED",
         "clusterSpec": {
           "flinkVersion": "v1_19",
-          "image": "confluentinc/cp-flink-sql:1.19-cp7",
+          "image": "confluentinc/cp-flink-sql:1.19-cp8",
           "flinkConfiguration": {
             "taskmanager.numberOfTaskSlots": "2",
             "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory",

@@ -96,3 +96,47 @@ When users access CMF directly:
 3. ❌ **CMF RBAC**: User has no DeveloperManage on colors-env → **Access Denied**
 
 This ensures users can only manage Flink resources in their assigned environments, even if they can deploy Kubernetes CRDs to their namespace.
+
+## Flink SQL Statement Pipeline
+
+A standalone, RBAC-secured Flink SQL pipeline runs alongside the JAR-based `FlinkApplication`
+jobs in the shapes environment. It is fully isolated — it does **not** write to the JAR
+pipeline topics (`shapes-output`, `shapes-state`).
+
+**Resources** (all in `flink-shapes`):
+
+| Resource | Name | Notes |
+|----------|------|-------|
+| Input topic | `shapes-sql-input` | dedicated; `shapes-` prefix for RBAC |
+| Output topic | `shapes-sql-output` | dedicated; `shapes-` prefix for RBAC |
+| Input schema | `shapes-sql-input-value` | reuses `SensorEvent` ConfigMap |
+| Output schema | `shapes-sql-output-value` | reuses `ProcessedSensorEvent` ConfigMap |
+| Statement | `shapes-sql-enrich` | continuous `INSERT INTO`, on `shapes-pool` |
+| Producer | `shapes-sql-producer` | Deployment, `replicas: 0` by default |
+
+**How it works:**
+1. The `shapes-sql-init` PostSync-hook Job (step `[7/7]`) POSTs the statement JSON from the
+   `shapes-statement-config` ConfigMap to `POST /cmf/api/v1/environments/shapes-env/statements`.
+   Idempotent: a `409` (already exists) is treated as success.
+2. The statement reads the inferred `shapes-sql-input` table, adds an `encoded` column
+   (mirroring the JAR enrichment), and writes `ProcessedSensorEvent` records to
+   `shapes-sql-output`. The Kafka tables are auto-inferred from the registered SR schemas.
+3. Topic/consumer-group/transactional-ID access is authorized via the `sa-shapes-flink`
+   service account's `ResourceOwner` PREFIXED `shapes-` bindings.
+
+**Validate end-to-end:**
+```bash
+# Feed the dedicated input
+kubectl -n flink-shapes scale deploy/shapes-sql-producer --replicas=1
+# Confirm the statement is RUNNING
+confluent --environment shapes-env flink statement list
+# Inspect transformed output
+kubectl -n kafka exec -it <kafka-pod> -- kafka-avro-console-consumer \
+  --topic shapes-sql-output --from-beginning --max-messages 5 ...
+```
+
+> **Versions:** requires CMF chart **2.3.1+** (2.3.0 ships incorrectly built SQL jars). The
+> Flink SQL compute-pool image tracks the latest `confluentinc/cp-flink-sql` tag independently
+> (`1.19-cp8` at time of writing — verify with `skopeo list-tags docker://confluentinc/cp-flink-sql`).
+> The SQL functions in the statement (`TO_BASE64`, `ENCODE`, `CONCAT`) target Flink 1.19;
+> validate at deploy time if bumping the image.

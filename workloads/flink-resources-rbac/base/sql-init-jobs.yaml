@@ -132,7 +132,7 @@ spec:
                 sleep ${ENV_WAIT_INTERVAL}
               done
 
-              echo "[1/6] Creating/updating CMF Secret: kafka-oauth-secret-shapes"
+              echo "[1/7] Creating/updating CMF Secret: kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
@@ -156,7 +156,7 @@ spec:
                 fi
               fi
 
-              echo "[2/6] Creating/updating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
+              echo "[2/7] Creating/updating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
@@ -180,7 +180,7 @@ spec:
                 fi
               fi
 
-              echo "[3/6] Obtaining SR STATIC_TOKEN for shapes-catalog..."
+              echo "[3/7] Obtaining SR STATIC_TOKEN for shapes-catalog..."
               SR_TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
@@ -198,7 +198,7 @@ spec:
 
               echo "  -> SR token obtained (will be embedded as STATIC_TOKEN in catalog)"
 
-              echo "[4/6] Creating/updating KafkaCatalog: shapes-catalog (with STATIC_TOKEN)"
+              echo "[4/7] Creating/updating KafkaCatalog: shapes-catalog (with STATIC_TOKEN)"
               CATALOG_JSON=$(cat <<CATALOG_EOF
               {
                 "apiVersion": "cmf.confluent.io/v1",
@@ -242,7 +242,7 @@ spec:
                 fi
               fi
 
-              echo "[5/6] Creating/updating KafkaDatabase: shapes-database in shapes-catalog"
+              echo "[5/7] Creating/updating KafkaDatabase: shapes-database in shapes-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
@@ -266,7 +266,7 @@ spec:
                 fi
               fi
 
-              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/7] Creating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -283,6 +283,39 @@ spec:
                 exit 1
               fi
 
+              # Create the Flink SQL statement (INSERT INTO shapes-sql-output
+              # SELECT ... FROM shapes-sql-input). Idempotent: POST, treat 409 as already-exists.
+              echo "[7/7] Creating Flink SQL Statement: shapes-sql-enrich on shapes-pool"
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/shapes-env/statements \
+                -d @/config/statement/statement.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              elif [ "$HTTP_CODE" = "409" ]; then
+                echo "  -> Already exists (HTTP 409), skipping create"
+              else
+                echo "  -> Error: HTTP $HTTP_CODE"
+                echo "  -> $RESPONSE_BODY"
+                exit 1
+              fi
+
+              # Compilation + Flink cluster deployment is asynchronous; report phase best-effort
+              # and fail fast only if the statement compilation/deployment FAILED.
+              echo "  -> Checking statement phase..."
+              PHASE_RESPONSE=$(curl --silent \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich)
+              STMT_PHASE=$(echo "${PHASE_RESPONSE}" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+              echo "  -> Statement phase: ${STMT_PHASE:-unknown} (RUNNING expected once deployed)"
+              if [ "${STMT_PHASE}" = "FAILED" ]; then
+                echo "  -> ERROR: statement compilation/deployment FAILED"
+                echo "  -> ${PHASE_RESPONSE}"
+                exit 1
+              fi
+
               echo ""
               echo "Shapes environment initialization complete"
           volumeMounts:
@@ -294,6 +327,8 @@ spec:
               mountPath: /config/secret
             - name: secret-mapping-config
               mountPath: /config/secret-mapping
+            - name: statement-config
+              mountPath: /config/statement
       volumes:
         - name: database-config
           configMap:
@@ -307,6 +342,9 @@ spec:
         - name: secret-mapping-config
           configMap:
             name: shapes-secret-mapping-config
+        - name: statement-config
+          configMap:
+            name: shapes-statement-config
 ---
 # Colors SQL Initialization Job
 apiVersion: batch/v1
