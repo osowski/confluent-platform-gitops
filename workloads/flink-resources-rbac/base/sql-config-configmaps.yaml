@@ -143,7 +143,7 @@ data:
         "name": "shapes-sql-enrich"
       },
       "spec": {
-        "statement": "INSERT INTO `shapes-sql-output` (`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`) SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `shapes-input`;",
+        "statement": "INSERT INTO `shapes-sql-output` /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */ (`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`) SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `shapes-input` /*+ OPTIONS('properties.group.id' = 'shapes-sql-enrich') */;",
         "properties": {
           "sql.current-catalog": "shapes-catalog",
           "sql.current-database": "shapes-database"
