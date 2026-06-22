@@ -270,3 +270,34 @@ data:
         }
       }
     }
+---
+# Colors Flink SQL Statement
+# Continuous INSERT INTO enrichment: reads the existing colors-input topic (shared with the
+# JAR FlinkApplication) and writes enriched records to the dedicated colors-sql-output topic.
+# Adds an 'encoded' column mirroring the JAR job; error/original are NULL on the happy path.
+# An explicit column list is used so the inferred sink's leading raw `key` (BYTES) column is
+# left NULL. SQL functions target Flink 1.19 (cp-flink-sql:1.19-cp8) — validate at deploy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: colors-statement-config
+  namespace: flink-colors
+data:
+  statement.json: |
+    {
+      "apiVersion": "cmf.confluent.io/v1",
+      "kind": "Statement",
+      "metadata": {
+        "name": "colors-sql-enrich"
+      },
+      "spec": {
+        "statement": "INSERT INTO `colors-sql-output` /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */ (`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`) SELECT `timestamp`, `type`, `location`, `value`, `status`, `id`, TO_BASE64(ENCODE(CONCAT(`type`, '-', `location`), 'UTF-8')) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original` FROM `colors-input` /*+ OPTIONS('properties.group.id' = 'colors-sql-enrich') */;",
+        "properties": {
+          "sql.current-catalog": "colors-catalog",
+          "sql.current-database": "colors-database"
+        },
+        "computePoolName": "colors-pool",
+        "parallelism": 1,
+        "stopped": false
+      }
+    }
