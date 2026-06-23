@@ -132,7 +132,7 @@ spec:
                 sleep ${ENV_WAIT_INTERVAL}
               done
 
-              echo "[1/6] Creating/updating CMF Secret: kafka-oauth-secret-shapes"
+              echo "[1/7] Creating/updating CMF Secret: kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
@@ -156,7 +156,7 @@ spec:
                 fi
               fi
 
-              echo "[2/6] Creating/updating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
+              echo "[2/7] Creating/updating secret mapping: kafka-conn-secret-id-shapes -> kafka-oauth-secret-shapes"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/secret-mappings \
@@ -180,7 +180,7 @@ spec:
                 fi
               fi
 
-              echo "[3/6] Obtaining SR STATIC_TOKEN for shapes-catalog..."
+              echo "[3/7] Obtaining SR STATIC_TOKEN for shapes-catalog..."
               SR_TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
@@ -198,7 +198,7 @@ spec:
 
               echo "  -> SR token obtained (will be embedded as STATIC_TOKEN in catalog)"
 
-              echo "[4/6] Creating/updating KafkaCatalog: shapes-catalog (with STATIC_TOKEN)"
+              echo "[4/7] Creating/updating KafkaCatalog: shapes-catalog (with STATIC_TOKEN)"
               CATALOG_JSON=$(cat <<CATALOG_EOF
               {
                 "apiVersion": "cmf.confluent.io/v1",
@@ -242,7 +242,7 @@ spec:
                 fi
               fi
 
-              echo "[5/6] Creating/updating KafkaDatabase: shapes-database in shapes-catalog"
+              echo "[5/7] Creating/updating KafkaDatabase: shapes-database in shapes-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/shapes-catalog/databases \
@@ -266,7 +266,7 @@ spec:
                 fi
               fi
 
-              echo "[6/6] Creating ComputePool: shapes-pool in shapes-env"
+              echo "[6/7] Creating/updating ComputePool: shapes-pool in shapes-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/shapes-env/compute-pools \
@@ -276,10 +276,72 @@ spec:
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
               elif [ "$HTTP_CODE" = "409" ]; then
-                echo "  -> Already exists (HTTP 409), skipping"
+                echo "  -> Exists, updating pool config (PUT)..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/shapes-env/compute-pools/shapes-pool \
+                  -d @/config/pool/compute-pool.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                  echo "  -> Updated: HTTP $HTTP_CODE"
+                else
+                  # Pool updates are rejected while a statement runs on the pool; non-fatal,
+                  # the [7/7] step deletes a FAILED statement so the next sync can apply config.
+                  echo "  -> WARN: pool update HTTP $HTTP_CODE (running statement?); continuing"
+                fi
               else
                 echo "  -> Error: HTTP $HTTP_CODE"
                 echo "  -> $RESPONSE_BODY"
+                exit 1
+              fi
+
+              # Create the Flink SQL statement: continuous INSERT INTO shapes-sql-output
+              # SELECT ... FROM shapes-input. Statement SQL is immutable in CMF, so a prior
+              # statement left in FAILED is deleted first to allow a clean recreate on re-sync.
+              echo "[7/7] Creating Flink SQL Statement: shapes-sql-enrich on shapes-pool"
+              EXIST_RESPONSE=$(curl --silent -w "\n%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich)
+              EXIST_CODE=$(echo "$EXIST_RESPONSE" | tail -n1)
+              EXIST_BODY=$(echo "$EXIST_RESPONSE" | head -n -1)
+              if [ "$EXIST_CODE" = "200" ]; then
+                EXIST_PHASE=$(echo "$EXIST_BODY" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+                echo "  -> Statement already exists (phase=${EXIST_PHASE:-unknown})"
+                if [ "$EXIST_PHASE" = "FAILED" ]; then
+                  echo "  -> Deleting FAILED statement before recreate..."
+                  curl --silent -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                    -X DELETE ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich >/dev/null
+                  sleep 5
+                fi
+              fi
+
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/shapes-env/statements \
+                -d @/config/statement/statement.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              elif [ "$HTTP_CODE" = "409" ]; then
+                echo "  -> Already exists (HTTP 409), leaving in place"
+              else
+                echo "  -> Error: HTTP $HTTP_CODE"
+                echo "  -> $RESPONSE_BODY"
+                exit 1
+              fi
+
+              # Compilation + Flink cluster deployment is asynchronous; report phase best-effort
+              # and fail fast only if the statement compilation/deployment FAILED.
+              echo "  -> Checking statement phase..."
+              PHASE_RESPONSE=$(curl --silent \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/shapes-env/statements/shapes-sql-enrich)
+              STMT_PHASE=$(echo "${PHASE_RESPONSE}" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+              echo "  -> Statement phase: ${STMT_PHASE:-unknown} (RUNNING expected once deployed)"
+              if [ "${STMT_PHASE}" = "FAILED" ]; then
+                echo "  -> ERROR: statement compilation/deployment FAILED"
+                echo "  -> ${PHASE_RESPONSE}"
                 exit 1
               fi
 
@@ -294,6 +356,8 @@ spec:
               mountPath: /config/secret
             - name: secret-mapping-config
               mountPath: /config/secret-mapping
+            - name: statement-config
+              mountPath: /config/statement
       volumes:
         - name: database-config
           configMap:
@@ -307,6 +371,9 @@ spec:
         - name: secret-mapping-config
           configMap:
             name: shapes-secret-mapping-config
+        - name: statement-config
+          configMap:
+            name: shapes-statement-config
 ---
 # Colors SQL Initialization Job
 apiVersion: batch/v1
@@ -433,7 +500,7 @@ spec:
                 sleep ${ENV_WAIT_INTERVAL}
               done
 
-              echo "[1/6] Creating/updating CMF Secret: kafka-oauth-secret-colors"
+              echo "[1/7] Creating/updating CMF Secret: kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/secrets \
@@ -457,7 +524,7 @@ spec:
                 fi
               fi
 
-              echo "[2/6] Creating/updating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
+              echo "[2/7] Creating/updating secret mapping: kafka-conn-secret-id-colors -> kafka-oauth-secret-colors"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/secret-mappings \
@@ -481,7 +548,7 @@ spec:
                 fi
               fi
 
-              echo "[3/6] Obtaining SR STATIC_TOKEN for colors-catalog..."
+              echo "[3/7] Obtaining SR STATIC_TOKEN for colors-catalog..."
               SR_TOKEN_RESPONSE=$(curl -s -X POST ${KEYCLOAK_URL} \
                 -H "Content-Type: application/x-www-form-urlencoded" \
                 -d "grant_type=client_credentials" \
@@ -499,7 +566,7 @@ spec:
 
               echo "  -> SR token obtained (will be embedded as STATIC_TOKEN in catalog)"
 
-              echo "[4/6] Creating/updating KafkaCatalog: colors-catalog (with STATIC_TOKEN)"
+              echo "[4/7] Creating/updating KafkaCatalog: colors-catalog (with STATIC_TOKEN)"
               CATALOG_JSON=$(cat <<CATALOG_EOF
               {
                 "apiVersion": "cmf.confluent.io/v1",
@@ -543,7 +610,7 @@ spec:
                 fi
               fi
 
-              echo "[5/6] Creating/updating KafkaDatabase: colors-database in colors-catalog"
+              echo "[5/7] Creating/updating KafkaDatabase: colors-database in colors-catalog"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/catalogs/kafka/colors-catalog/databases \
@@ -567,7 +634,7 @@ spec:
                 fi
               fi
 
-              echo "[6/6] Creating ComputePool: colors-pool in colors-env"
+              echo "[6/7] Creating/updating ComputePool: colors-pool in colors-env"
               RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${ACCESS_TOKEN}" \
                 -X POST ${CMF_URL}/environments/colors-env/compute-pools \
@@ -577,10 +644,72 @@ spec:
               if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
                 echo "  -> Created: HTTP $HTTP_CODE"
               elif [ "$HTTP_CODE" = "409" ]; then
-                echo "  -> Already exists (HTTP 409), skipping"
+                echo "  -> Exists, updating pool config (PUT)..."
+                RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -X PUT ${CMF_URL}/environments/colors-env/compute-pools/colors-pool \
+                  -d @/config/pool/compute-pool.json)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                  echo "  -> Updated: HTTP $HTTP_CODE"
+                else
+                  # Pool updates are rejected while a statement runs on the pool; non-fatal,
+                  # the [7/7] step deletes a FAILED statement so the next sync can apply config.
+                  echo "  -> WARN: pool update HTTP $HTTP_CODE (running statement?); continuing"
+                fi
               else
                 echo "  -> Error: HTTP $HTTP_CODE"
                 echo "  -> $RESPONSE_BODY"
+                exit 1
+              fi
+
+              # Create the Flink SQL statement: continuous INSERT INTO colors-sql-output
+              # SELECT ... FROM colors-input. Statement SQL is immutable in CMF, so a prior
+              # statement left in FAILED is deleted first to allow a clean recreate on re-sync.
+              echo "[7/7] Creating Flink SQL Statement: colors-sql-enrich on colors-pool"
+              EXIST_RESPONSE=$(curl --silent -w "\n%{http_code}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/colors-env/statements/colors-sql-enrich)
+              EXIST_CODE=$(echo "$EXIST_RESPONSE" | tail -n1)
+              EXIST_BODY=$(echo "$EXIST_RESPONSE" | head -n -1)
+              if [ "$EXIST_CODE" = "200" ]; then
+                EXIST_PHASE=$(echo "$EXIST_BODY" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+                echo "  -> Statement already exists (phase=${EXIST_PHASE:-unknown})"
+                if [ "$EXIST_PHASE" = "FAILED" ]; then
+                  echo "  -> Deleting FAILED statement before recreate..."
+                  curl --silent -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                    -X DELETE ${CMF_URL}/environments/colors-env/statements/colors-sql-enrich >/dev/null
+                  sleep 5
+                fi
+              fi
+
+              RESPONSE=$(curl --silent -w "\n%{http_code}" -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X POST ${CMF_URL}/environments/colors-env/statements \
+                -d @/config/statement/statement.json)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "  -> Created: HTTP $HTTP_CODE"
+              elif [ "$HTTP_CODE" = "409" ]; then
+                echo "  -> Already exists (HTTP 409), leaving in place"
+              else
+                echo "  -> Error: HTTP $HTTP_CODE"
+                echo "  -> $RESPONSE_BODY"
+                exit 1
+              fi
+
+              # Compilation + Flink cluster deployment is asynchronous; report phase best-effort
+              # and fail fast only if the statement compilation/deployment FAILED.
+              echo "  -> Checking statement phase..."
+              PHASE_RESPONSE=$(curl --silent \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                -X GET ${CMF_URL}/environments/colors-env/statements/colors-sql-enrich)
+              STMT_PHASE=$(echo "${PHASE_RESPONSE}" | grep -o '"phase":"[^"]*' | cut -d'"' -f4)
+              echo "  -> Statement phase: ${STMT_PHASE:-unknown} (RUNNING expected once deployed)"
+              if [ "${STMT_PHASE}" = "FAILED" ]; then
+                echo "  -> ERROR: statement compilation/deployment FAILED"
+                echo "  -> ${PHASE_RESPONSE}"
                 exit 1
               fi
 
@@ -595,6 +724,8 @@ spec:
               mountPath: /config/secret
             - name: secret-mapping-config
               mountPath: /config/secret-mapping
+            - name: statement-config
+              mountPath: /config/statement
       volumes:
         - name: database-config
           configMap:
@@ -608,3 +739,6 @@ spec:
         - name: secret-mapping-config
           configMap:
             name: colors-secret-mapping-config
+        - name: statement-config
+          configMap:
+            name: colors-statement-config

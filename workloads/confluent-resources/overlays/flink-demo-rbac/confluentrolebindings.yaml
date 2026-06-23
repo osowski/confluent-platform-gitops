@@ -765,3 +765,49 @@ spec:
       resourceType: TransactionalId
   kafkaRestClassRef:
     name: default
+---
+# FLINK SQL CATALOG RBAC - Group access to Flink catalogs (Issue #158)
+# FlinkCatalog is a CMF cluster-level resource (no flinkEnvironmentId scope).
+# Without these, only cluster-level admins (SystemAdmin) can see/use the catalogs;
+# group developers (e.g. user-square in shapes) cannot view them in the Flink SQL UI.
+# DeveloperManage grants view + create/update (DDL on the catalog's tables).
+---
+# Shapes group - DeveloperManage on shapes-catalog
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-developermanage-catalog
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: shapes-catalog
+      resourceType: FlinkCatalog
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - DeveloperManage on colors-catalog
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-developermanage-catalog
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: colors-catalog
+      resourceType: FlinkCatalog
+  kafkaRestClassRef:
+    name: default
