@@ -18,6 +18,16 @@ patches:
       kind: Certificate
       name: argocd-server-tls
 
+  - path: headlamp-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: headlamp
+
+  - path: headlamp-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: headlamp-tls
+
 # Cluster-specific labels
 labels:
 - includeSelectors: false
