@@ -1,4 +1,4 @@
-# 9. Headlamp Kubernetes Dashboard: Deployment Model and OIDC Access
+# 9. Headlamp Kubernetes Dashboard: Deployment and Authentication
 
 Date: 2026-06-30
 
@@ -8,76 +8,53 @@ Accepted
 
 ## Context
 
-Issue [#148](https://github.com/osowski/confluent-platform-gitops/issues/148) adds an in-cluster Kubernetes dashboard to all clusters. The options considered were Kubernetes Dashboard (the upstream project) and Headlamp. Headlamp was selected for its native OIDC support, React-based extensibility, and active maintenance cadence.
+Issue [#148](https://github.com/osowski/confluent-platform-gitops/issues/148) adds an in-cluster Kubernetes dashboard to all clusters. Headlamp was selected over the upstream Kubernetes Dashboard for its lighter footprint, React-based extensibility, and active maintenance.
 
-Three questions arose during implementation:
-
-1. **How is Headlamp deployed and exposed?** — as a Helm chart via ArgoCD, consistent with all other infrastructure apps.
-2. **Who performs Kubernetes API authorization after login?** — Headlamp's own ServiceAccount or the end-user's OIDC identity mapped through the kube-apiserver.
-3. **How does Headlamp's pod reach the external Keycloak OIDC issuer on self-signed kind clusters?** — go-oidc (used by Headlamp) strictly validates that the `issuer` in the discovery document matches the configured URL; it cannot be disabled.
+Two questions had to be settled: how Headlamp is deployed/exposed, and how users authenticate. The clusters fall into two groups — three run Keycloak (`flink-demo-rbac`, `flink-demo-rbac-mtls`, `eks-demo`) and one does not (`flink-demo`) — so Keycloak OIDC SSO was initially attractive for the Keycloak clusters.
 
 ## Decision
 
 ### 1. Headlamp as the default in-cluster dashboard for all clusters
 
-Headlamp is deployed as a Helm-based infrastructure ArgoCD Application (`headlamp` chart 0.43.0, namespace `headlamp`). The Application manifest carries sync-wave 50 (alongside other infrastructure services); the Traefik IngressRoute and cert-manager Certificate are in a separate Application at sync-wave 80 to ensure Traefik and cert-manager are ready first.
+Headlamp is deployed as a Helm-based infrastructure ArgoCD Application (`headlamp` chart 0.43.0, namespace `headlamp`), sync-wave 50. The Traefik IngressRoute and cert-manager Certificate live in the centralized ingresses Application at sync-wave 80 (so Traefik and cert-manager are ready first). It is exposed at `headlamp.<cluster>.<domain>` with a cluster-specific cert, and is added to `scripts/new-cluster.sh` so every new cluster gets it by default.
 
-Headlamp is exposed at `headlamp.<cluster>.<domain>` via Traefik IngressRoute with a cluster-specific TLS certificate issued by cert-manager.
+The chart creates a `cluster-admin`-bound ServiceAccount for Headlamp.
 
-The `headlamp` infrastructure Application is added to `scripts/new-cluster.sh` so every new cluster gets it by default.
+### 2. Token-based authentication on all clusters
 
-### 2. Authorization model: OIDC gates login; cluster ServiceAccount performs API calls
+All clusters — including the three Keycloak clusters — use Headlamp's **token login**: the user pastes a Kubernetes bearer token, and Headlamp uses that token's identity for every API call. Access is gated by possession of a valid token, and the user's own RBAC applies.
 
-`config.unsafeUseServiceAccountToken: true` is set in all clusters. After a user authenticates (via OIDC or a bearer token), all Kubernetes API calls are made using Headlamp's own `cluster-admin`-bound ServiceAccount token, not the user's OIDC identity.
+No per-cluster Helm overlay is required; the base values are token-only. (The Application manifests still reference an optional `overlays/<cluster>/values.yaml` via `ignoreMissingValueFiles: true`, leaving room for future per-cluster configuration.)
 
-This means **every authenticated user has effective cluster-admin access**. This is acceptable for these demo clusters and avoids the alternative: configuring the kube-apiserver `--oidc-*` flags and per-group RBAC bindings, which would require cluster-wide API-server reconfiguration and is explicitly out of scope for the demo environments.
+### 3. Rejected: Keycloak built-in OIDC + `unsafeUseServiceAccountToken`
 
-For production use, the ServiceAccount token approach must be replaced with end-user OIDC passthrough. The client secret should be provisioned via `config.oidc.externalSecret` (referencing an ExternalSecret) rather than an inline value.
+The first implementation configured the three Keycloak clusters with Headlamp's built-in OIDC (`config.oidc.*`) plus `config.unsafeUseServiceAccountToken: true`, on the assumption that OIDC would gate UI login while the cluster-admin ServiceAccount performed API calls.
 
-### 3. Per-cluster auth matrix
+**This does not gate access and was rejected on security grounds.** Verified empirically: with `unsafeUseServiceAccountToken` set, Headlamp's backend uses the pod's cluster-admin ServiceAccount for **every** request regardless of authentication state. Unauthenticated requests to the Headlamp API (no token, no session cookie) returned HTTP 200 with live data — e.g. `GET /clusters/main/api/v1/secrets` returned cluster Secrets. Headlamp's OIDC button only affects the frontend; hitting the API path directly bypasses it. The chart's own documentation states this flag "disables per-user authentication and is only safe behind an auth proxy."
 
-| Cluster | Auth method |
-|---|---|
-| flink-demo | Token login only (no OIDC; no Keycloak) |
-| flink-demo-rbac | Keycloak OIDC SSO |
-| flink-demo-rbac-mtls | Keycloak OIDC SSO |
-| eks-demo | Keycloak OIDC SSO |
-| New clusters (script default) | Token login only |
+Exposed at `headlamp.<cluster>.<domain>`, that configuration would have granted **unauthenticated cluster-admin** (including read of all Secrets) to anyone able to reach the URL.
 
-### 4. In-cluster OIDC issuer reachability for self-signed kind clusters
+This decision also removes the machinery that approach required: per-cluster OIDC Helm overlays, a `headlamp` Keycloak client (base + eks-demo realms) and its realm-sync-job secret update, reflection of `keycloak-tls` into the `headlamp` namespace, and the in-cluster issuer-reachability workaround (a non-GitOps CoreDNS rewrite / `hostAliases`). It also eliminates an infra→workload ordering dependency (the OIDC pod blocking on a Keycloak-tier secret).
 
-On `flink-demo-rbac` and `flink-demo-rbac-mtls`, Keycloak is exposed at an external hostname (`keycloak.<cluster>.<domain>`) with a self-signed certificate issued by a cluster-local `selfsigned-cluster-issuer`. Headlamp's go-oidc library performs strict issuer URL comparison — the `issuer` in Keycloak's discovery document must exactly match the configured issuer URL — and provides no TLS-skip flag.
+### 4. Keycloak SSO deferred to a future auth-proxy design
 
-Two mechanisms are combined to make Headlamp's pod reach Keycloak:
-
-**a. Certificate trust:** The `keycloak-tls` Secret (created by cert-manager in the `keycloak` namespace) is reflected into the `headlamp` namespace via Reflector. Headlamp's Deployment mounts this cert and sets `SSL_CERT_FILE` so go-oidc trusts it.
-
-**b. DNS resolution:** A CoreDNS rewrite rule is added so `keycloak.<cluster>.<domain>` resolves to the in-cluster Traefik ClusterIP. This preserves the exact external hostname (and therefore the `Host` header / SNI), keeping the issuer claim consistent. The rewrite is a one-time bootstrap step applied via `kubectl` — it cannot be expressed purely in GitOps because the CoreDNS ConfigMap is managed by kind and patching it via ArgoCD would conflict. The exact command is documented in each cluster's README.
-
-`eks-demo` requires neither mechanism: it uses real DNS and a Let's Encrypt certificate.
-
-The `selfsigned-cluster-issuer` is a pure `SelfSigned` issuer and does not produce a shared CA certificate, ruling out a simpler CA-bundle injection approach.
+Genuine Keycloak SSO will be reintroduced by placing a real authentication gate **in front of** Headlamp — `oauth2-proxy` performing the OIDC flow, enforced via a Traefik `forwardAuth` middleware — with Headlamp keeping `unsafeUseServiceAccountToken` behind the proxy. That is the topology the flag is designed for. It is tracked as a separate follow-up rather than blocking the dashboard rollout.
 
 ## Consequences
 
 **Positive:**
 
-- All clusters get a consistent, OIDC-capable dashboard with minimal per-cluster configuration.
-- The per-cluster auth matrix is explicit and auditable in Git.
-- The ServiceAccount token model is simple to reason about for demo environments.
-- The certificate reflection + CoreDNS approach avoids TLS errors without patching Headlamp itself.
+- All clusters get a consistent dashboard with no open-access hole; access requires a valid Kubernetes token, and the token's own RBAC applies (no blanket cluster-admin for every visitor).
+- Removing the OIDC overlays, Keycloak client, cert reflection, and CoreDNS step makes the feature fully GitOps-managed with no manual bootstrap steps.
 
 **Negative / constraints:**
 
-- `unsafeUseServiceAccountToken: true` grants every authenticated user cluster-admin. This is a deliberate demo tradeoff and must not be carried forward to production clusters.
-- The CoreDNS rewrite is a documented manual bootstrap step (not GitOps-managed). Any cluster rebuild requires re-applying it; this is noted in each cluster's README.
-- The reflected `keycloak-tls` Secret must be re-reflected after cert-manager renews the Keycloak certificate. Reflector handles this automatically if configured, but the annotation must be present on the source Secret.
-- Headlamp chart upgrades must be verified against the `config.oidc` and `config.unsafeUseServiceAccountToken` API surface; breaking changes in the values schema would require overlay updates across all Keycloak clusters.
+- No single sign-on yet on the Keycloak clusters; users must supply a token (e.g. `kubectl -n headlamp create token <sa>`) until the auth-proxy follow-up lands.
+- The chart-created ServiceAccount remains `cluster-admin`; a user who obtains that SA's token gets cluster-admin. A read-only default ClusterRole would be a safer baseline and should be considered in the SSO follow-up.
 
 ## Related
 
 - [#148](https://github.com/osowski/confluent-platform-gitops/issues/148)
-- `infrastructure/headlamp/` (base manifests and per-cluster overlays)
-- `clusters/flink-demo-rbac/README.md` and `clusters/flink-demo-rbac-mtls/README.md` (CoreDNS rewrite commands)
+- `infrastructure/headlamp/` (base manifests; per-cluster overlays optional)
 - [ADR-0002](0002-cfk-component-sync-wave-ordering.md) — sync-wave ordering conventions
 - [docs/architecture.md](../docs/architecture.md) — infrastructure application deployment model

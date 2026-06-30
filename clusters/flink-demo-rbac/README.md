@@ -237,28 +237,14 @@ confluent flink application list --environment shapes-env
 
 **Headlamp Kubernetes Dashboard:**
 - **URL**: https://headlamp.flink-demo-rbac.confluentdemo.local
-- **Auth**: Keycloak OIDC SSO — click **Sign in with OIDC** and log in with any demo user (e.g., `admin@osow.ski` / `admin123`)
-
-> [!NOTE]
-> **One-time CoreDNS bootstrap step (required for OIDC):** Headlamp must resolve `keycloak.flink-demo-rbac.confluentdemo.local` to the in-cluster Traefik service for OIDC to work. Add the rewrite once after cluster creation:
->
-> ```bash
-> kubectl -n kube-system edit configmap coredns
-> ```
->
-> In the `Corefile` data, add this line inside the `.:53` block (e.g., after the `ready` line):
->
-> ```
-> rewrite name exact keycloak.flink-demo-rbac.confluentdemo.local traefik.ingress.svc.cluster.local
-> ```
->
-> Then restart CoreDNS to apply:
->
-> ```bash
-> kubectl -n kube-system rollout restart deploy/coredns
-> ```
->
-> Without this rewrite, Headlamp's OIDC token exchange will fail because the Keycloak hostname does not resolve inside the cluster.
+- **Auth**: Token-based — generate a token from the chart's ServiceAccount:
+  ```bash
+  # List ServiceAccounts in the headlamp namespace to confirm the name
+  kubectl -n headlamp get sa
+  # Generate a token (replace 'headlamp' with the actual SA name if different)
+  kubectl -n headlamp create token headlamp
+  ```
+  Paste the token into the Headlamp login screen. (Keycloak SSO is deferred to a future auth-proxy design — see [ADR-0009](../../adrs/0009-headlamp-dashboard-oidc-access.md).)
 
 ### Port-Forwarding (Fallback/Troubleshooting)
 

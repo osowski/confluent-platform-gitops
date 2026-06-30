@@ -198,7 +198,7 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 
 **Headlamp Kubernetes Dashboard:**
 - **URL**: https://headlamp.eks-demo.platform.dspdemos.com
-- **Auth**: Keycloak OIDC SSO — click **Sign in with OIDC** and log in with your Keycloak credentials
+- **Auth**: Token-based — generate a token with `kubectl -n headlamp create token headlamp` (run `kubectl -n headlamp get sa` to confirm the ServiceAccount name) and paste it into the login screen. (Keycloak SSO is deferred to a future auth-proxy design — see [ADR-0009](../../adrs/0009-headlamp-dashboard-oidc-access.md).)
 
 ## Sharing Access With Other Users
 

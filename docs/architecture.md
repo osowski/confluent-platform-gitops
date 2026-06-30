@@ -60,7 +60,7 @@ Platform infrastructure components deployed before workloads.
 - **vault** (wave 40) - HashiCorp Vault for secrets management and encryption services
 - **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI access
 - **vault-config** (wave 50) - Post-deployment Job to configure transit encryption engine
-- **headlamp** (wave 50) - Kubernetes dashboard (chart `0.43.0`), namespace `headlamp`, cluster-admin SA; token login by default, Keycloak OIDC SSO on RBAC clusters
+- **headlamp** (wave 50) - Kubernetes dashboard (chart `0.43.0`), namespace `headlamp`, cluster-admin SA; token-based login on all clusters
 - **headlamp-ingress** (wave 80) - Traefik IngressRoute + cert-manager Certificate for Headlamp UI access
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificate resources
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI access
@@ -238,19 +238,9 @@ Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., 
 
 Headlamp is a Helm-based infrastructure application (chart `headlamp` 0.43.0 from `https://kubernetes-sigs.github.io/headlamp/`) deployed to the `headlamp` namespace with a cluster-admin ServiceAccount. It is exposed via a Traefik IngressRoute and cert-manager Certificate at `headlamp.<cluster>.<domain>`.
 
-**Auth matrix:**
+**Authentication:** All clusters use Headlamp's **token login** — the user pastes a Kubernetes bearer token (e.g. `kubectl -n headlamp create token <sa>`) at the login prompt, and Headlamp uses that token's identity (and RBAC) for API calls.
 
-| Cluster | Auth mode |
-|---------|-----------|
-| flink-demo | Token login (default) |
-| flink-demo-rbac | Keycloak OIDC SSO |
-| flink-demo-rbac-mtls | Keycloak OIDC SSO |
-| eks-demo | Keycloak OIDC SSO |
-| new clusters (template default) | Token login |
-
-With OIDC SSO, Keycloak gates the UI login while API calls use the cluster-admin SA (`config.unsafeUseServiceAccountToken: true`). Token-based clusters require pasting a `kubectl`-generated ServiceAccount token at the login prompt.
-
-**Self-signed kind cluster OIDC reachability:** On `flink-demo-rbac` and `flink-demo-rbac-mtls`, Headlamp must reach Keycloak in-cluster for OIDC. Two one-time bootstrap steps are required: (1) reflect the `keycloak-tls` cert into the `headlamp` namespace and mount it via `SSL_CERT_FILE` (handled by Reflector + overlay); (2) a CoreDNS rewrite so `keycloak.<cluster>.<domain>` resolves to the in-cluster Traefik service. See the cluster README for the exact commands. `eks-demo` requires neither step (real DNS + Let's Encrypt).
+Keycloak OIDC SSO is intentionally **not** used. Headlamp's built-in OIDC combined with `config.unsafeUseServiceAccountToken` does not gate API access — the backend serves every request as the cluster-admin ServiceAccount regardless of login — so that combination would expose unauthenticated cluster-admin. Real SSO will be added later behind an auth proxy (oauth2-proxy + Traefik `forwardAuth`); see [ADR-0009](../adrs/0009-headlamp-dashboard-oidc-access.md).
 
 ### Kafka External Access (flink-demo cluster)
 
