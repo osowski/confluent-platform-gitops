@@ -19,6 +19,7 @@ NC='\033[0m' # No Color
 # Configuration
 DEFAULT_REVISION="HEAD"
 DRY_RUN=false
+ASSUME_YES=false
 
 # Helper functions
 error() {
@@ -51,6 +52,7 @@ Arguments:
 
 Options:
   --dry-run         Preview changes without modifying files
+  -y, --yes         Skip the confirmation prompt (required for non-interactive use)
 
 Requirements:
   - yq (install with: brew install yq)
@@ -387,6 +389,10 @@ main() {
                 DRY_RUN=true
                 shift
                 ;;
+            -y|--yes)
+                ASSUME_YES=true
+                shift
+                ;;
             -*)
                 error "Unknown option: $1"
                 usage
@@ -462,13 +468,18 @@ main() {
         exit 0
     fi
 
-    # Confirm with user
-    echo ""
-    read -rp "Proceed with update? [y/N] " confirm
-
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        info "Cancelled"
-        exit 0
+    # Confirm with user (skip when --yes; fail clearly when non-interactive)
+    if [ "$ASSUME_YES" != true ]; then
+        if [ ! -t 0 ]; then
+            error "Non-interactive shell detected; re-run with --yes to confirm the update"
+            exit 1
+        fi
+        echo ""
+        read -rp "Proceed with update? [y/N] " confirm || confirm=""
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            info "Cancelled"
+            exit 0
+        fi
     fi
 
     echo ""
