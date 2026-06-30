@@ -6,13 +6,15 @@ config:
 
 # The cluster-admin binding backs the documented access UX (mint a token with
 # `kubectl -n headlamp create token headlamp` and paste it at login). Headlamp
-# uses the user's pasted token for API calls, not this ServiceAccount, so the SA
-# token is NOT mounted into the pod — this limits blast radius if Headlamp is
-# compromised. (Revisit a read-only baseline with the SSO follow-up.)
+# forwards that pasted token for API calls, but it still needs its OWN mounted
+# ServiceAccount token to build the in-cluster API client (rest.InClusterConfig
+# reads /var/run/secrets/.../token + ca.crt) — disabling automount breaks the
+# in-cluster context ("failed to get in-cluster context"). The token mount must
+# therefore stay enabled. Scoping this SA to a read-only role (or fronting
+# Headlamp with an auth proxy) is tracked in the SSO follow-up.
 clusterRoleBinding:
   create: true
   clusterRoleName: cluster-admin
-automountServiceAccountToken: false
 
 # ClusterIP service; ingress is provided by infrastructure/ingresses (Traefik).
 service:
