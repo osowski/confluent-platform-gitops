@@ -1,11 +1,18 @@
-# Headlamp base values — token-based login, cluster-admin service account.
-# Per-cluster overlays add OIDC SSO. See docs/architecture.md.
+# Headlamp base values — token-based login on all clusters.
+# Per-cluster overlays are optional (none currently). See docs/architecture.md
+# and adrs/0009 for the auth model and the deferred-SSO follow-up.
 config:
   inCluster: true
 
+# The cluster-admin binding backs the documented access UX (mint a token with
+# `kubectl -n headlamp create token headlamp` and paste it at login). Headlamp
+# uses the user's pasted token for API calls, not this ServiceAccount, so the SA
+# token is NOT mounted into the pod — this limits blast radius if Headlamp is
+# compromised. (Revisit a read-only baseline with the SSO follow-up.)
 clusterRoleBinding:
   create: true
   clusterRoleName: cluster-admin
+automountServiceAccountToken: false
 
 # ClusterIP service; ingress is provided by infrastructure/ingresses (Traefik).
 service:
