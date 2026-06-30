@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-148/headlamp-dashboard
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,7 @@ spec:
           name: flink-demo-rbac
           domain: confluentdemo.local
         git:
-          targetRevision: "HEAD"
+          targetRevision: "feature-148/headlamp-dashboard"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
