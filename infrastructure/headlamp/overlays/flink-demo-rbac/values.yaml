@@ -13,7 +13,8 @@ config:
     scopes: "openid profile email"
     callbackURL: https://headlamp.flink-demo-rbac.confluentdemo.local/oidc-callback
 
-# Trust Keycloak's self-signed cert (reflected into the headlamp namespace in Task 8).
+# Trust Keycloak's self-signed cert (reflected into the headlamp namespace by the
+# reflector annotations on the keycloak-tls Certificate).
 env:
   - name: SSL_CERT_FILE
     value: /etc/keycloak-ca/ca.crt
