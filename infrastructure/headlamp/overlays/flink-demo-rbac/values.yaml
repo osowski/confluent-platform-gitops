@@ -1,0 +1,30 @@
+# flink-demo-rbac OIDC SSO overlay.
+# DEMO: client secret supplied inline; the chart renders it into the `oidc` Secret.
+# In production, use config.oidc.externalSecret (enabled + name) referencing a Secret
+# (OIDC_CLIENT_ID / OIDC_CLIENT_SECRET / OIDC_ISSUER_URL / OIDC_SCOPES / OIDC_CALLBACK_URL)
+# sourced from a secrets manager.
+config:
+  # OIDC gates UI login; all API calls use the cluster-admin service account.
+  unsafeUseServiceAccountToken: true
+  oidc:
+    clientID: headlamp
+    clientSecret: headlamp-secret
+    issuerURL: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
+    scopes: "openid profile email"
+    callbackURL: https://headlamp.flink-demo-rbac.confluentdemo.local/oidc-callback
+
+# Trust Keycloak's self-signed cert (reflected into the headlamp namespace in Task 8).
+env:
+  - name: SSL_CERT_FILE
+    value: /etc/keycloak-ca/ca.crt
+volumes:
+  - name: keycloak-ca
+    secret:
+      secretName: keycloak-tls
+      items:
+        - key: ca.crt
+          path: ca.crt
+volumeMounts:
+  - name: keycloak-ca
+    mountPath: /etc/keycloak-ca
+    readOnly: true
