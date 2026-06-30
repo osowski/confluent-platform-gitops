@@ -310,6 +310,46 @@ data:
           ]
         },
         {
+          "clientId": "headlamp",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "redirectUris": [
+            "https://headlamp.flink-demo-rbac.confluentdemo.local/oidc-callback",
+            "https://headlamp.flink-demo-rbac-mtls.confluentdemo.local/oidc-callback"
+          ],
+          "webOrigins": ["*"],
+          "secret": "headlamp-secret",
+          "protocolMappers": [
+            {
+              "name": "email",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-property-mapper",
+              "config": {
+                "userinfo.token.claim": "true",
+                "user.attribute": "email",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "email"
+              }
+            },
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
           "clientId": "kafka",
           "enabled": true,
           "protocol": "openid-connect",
