@@ -211,6 +211,7 @@ For other local clusters, follow the same pattern using your cluster name:
 127.0.0.1  alertmanager.<cluster-name>.confluentdemo.local
 127.0.0.1  argocd.<cluster-name>.confluentdemo.local
 127.0.0.1  grafana.<cluster-name>.confluentdemo.local
+127.0.0.1  headlamp.<cluster-name>.confluentdemo.local
 ... (add entries for all your services)
 ```
 
