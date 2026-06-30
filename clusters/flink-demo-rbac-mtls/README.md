@@ -250,6 +250,31 @@ confluent flink application list --environment shapes-env
 **Kafka Bootstrap (for direct client access):**
 - Kafka is exposed via NodePort at `kafka.flink-demo-rbac-mtls.confluentdemo.local:31000`
 
+**Headlamp Kubernetes Dashboard:**
+- **URL**: https://headlamp.flink-demo-rbac-mtls.confluentdemo.local
+- **Auth**: Keycloak OIDC SSO — click **Sign in with OIDC** and log in with any demo user (e.g., `admin@osow.ski` / `admin123`)
+
+> [!NOTE]
+> **One-time CoreDNS bootstrap step (required for OIDC):** Headlamp must resolve `keycloak.flink-demo-rbac-mtls.confluentdemo.local` to the in-cluster Traefik service for OIDC to work. Add the rewrite once after cluster creation:
+>
+> ```bash
+> kubectl -n kube-system edit configmap coredns
+> ```
+>
+> In the `Corefile` data, add this line inside the `.:53` block (e.g., after the `ready` line):
+>
+> ```
+> rewrite name exact keycloak.flink-demo-rbac-mtls.confluentdemo.local traefik.ingress.svc.cluster.local
+> ```
+>
+> Then restart CoreDNS to apply:
+>
+> ```bash
+> kubectl -n kube-system rollout restart deploy/coredns
+> ```
+>
+> Without this rewrite, Headlamp's OIDC token exchange will fail because the Keycloak hostname does not resolve inside the cluster.
+
 ### Port-Forwarding (Fallback/Troubleshooting)
 
 While services are accessible via IngressRoutes, port-forwarding can be used for direct access or troubleshooting:

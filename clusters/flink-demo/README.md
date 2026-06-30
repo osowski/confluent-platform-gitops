@@ -225,6 +225,17 @@ Add these entries to `/etc/hosts`:
 - **Purpose**: Backend storage for Flink state management (checkpoints, savepoints, HA)
 - **Cyberduck**: Import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile for GUI access
 
+**Headlamp Kubernetes Dashboard:**
+- **URL**: https://headlamp.flink-demo.confluentdemo.local
+- **Auth**: Token-based — generate a token from the chart's ServiceAccount:
+  ```bash
+  # List ServiceAccounts in the headlamp namespace to confirm the name
+  kubectl -n headlamp get sa
+  # Generate a token (replace 'headlamp' with the actual SA name if different)
+  kubectl -n headlamp create token headlamp
+  ```
+  Paste the token into the Headlamp token login screen.
+
 **In-Cluster Image Registry:**
 - **Address**: `10.96.0.50:5000` (pinned ClusterIP — reachable by the same address from pods and node containerd)
 - **Purpose**: In-cluster image build/push/pull for CI pipelines (e.g., kaniko in Tekton) without an external registry

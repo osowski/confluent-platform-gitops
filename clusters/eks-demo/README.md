@@ -196,6 +196,10 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 **Keycloak** *(added in Task N)*:
 - **URL**: https://keycloak.eks-demo.platform.dspdemos.com
 
+**Headlamp Kubernetes Dashboard:**
+- **URL**: https://headlamp.eks-demo.platform.dspdemos.com
+- **Auth**: Keycloak OIDC SSO — click **Sign in with OIDC** and log in with your Keycloak credentials
+
 ## Sharing Access With Other Users
 
 Multiple SEs can use this environment simultaneously. The SSM tunnel and 3proxy are stateless — each person starts their own port-forward session and sets `HTTPS_PROXY` in their own terminal. No coordination required.

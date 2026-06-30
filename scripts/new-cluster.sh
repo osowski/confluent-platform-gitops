@@ -293,7 +293,7 @@ spec:
   dnsNames:
     - headlamp.$cluster_name.$domain
 EOF
-    success "Created $infra_ingresses_dir/ (argocd patches for $cluster_name.$domain)"
+    success "Created $infra_ingresses_dir/ (argocd + headlamp patches for $cluster_name.$domain)"
 
     # Scaffold workload ingresses overlay stub
     local workload_ingresses_dir="workloads/ingresses/overlays/$cluster_name"
