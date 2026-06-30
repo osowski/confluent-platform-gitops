@@ -1,0 +1,13 @@
+# Headlamp base values — token-based login, cluster-admin service account.
+# Per-cluster overlays add OIDC SSO. See docs/architecture.md.
+config:
+  inCluster: true
+
+clusterRoleBinding:
+  create: true
+  clusterRoleName: cluster-admin
+
+# ClusterIP service; ingress is provided by infrastructure/ingresses (Traefik).
+service:
+  type: ClusterIP
+  port: 80
