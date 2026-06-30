@@ -60,6 +60,8 @@ Platform infrastructure components deployed before workloads.
 - **vault** (wave 40) - HashiCorp Vault for secrets management and encryption services
 - **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI access
 - **vault-config** (wave 50) - Post-deployment Job to configure transit encryption engine
+- **headlamp** (wave 50) - Kubernetes dashboard (chart `0.43.0`), namespace `headlamp`, cluster-admin SA; token login by default, Keycloak OIDC SSO on RBAC clusters
+- **headlamp-ingress** (wave 80) - Traefik IngressRoute + cert-manager Certificate for Headlamp UI access
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificate resources
 - **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI access
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks and configuration
@@ -212,8 +214,10 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 40 | vault | HashiCorp Vault for secrets management and encryption |
 | 45 | vault-ingress | Traefik IngressRoute for Vault UI access |
 | 50 | vault-config | Post-deployment Job to configure transit encryption engine |
+| 50 | headlamp | Kubernetes dashboard (Helm chart 0.43.0), cluster-admin SA, namespace `headlamp` |
 | 75 | cert-manager-resources | Self-signed ClusterIssuer and certificate resources |
 | 80 | argocd-ingress | Traefik IngressRoute for ArgoCD UI access |
+| 80 | headlamp-ingress | Traefik IngressRoute + cert-manager Certificate for Headlamp UI |
 | 85 | argocd-config | ArgoCD ConfigMap patches for custom health checks |
 | 85 | registry | In-cluster OCI image registry at a pinned ClusterIP (kind clusters) |
 | 86 | registry-hosts | PostSync Job writing per-node containerd `hosts.toml` for the in-cluster registry |
@@ -229,6 +233,24 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).
 
 ## External Access Patterns
+
+### Headlamp Kubernetes Dashboard
+
+Headlamp is a Helm-based infrastructure application (chart `headlamp` 0.43.0 from `https://kubernetes-sigs.github.io/headlamp/`) deployed to the `headlamp` namespace with a cluster-admin ServiceAccount. It is exposed via a Traefik IngressRoute and cert-manager Certificate at `headlamp.<cluster>.<domain>`.
+
+**Auth matrix:**
+
+| Cluster | Auth mode |
+|---------|-----------|
+| flink-demo | Token login (default) |
+| flink-demo-rbac | Keycloak OIDC SSO |
+| flink-demo-rbac-mtls | Keycloak OIDC SSO |
+| eks-demo | Keycloak OIDC SSO |
+| new clusters (template default) | Token login |
+
+With OIDC SSO, Keycloak gates the UI login while API calls use the cluster-admin SA (`config.unsafeUseServiceAccountToken: true`). Token-based clusters require pasting a `kubectl`-generated ServiceAccount token at the login prompt.
+
+**Self-signed kind cluster OIDC reachability:** On `flink-demo-rbac` and `flink-demo-rbac-mtls`, Headlamp must reach Keycloak in-cluster for OIDC. Two one-time bootstrap steps are required: (1) reflect the `keycloak-tls` cert into the `headlamp` namespace and mount it via `SSL_CERT_FILE` (handled by Reflector + overlay); (2) a CoreDNS rewrite so `keycloak.<cluster>.<domain>` resolves to the in-cluster Traefik service. See the cluster README for the exact commands. `eks-demo` requires neither step (real DNS + Let's Encrypt).
 
 ### Kafka External Access (flink-demo cluster)
 
