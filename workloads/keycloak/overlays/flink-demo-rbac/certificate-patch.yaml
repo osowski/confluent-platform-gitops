@@ -6,9 +6,3 @@ metadata:
 spec:
   dnsNames:
     - keycloak.flink-demo-rbac.confluentdemo.local
-  secretTemplate:
-    annotations:
-      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "headlamp"
-      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "headlamp"

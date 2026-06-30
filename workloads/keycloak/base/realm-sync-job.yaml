@@ -158,22 +158,6 @@ spec:
                 echo "WARNING: Control Center client not found, may need realm re-import"
               fi
 
-              # Update Headlamp client secret
-              echo "Updating Headlamp client secret..."
-              HEADLAMP_CLIENT_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=headlamp" \
-                -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-
-              if [ -n "$HEADLAMP_CLIENT_ID" ]; then
-                echo "Found Headlamp client: $HEADLAMP_CLIENT_ID"
-                curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$HEADLAMP_CLIENT_ID" \
-                  -H "Authorization: Bearer $ADMIN_TOKEN" \
-                  -H "Content-Type: application/json" \
-                  -d '{"secret":"headlamp-secret","standardFlowEnabled":true}'
-                echo "Headlamp client secret updated"
-              else
-                echo "WARNING: Headlamp client not found, may need realm re-import"
-              fi
-
               echo "=== Realm sync complete ==="
           resources:
             requests:

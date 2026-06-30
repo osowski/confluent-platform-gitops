@@ -358,45 +358,6 @@ data:
           "redirectUris": ["*"],
           "webOrigins": ["*"],
           "secret": "confluent-sso-secret"
-        },
-        {
-          "clientId": "headlamp",
-          "enabled": true,
-          "protocol": "openid-connect",
-          "publicClient": false,
-          "standardFlowEnabled": true,
-          "redirectUris": ["https://headlamp.eks-demo.platform.dspdemos.com/oidc-callback"],
-          "webOrigins": ["*"],
-          "secret": "headlamp-secret",
-          "protocolMappers": [
-            {
-              "name": "email",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-property-mapper",
-              "consentRequired": false,
-              "config": {
-                "userinfo.token.claim": "true",
-                "user.attribute": "email",
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "claim.name": "email",
-                "jsonType.label": "String"
-              }
-            },
-            {
-              "name": "groups",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-group-membership-mapper",
-              "consentRequired": false,
-              "config": {
-                "full.path": "false",
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "claim.name": "groups",
-                "userinfo.token.claim": "true"
-              }
-            }
-          ]
         }
       ],
       "roles": {
