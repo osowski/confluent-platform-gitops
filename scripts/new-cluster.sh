@@ -213,6 +213,16 @@ patches:
       kind: Certificate
       name: argocd-server-tls
 
+  - path: headlamp-ingressroute-patch.yaml
+    target:
+      kind: IngressRoute
+      name: headlamp
+
+  - path: headlamp-certificate-patch.yaml
+    target:
+      kind: Certificate
+      name: headlamp-tls
+
 # Cluster-specific labels
 labels:
 - includeSelectors: false
@@ -251,6 +261,37 @@ metadata:
 spec:
   dnsNames:
     - argocd.$cluster_name.$domain
+EOF
+    cat > "$infra_ingresses_dir/headlamp-ingressroute-patch.yaml" <<EOF
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(\`headlamp.$cluster_name.$domain\`)
+      kind: Rule
+      services:
+        - name: headlamp
+          port: 80
+          scheme: http
+  tls:
+    secretName: headlamp-tls
+EOF
+    cat > "$infra_ingresses_dir/headlamp-certificate-patch.yaml" <<EOF
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: headlamp-tls
+  namespace: headlamp
+spec:
+  dnsNames:
+    - headlamp.$cluster_name.$domain
 EOF
     success "Created $infra_ingresses_dir/ (argocd patches for $cluster_name.$domain)"
 

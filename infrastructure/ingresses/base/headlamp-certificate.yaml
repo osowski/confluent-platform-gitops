@@ -1,0 +1,19 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: headlamp-tls
+  namespace: headlamp
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
+spec:
+  dnsNames:
+    - headlamp.cluster.confluentdemo.local
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: headlamp-tls
+  usages:
+    - digital signature
+    - key encipherment

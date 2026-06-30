@@ -6,3 +6,5 @@ resources:
   - argocd-ingressroute.yaml
   - argocd-certificate.yaml
   - argocd-serverstransport.yaml
+  - headlamp-ingressroute.yaml
+  - headlamp-certificate.yaml
