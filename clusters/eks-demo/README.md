@@ -193,8 +193,19 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 **MinIO Console:**
 - **URL**: https://s3-console.eks-demo.platform.dspdemos.com
 
-**Keycloak** *(added in Task N)*:
+**Keycloak**:
 - **URL**: https://keycloak.eks-demo.platform.dspdemos.com
+
+**Headlamp Kubernetes Dashboard:**
+- **URL**: https://headlamp.eks-demo.platform.dspdemos.com
+- **Auth**: Token-based — generate a token from the chart's ServiceAccount:
+  ```bash
+  # List ServiceAccounts in the headlamp namespace to confirm the name
+  kubectl -n headlamp get sa
+  # Generate a token (replace 'headlamp' with the actual SA name if different)
+  kubectl -n headlamp create token headlamp
+  ```
+  Paste the token into the Headlamp login screen. (Keycloak SSO is deferred to a future auth-proxy design — see [ADR-0009](../../adrs/0009-headlamp-dashboard-oidc-access.md).)
 
 ## Sharing Access With Other Users
 
@@ -243,10 +254,10 @@ Once their access entry is in place, the requesting user follows the same tunnel
 Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
-- **aws-ebs-csi-driver** (wave 3) - EBS CSI driver and gp3 StorageClass *(added in Task 10)*
+- **aws-ebs-csi-driver** (wave 3) - EBS CSI driver and gp3 StorageClass
 - **metrics-server** (wave 5) - Kubernetes Metrics Server
-- **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning *(added in Task 11)*
-- **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS *(added in Task N)*
+- **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning
+- **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS
 - **traefik** (wave 10) - Ingress controller deployed on internal AWS NLB
 - **cert-manager** (wave 20) - TLS certificate management (Let's Encrypt DNS-01 via Route53 IRSA)
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
@@ -263,16 +274,16 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 
 - **namespaces** (wave 100) - Namespace definitions
-- **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC *(added in Task N)*
+- **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
-- **mds-keygen** (wave 107) - MDS token key generation job *(added in Task N)*
+- **mds-keygen** (wave 107) - MDS token key generation job
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.)
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
-- **cmf-operator-secrets** (wave 119) - CMF operator secrets *(added in Task N)*
-- **flink-rbac** (wave 119) - Flink RBAC ConfluentRoleBindings *(added in Task N)*
+- **cmf-operator-secrets** (wave 119) - CMF operator secrets
+- **flink-rbac** (wave 119) - Flink RBAC ConfluentRoleBindings
 - **flink-resources** (wave 120) - Flink integration resources
 
 ## Cluster Specific Use Cases

@@ -13,6 +13,7 @@ resources:
 - reflector.yaml
 - traefik.yaml
 - minio.yaml
+- headlamp.yaml
 - registry.yaml
 - registry-hosts.yaml
 - vault.yaml

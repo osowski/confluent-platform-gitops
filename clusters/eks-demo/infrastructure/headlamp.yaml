@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: headlamp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"  # After core infra, before ingresses (80)
+spec:
+  project: infrastructure
+  sources:
+  - repoURL: https://kubernetes-sigs.github.io/headlamp/
+    targetRevision: 0.43.0
+    chart: headlamp
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/headlamp/base/values.yaml
+        - $values/infrastructure/headlamp/overlays/eks-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: headlamp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

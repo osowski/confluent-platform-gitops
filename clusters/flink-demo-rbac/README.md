@@ -235,6 +235,17 @@ confluent flink application list --environment shapes-env
 **Kafka Bootstrap (for direct client access):**
 - Kafka is exposed via NodePort at `kafka.flink-demo-rbac.confluentdemo.local:31000`
 
+**Headlamp Kubernetes Dashboard:**
+- **URL**: https://headlamp.flink-demo-rbac.confluentdemo.local
+- **Auth**: Token-based — generate a token from the chart's ServiceAccount:
+  ```bash
+  # List ServiceAccounts in the headlamp namespace to confirm the name
+  kubectl -n headlamp get sa
+  # Generate a token (replace 'headlamp' with the actual SA name if different)
+  kubectl -n headlamp create token headlamp
+  ```
+  Paste the token into the Headlamp login screen. (Keycloak SSO is deferred to a future auth-proxy design — see [ADR-0009](../../adrs/0009-headlamp-dashboard-oidc-access.md).)
+
 ### Port-Forwarding (Fallback/Troubleshooting)
 
 While services are accessible via IngressRoutes, port-forwarding can be used for direct access or troubleshooting:
