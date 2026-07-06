@@ -101,6 +101,30 @@ aws elbv2 describe-load-balancers --query "LoadBalancers[?VpcId=='<vpc-id>']"
 terraform destroy
 ```
 
+### Troubleshooting: Traefik LoadBalancer left behind after `terraform destroy`
+
+If `terraform destroy` already ran without deleting the Traefik `LoadBalancer` Service first, the EKS cluster is gone — there's no `kubectl` left to clean it up through Kubernetes. The AWS load balancer the AWS Load Balancer Controller provisioned for it still exists in the VPC and needs to be removed directly via the AWS CLI, found by its cluster tag:
+
+```bash
+# Find load balancers tagged with this cluster
+aws resourcegroupstaggingapi get-resources \
+  --resource-type-filters elasticloadbalancing:loadbalancer \
+  --tag-filters Key=elbv2.k8s.aws/cluster,Values=<cluster-name> \
+  --query 'ResourceTagMappingList[].ResourceARN' --output table
+
+# Delete the load balancer
+aws elbv2 delete-load-balancer --load-balancer-arn <lb-arn>
+
+# Delete its target group(s) — deleting the LB doesn't clean these up automatically
+aws elbv2 describe-target-groups --load-balancer-arn <lb-arn> --query 'TargetGroups[].TargetGroupArn' --output table
+aws elbv2 delete-target-group --target-group-arn <tg-arn>
+
+# Re-run destroy once the load balancer is gone
+terraform destroy
+```
+
+If the load balancer's security group is still attached to the VPC after this (AWS can take a minute to release it), see the `DependencyViolation` troubleshooting below for how to identify and remove orphaned security groups.
+
 ### Troubleshooting: VPC `DependencyViolation` on destroy
 
 If the `LoadBalancer` Services weren't cleaned up first (e.g. the workloads were deleted via `kubectl` after Terraform state already forgot about them, or ArgoCD apps were never pruned), `terraform destroy` will remove everything it manages but fail to delete the VPC with a `DependencyViolation` error, because the load balancer and/or its non-default security groups are still attached to it.
