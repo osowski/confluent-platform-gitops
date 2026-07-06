@@ -103,7 +103,7 @@ terraform destroy
 
 ### Troubleshooting: Traefik LoadBalancer left behind after `terraform destroy`
 
-If `terraform destroy` already ran without deleting the Traefik `LoadBalancer` Service first, the EKS cluster is gone — there's no `kubectl` left to clean it up through Kubernetes. The AWS load balancer the AWS Load Balancer Controller provisioned for it still exists in the VPC and needs to be removed directly via the AWS CLI, found by its cluster tag:
+If `terraform destroy` already ran without deleting the Traefik `LoadBalancer` Service first, the EKS cluster is gone. The provisioned load balancer still exists in the VPC and needs to be removed directly via the AWS CLI, found by its cluster tag:
 
 ```bash
 # Find load balancers tagged with this cluster
