@@ -88,14 +88,13 @@ kubectl get nodes
 
 ## Tearing Down the Cluster
 
-Kubernetes controllers (Traefik's `LoadBalancer` Service, Confluent's traffic/NLB controller) provision AWS load balancers and security groups directly against the VPC — outside of Terraform state. Delete those in-cluster **before** running `terraform destroy`, so AWS tears down the associated NLB/ELB and its security groups on its own instead of leaving orphaned resources behind:
+Kubernetes controllers (Traefik's `LoadBalancer` Service, Confluent's traffic/NLB controller) provision AWS load balancers and security groups outside of Terraform state. Delete them in-cluster **before** running `terraform destroy` so AWS releases the associated resources on its own:
 
 ```bash
-# Delete any Kubernetes-managed LoadBalancer Services (e.g. Traefik) first
 kubectl get svc -A --field-selector spec.type=LoadBalancer
 kubectl delete svc -n <namespace> <service-name>
 
-# Wait for the backing AWS load balancer to actually disappear before proceeding
+# Wait for the backing load balancer to disappear
 aws elbv2 describe-load-balancers --query "LoadBalancers[?VpcId=='<vpc-id>']"
 
 terraform destroy
@@ -103,31 +102,28 @@ terraform destroy
 
 ### Troubleshooting: Traefik LoadBalancer left behind after `terraform destroy`
 
-If `terraform destroy` already ran without deleting the Traefik `LoadBalancer` Service first, the EKS cluster is gone. The provisioned load balancer still exists in the VPC and needs to be removed directly via the AWS CLI, found by its cluster tag:
+If `terraform destroy` already ran before the Traefik Service was deleted, the EKS cluster (and `kubectl`) is gone. Find and remove the load balancer directly via its cluster tag:
 
 ```bash
-# Find load balancers tagged with this cluster
 aws resourcegroupstaggingapi get-resources \
   --resource-type-filters elasticloadbalancing:loadbalancer \
   --tag-filters Key=elbv2.k8s.aws/cluster,Values=<cluster-name> \
   --query 'ResourceTagMappingList[].ResourceARN' --output table
 
-# Delete the load balancer
 aws elbv2 delete-load-balancer --load-balancer-arn <lb-arn>
 
-# Delete its target group(s) — deleting the LB doesn't clean these up automatically
+# Target groups aren't deleted automatically
 aws elbv2 describe-target-groups --load-balancer-arn <lb-arn> --query 'TargetGroups[].TargetGroupArn' --output table
 aws elbv2 delete-target-group --target-group-arn <tg-arn>
 
-# Re-run destroy once the load balancer is gone
 terraform destroy
 ```
 
-If the load balancer's security group is still attached to the VPC after this (AWS can take a minute to release it), see the `DependencyViolation` troubleshooting below for how to identify and remove orphaned security groups.
+If the load balancer's security group is still attached afterward, see the `DependencyViolation` section below.
 
 ### Troubleshooting: VPC `DependencyViolation` on destroy
 
-If the `LoadBalancer` Services weren't cleaned up first (e.g. the workloads were deleted via `kubectl` after Terraform state already forgot about them, or ArgoCD apps were never pruned), `terraform destroy` will remove everything it manages but fail to delete the VPC with a `DependencyViolation` error, because the load balancer and/or its non-default security groups are still attached to it.
+If the load balancer or its security groups weren't cleaned up first, `terraform destroy` removes everything it manages but fails to delete the VPC, since non-default security groups are still attached.
 
 **1. Confirm the VPC still exists in state and get its ID:**
 ```bash
@@ -137,9 +133,6 @@ terraform state show '<vpc_resource_address_from_above>' | grep -E '^\s*id\s*='
 
 **2. Find what's still attached to the VPC** (replace `<vpc-id>`):
 ```bash
-aws elbv2 describe-load-balancers --query "LoadBalancers[?VpcId=='<vpc-id>'].{ARN:LoadBalancerArn,Name:LoadBalancerName}" --output table
-aws elb describe-load-balancers --query "LoadBalancerDescriptions[?VPCId=='<vpc-id>'].{Name:LoadBalancerName}" --output table
-
 aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=<vpc-id>" \
   --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status,Desc:Description}' --output table
 
@@ -147,19 +140,13 @@ aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<vpc-id>" \
   --query 'SecurityGroups[].{ID:GroupId,Name:GroupName}' --output table
 ```
 
-If a load balancer is still present, delete it first and wait for it to fully disappear — its security groups can't be removed while it exists, and the VPC can't be deleted while the load balancer exists:
-```bash
-aws elbv2 delete-load-balancer --load-balancer-arn <lb-arn>   # ALB/NLB
-aws elb delete-load-balancer --load-balancer-name <lb-name>    # Classic ELB
-```
-
-Any security group other than `default` is a candidate for manual cleanup. Before deleting one, verify nothing still references it:
+Any security group other than `default` is a candidate for cleanup. Verify nothing still references it before deleting:
 ```bash
 aws ec2 describe-network-interfaces --filters "Name=group-id,Values=<sg-id>" \
   --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status}'
 ```
 
-If that returns nothing (no attached ENIs), the security group is orphaned and safe to remove.
+If that returns nothing, the security group is orphaned and safe to remove.
 
 **3. Delete the orphaned security group(s) and re-run destroy:**
 ```bash
@@ -168,7 +155,7 @@ aws ec2 delete-security-group --group-id <sg-id>
 terraform destroy
 ```
 
-The `default` security group is deleted automatically by AWS when the VPC itself is removed — don't try to delete it manually.
+The `default` security group is deleted automatically when the VPC itself is removed; don't delete it manually.
 
 ## Adding a New Cluster
 
