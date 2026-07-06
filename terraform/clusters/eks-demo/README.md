@@ -86,6 +86,48 @@ export HTTPS_PROXY=socks5://localhost:1080
 kubectl get nodes
 ```
 
+## Tearing Down the Cluster
+
+```bash
+terraform destroy
+```
+
+### Troubleshooting: VPC `DependencyViolation` on destroy
+
+Kubernetes controllers (Traefik's `LoadBalancer` Service, Confluent's traffic/NLB controller) create AWS security groups directly against the VPC — outside of Terraform state. If those resources weren't cleaned up in-cluster before running `terraform destroy` (e.g. the workloads were deleted via `kubectl` after Terraform state already forgot about them, or ArgoCD apps were never pruned), `terraform destroy` will remove everything it manages but fail to delete the VPC with a `DependencyViolation` error, because non-default security groups are still attached to it.
+
+**1. Confirm the VPC still exists in state and get its ID:**
+```bash
+terraform state list | grep aws_vpc
+terraform state show '<vpc_resource_address_from_above>' | grep -E '^\s*id\s*='
+```
+
+**2. Find what's still attached to the VPC** (replace `<vpc-id>`):
+```bash
+aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=<vpc-id>" \
+  --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status,Desc:Description}' --output table
+
+aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<vpc-id>" \
+  --query 'SecurityGroups[].{ID:GroupId,Name:GroupName}' --output table
+```
+
+Any security group other than `default` is a candidate for manual cleanup. Before deleting one, verify nothing still references it:
+```bash
+aws ec2 describe-network-interfaces --filters "Name=group-id,Values=<sg-id>" \
+  --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status}'
+```
+
+If that returns nothing (no attached ENIs), the security group is orphaned and safe to remove.
+
+**3. Delete the orphaned security group(s) and re-run destroy:**
+```bash
+aws ec2 delete-security-group --group-id <sg-id>
+
+terraform destroy
+```
+
+The `default` security group is deleted automatically by AWS when the VPC itself is removed — don't try to delete it manually.
+
 ## Adding a New Cluster
 
 To provision a second EKS cluster (e.g., `eks-prod`):
