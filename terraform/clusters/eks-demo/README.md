@@ -86,6 +86,77 @@ export HTTPS_PROXY=socks5://localhost:1080
 kubectl get nodes
 ```
 
+## Tearing Down the Cluster
+
+Kubernetes controllers (Traefik's `LoadBalancer` Service, Confluent's traffic/NLB controller) provision AWS load balancers and security groups outside of Terraform state. Delete them in-cluster **before** running `terraform destroy` so AWS releases the associated resources on its own:
+
+```bash
+kubectl get svc -A --field-selector spec.type=LoadBalancer
+kubectl delete svc -n <namespace> <service-name>
+
+# Wait for the backing load balancer to disappear
+aws elbv2 describe-load-balancers --query "LoadBalancers[?VpcId=='<vpc-id>']"
+
+terraform destroy
+```
+
+### Troubleshooting: Traefik LoadBalancer left behind after `terraform destroy`
+
+If `terraform destroy` already ran before the Traefik Service was deleted, the EKS cluster (and `kubectl`) is gone. Find and remove the load balancer directly via its cluster tag:
+
+```bash
+aws resourcegroupstaggingapi get-resources \
+  --resource-type-filters elasticloadbalancing:loadbalancer \
+  --tag-filters Key=elbv2.k8s.aws/cluster,Values=<cluster-name> \
+  --query 'ResourceTagMappingList[].ResourceARN' --output table
+
+aws elbv2 delete-load-balancer --load-balancer-arn <lb-arn>
+
+# Target groups aren't deleted automatically
+aws elbv2 describe-target-groups --load-balancer-arn <lb-arn> --query 'TargetGroups[].TargetGroupArn' --output table
+aws elbv2 delete-target-group --target-group-arn <tg-arn>
+
+terraform destroy
+```
+
+If the load balancer's security group is still attached afterward, see the `DependencyViolation` section below.
+
+### Troubleshooting: VPC `DependencyViolation` on destroy
+
+If the load balancer or its security groups weren't cleaned up first, `terraform destroy` removes everything it manages but fails to delete the VPC, since non-default security groups are still attached.
+
+**1. Confirm the VPC still exists in state and get its ID:**
+```bash
+terraform state list | grep aws_vpc
+terraform state show '<vpc_resource_address_from_above>' | grep -E '^\s*id\s*='
+```
+
+**2. Find what's still attached to the VPC** (replace `<vpc-id>`):
+```bash
+aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=<vpc-id>" \
+  --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status,Desc:Description}' --output table
+
+aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<vpc-id>" \
+  --query 'SecurityGroups[].{ID:GroupId,Name:GroupName}' --output table
+```
+
+Any security group other than `default` is a candidate for cleanup. Verify nothing still references it before deleting:
+```bash
+aws ec2 describe-network-interfaces --filters "Name=group-id,Values=<sg-id>" \
+  --query 'NetworkInterfaces[].{ID:NetworkInterfaceId,Status:Status}'
+```
+
+If that returns nothing, the security group is orphaned and safe to remove.
+
+**3. Delete the orphaned security group(s) and re-run destroy:**
+```bash
+aws ec2 delete-security-group --group-id <sg-id>
+
+terraform destroy
+```
+
+The `default` security group is deleted automatically when the VPC itself is removed; don't delete it manually.
+
 ## Adding a New Cluster
 
 To provision a second EKS cluster (e.g., `eks-prod`):
