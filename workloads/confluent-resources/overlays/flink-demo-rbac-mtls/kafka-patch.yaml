@@ -43,6 +43,26 @@ spec:
         tls:
           enabled: false
 
+      # ==========================================================================
+      # MTLS-CLIENTS LISTENER - dedicated TLS + mTLS listener for platform
+      # clients that authenticate with certificates (Schema Registry today;
+      # the migration on-ramp for other service accounts — #275, Epic #271).
+      # Additive listener: existing listeners are untouched, so adding it is a
+      # safe rolling change (no clean redeploy needed).
+      # ==========================================================================
+      - name: mtls-clients
+        port: 9095
+        tls:
+          enabled: true
+        authentication:
+          type: mtls
+          principalMappingRules:
+            - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
+          mtls:
+            # Mandatory client-cert auth (reject anonymous), matching the
+            # controller and replication listener hardening.
+            sslClientAuthentication: required
+
     # ==============================================================================
     # INTERNAL LISTENER - OAuth authentication for internal clients (SR, C3, CMF)
     # Client mTLS migration is tracked separately (#275, Epic #271).

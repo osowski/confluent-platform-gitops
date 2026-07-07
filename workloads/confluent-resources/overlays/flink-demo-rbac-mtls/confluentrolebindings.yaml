@@ -476,6 +476,62 @@ spec:
       name: "*"
       resourceType: Subject
 ---
+# Schema Registry service principal (mTLS cert CN=sr, #275): SR authenticates
+# to Kafka with its certificate instead of the shared OAuth superuser client,
+# so it needs explicit rights to its coordination group and internal topics.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-kafka-internal-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: _schemas
+      resourceType: Topic
+    - patternType: PREFIXED
+      name: id_schemaregistry
+      resourceType: Group
+    - patternType: LITERAL
+      name: _confluent-license
+      resourceType: Topic
+---
+# SR service principal - SecurityAdmin on its own Schema Registry cluster
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-securityadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: SecurityAdmin
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+---
+# SR service principal - ResourceOwner on all subjects (SR manages subjects as itself)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-subjects-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: LITERAL
+      name: "*"
+      resourceType: Subject
+---
 # CMF user - ResourceOwner on all subjects for Flink SQL table discovery
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding

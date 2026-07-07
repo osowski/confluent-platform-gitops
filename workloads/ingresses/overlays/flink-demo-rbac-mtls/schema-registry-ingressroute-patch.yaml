@@ -11,4 +11,7 @@ spec:
       services:
         - name: schemaregistry
           port: 8081
-          scheme: http
+          # SR serves HTTPS (#275); Traefik connects over TLS to the backend
+          # via the schemaregistry-tls ServersTransport.
+          scheme: https
+          serversTransport: schemaregistry-tls

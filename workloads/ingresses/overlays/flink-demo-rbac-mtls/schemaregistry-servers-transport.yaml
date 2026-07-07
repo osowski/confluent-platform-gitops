@@ -1,0 +1,10 @@
+---
+# Backend TLS transport for the SR HTTPS API (#275). The CA is cluster-internal
+# (rbac-mtls-ca); skip verification at the edge proxy for this local demo.
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: schemaregistry-tls
+  namespace: kafka
+spec:
+  insecureSkipVerify: true

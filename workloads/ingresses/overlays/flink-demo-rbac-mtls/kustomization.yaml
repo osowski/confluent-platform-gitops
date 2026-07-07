@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ../../base
   - mds-ingressroute.yaml  # flink-demo-rbac-mtls only: MDS endpoint
+  - schemaregistry-servers-transport.yaml  # backend TLS to the SR HTTPS API (#275)
 
 patches:
   - path: cmf-ingressroute-patch.yaml

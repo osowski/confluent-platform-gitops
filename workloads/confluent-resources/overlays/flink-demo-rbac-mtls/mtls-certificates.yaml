@@ -70,3 +70,68 @@ spec:
     - key encipherment
     - server auth
     - client auth
+---
+# Schema Registry identity cert: serves the SR HTTPS API and acts as the
+# client cert for SR -> Kafka mTLS on the mtls-clients listener (#275).
+# CN=sr maps to User:sr (see confluentrolebindings.yaml).
+# renewBefore staggered from the broker/controller certs so renewals do not
+# trigger concurrent rolls across components.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: schemaregistry-mtls
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  commonName: sr
+  secretName: schemaregistry-mtls
+  duration: 2160h
+  renewBefore: 672h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  dnsNames:
+    - schemaregistry.kafka.svc.cluster.local
+    - "*.schemaregistry.kafka.svc.cluster.local"
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+---
+# Control Center identity cert (CN=c3, #275): currently used only as the
+# truststore source for C3 -> Schema Registry HTTPS (dependency-level tls
+# secretRef, so C3's own UI stays behind the Traefik edge); also positions C3
+# for a future migration to cert-based Kafka authentication.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: controlcenter-mtls
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  commonName: c3
+  secretName: controlcenter-mtls
+  duration: 2160h
+  renewBefore: 648h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  dnsNames:
+    - controlcenter.kafka.svc.cluster.local
+    - "*.controlcenter.kafka.svc.cluster.local"
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth

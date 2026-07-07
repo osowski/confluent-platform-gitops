@@ -91,9 +91,15 @@ spec:
             jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             subClaimName: client_id
 
-    # Schema Registry connection with OAuth authentication
+    # Schema Registry connection: OAuth identity over the SR HTTPS API (#275).
+    # The dependency-level tls secretRef supplies the truststore (rbac-mtls CA)
+    # without giving C3 itself a server cert, so the C3 UI stays behind the
+    # Traefik edge unchanged.
     schemaRegistry:
-      url: http://schemaregistry.kafka.svc.cluster.local:8081
+      url: https://schemaregistry.kafka.svc.cluster.local:8081
+      tls:
+        enabled: true
+        secretRef: controlcenter-mtls
       authentication:
         type: oauth
         oauth:
