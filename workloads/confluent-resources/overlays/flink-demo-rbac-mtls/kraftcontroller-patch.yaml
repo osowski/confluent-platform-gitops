@@ -3,7 +3,7 @@
 # ==============================================================================
 # This patch consolidates all KRaft controller configuration including:
 # - Resource limits for local demo environment
-# - TLS + mTLS authentication for controller quorum communication (Phase 1, #273)
+# - TLS + mTLS authentication for controller quorum communication (#273)
 # - Server identity certificate from cert-manager (kraftcontroller-mtls)
 # NOTE: Authorization intentionally omitted to avoid circular dependency with Kafka MDS.
 #       Controllers are an internal control plane — principals connecting to them (kafka brokers)

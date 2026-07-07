@@ -9,7 +9,7 @@ The `flink-demo-rbac-mtls` cluster demonstrates a complete Confluent Platform de
 - **Kafka Cluster**: KRaft-based Kafka with Schema Registry, Control Center, and MDS for authorization
 - **Flink Integration**: Flink Kubernetes Operator with CMF, group-scoped catalogs and compute pools
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
-- **Security**: Keycloak for SSO/OAuth, MDS for RBAC, cert-manager for TLS, Reflector for secret replication, and **mTLS** on the Kafka↔KRaft controller path (see [mTLS](#mtls))
+- **Security**: Keycloak for SSO/OAuth, MDS for RBAC, cert-manager for TLS, Reflector for secret replication, and **mTLS** on the Kafka↔KRaft controller and inter-broker replication paths (see [mTLS](#mtls))
 - **Networking**: Traefik ingress controller with local DNS resolution
 - **Storage**: MinIO for S3-compatible object storage (Flink checkpoints and savepoints)
 
@@ -21,14 +21,32 @@ This variant layers cert-manager-automated TLS + mutual TLS on top of the existi
 
 **PKI (cluster-wide):** a self-signed root CA (`rbac-mtls-ca`) backs a CA `ClusterIssuer` (`rbac-mtls-ca-issuer`); cert-manager mints leaf certs and `trust-manager` distributes the CA (`rbac-mtls-ca-bundle`) to namespaces labeled `mtls-trust: enabled`. CFK converts the PEM secrets to PKCS12 internally.
 
-**Phase 1 — Kafka ↔ KRaft controller (implemented):**
-- KRaft **controller** listener serves TLS and requires client certs (`authentication.type: mtls`); the cert CN maps to `User:kafka` (an existing RBAC superuser) via `principalMappingRules`.
-- Brokers present `kafka-broker-mtls` as their client identity when connecting to the controller.
-- Verify on a running cluster — controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener.
-- **Not yet mTLS (later phases):** internal inter-broker listener and external NodePort listener remain OAuth/plaintext; Schema Registry still authenticates to Kafka via OAuth.
+**Current listener security posture:**
+
+| Path | Security | Identity |
+|---|---|---|
+| KRaft controller listener (quorum) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
+| Kafka `REPLICATION` listener (inter-broker, 9072) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
+| Kafka `INTERNAL` listener (SR/C3/CMF clients, 9071) | OAuth over plaintext | Keycloak service accounts |
+| Kafka external NodePort (31000) | OAuth over plaintext | Keycloak service accounts |
+| Schema Registry API | HTTP in-cluster (TLS at Traefik edge) | OAuth |
+
+- Identity certs: `kraftcontroller-mtls` and `kafka-broker-mtls` (issued by `rbac-mtls-ca-issuer`); the CN maps to the RBAC superuser via `principalMappingRules`, so no extra role bindings are needed for quorum/replication traffic.
+- Verify on a running cluster: controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener; broker config shows `REPLICATION:SSL` in `listener.security.protocol.map` and `listener.name.replication.ssl.client.auth=required`; under-replicated partitions stay at 0.
+- Planned next ([#275](https://github.com/osowski/confluent-platform-gitops/issues/275)): Schema Registry HTTPS + mTLS-to-Kafka; broader client mTLS migration is tracked in the Epic ([#271](https://github.com/osowski/confluent-platform-gitops/issues/271)).
+
+### Certificate renewal — what to expect (safe, automatic)
+
+Routine cert renewal is **not** the same as changing a listener's auth type, and it requires no operator action:
+
+1. cert-manager renews each leaf cert in place at ~2/3 of its 90-day lifetime (same Secret name, new content).
+2. CFK tracks every Secret referenced by the Kafka/KRaft CRs; on content change it starts an operator-controlled **rolling restart, one broker at a time**, gated by readiness/URP pre-checks between pods (observed live: `starting kafka roll workflow` → `cluster not rollable from roll pre checks` → waits until replicas are back in sync before the next pod).
+3. Clients are unaffected; the new cert chains to the same CA distributed by trust-manager.
+
+To force a renewal for demonstration, prefer **`cmctl renew kafka-broker-mtls -n kafka`** — it is a safe one-shot trigger. If `cmctl` is unavailable, you can instead temporarily patch the Certificate's `renewBefore` close to its `duration`, but **restore it immediately after the roll completes** (re-sync `confluent-resources`): while `renewBefore ≈ duration`, the renewed cert instantly re-qualifies for renewal, so cert-manager re-renews every few minutes and each renewal triggers another full broker roll.
 
 > [!IMPORTANT]
-> **Changing listener auth requires a clean redeploy, not an in-place roll.** Flipping a CFK quorum/inter-broker listener between OAuth and mTLS cannot be done by rolling restart — the KRaft quorum cannot re-form across a mixed-auth window. To (re)apply mTLS listener changes: delete the CFK CRs (`kafka`, `kraftcontroller`, `schemaregistry`, `controlcenter`, `kafkarestclass`) and their PVCs, then re-sync `confluent-resources` so the stack comes up mTLS-from-start. `confluent-resources` is a **manual-sync** ArgoCD application.
+> **Changing a listener's security protocol or auth type (plaintext↔TLS, OAuth↔mTLS) requires a clean redeploy, not an in-place roll.** Brokers/controllers cannot interoperate across a mixed-security window: a partially rolled cluster has peers speaking TLS to peers still serving plaintext (or vice versa), replication/quorum fails between them, and the URP gate halts the roll after the first pod. To (re)apply mTLS listener changes: delete the CFK CRs (`kafka`, `kraftcontroller`, `schemaregistry`, `controlcenter`, `kafkarestclass`) and their PVCs, then re-sync `confluent-resources` so the stack comes up mTLS-from-start. `confluent-resources` is a **manual-sync** ArgoCD application. (Routine cert renewal, above, is safe and automatic — do not tear down for renewals.)
 
 ## Getting Started
 

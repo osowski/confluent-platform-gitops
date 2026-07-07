@@ -6,8 +6,9 @@
 # - Resource limits for local demo environment
 # - MDS/RBAC configuration with OAuth provider (Keycloak)
 # - SSO/OIDC configuration for browser-based authentication (Control Center)
-# - Broker-to-KRaft controller mTLS authentication (Phase 1, #273)
-# - Internal listener OAuth authentication (unchanged this phase)
+# - Broker-to-KRaft controller mTLS authentication (#273)
+# - Inter-broker REPLICATION listener TLS + mTLS (#274)
+# - Internal listener OAuth authentication for SR/C3/CMF clients
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -17,8 +18,8 @@ metadata:
 spec:
   # ==============================================================================
   # SERVER TLS - broker identity from cert-manager; also used as the client cert
-  # when brokers connect to the KRaft controller over mTLS (Phase 1, #273).
-  # TLS is opt-in per listener; internal/external remain OAuth/plaintext this phase.
+  # when brokers connect to the KRaft controller over mTLS (#273).
+  # TLS is opt-in per listener; internal/external remain OAuth/plaintext (#275 tracks client mTLS).
   # ==============================================================================
   tls:
     secretRef: kafka-broker-mtls
@@ -43,7 +44,8 @@ spec:
           enabled: false
 
     # ==============================================================================
-    # INTERNAL LISTENER - OAuth authentication for inter-broker communication
+    # INTERNAL LISTENER - OAuth authentication for internal clients (SR, C3, CMF)
+    # Client mTLS migration is tracked separately (#275, Epic #271).
     # ==============================================================================
     internal:
       authentication:
@@ -56,6 +58,24 @@ spec:
           jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
           subClaimName: client_id
           groupsClaimName: groups
+
+    # ==============================================================================
+    # REPLICATION LISTENER - TLS + mTLS for inter-broker traffic (#274)
+    # Peers are brokers (kafka-broker-mtls) and the KRaft controller's embedded
+    # clients (kraftcontroller-mtls); both certs carry CN=kafka -> User:kafka
+    # (existing RBAC superuser), so no new role bindings are needed.
+    # ==============================================================================
+    replication:
+      tls:
+        enabled: true
+      authentication:
+        type: mtls
+        principalMappingRules:
+          - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
+        mtls:
+          # Mandatory client-cert auth (reject anonymous), matching the
+          # controller listener hardening (kraftcontroller-patch.yaml).
+          sslClientAuthentication: required
 
   # ==============================================================================
   # RESOURCE LIMITS - Tuned for 24GB total cluster memory
@@ -132,7 +152,7 @@ spec:
   # DEPENDENCIES - KRaft controller and Kafka REST authentication
   # ==============================================================================
   dependencies:
-    # Broker-to-KRaft controller mTLS authentication (Phase 1, #273).
+    # Broker-to-KRaft controller mTLS authentication (#273).
     # Broker presents its spec.tls cert (CN=kafka) as the client identity.
     kRaftController:
       controllerListener:
