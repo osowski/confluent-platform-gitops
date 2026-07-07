@@ -18,7 +18,7 @@ spec:
     configMap:
       key: ca.crt
     # Select participating namespaces by purpose label so extending the mTLS
-    # trust mesh to flink/operator in later phases is a one-line namespace change.
+    # trust mesh to flink/operator is a one-line namespace-label change.
     namespaceSelector:
       matchLabels:
         mtls-trust: enabled
