@@ -12,7 +12,7 @@ spec:
   sources:
     - repoURL: https://packages.confluent.io/helm
       chart: confluent-for-kubernetes
-      targetRevision: 0.1514.19
+      targetRevision: 0.1514.76
       helm:
         valueFiles:
           - $values/workloads/cfk-operator/base/values.yaml
