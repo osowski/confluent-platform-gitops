@@ -57,7 +57,7 @@ data:
         "type": "DEDICATED",
         "clusterSpec": {
           "flinkVersion": "v1_19",
-          "image": "confluentinc/cp-flink-sql:1.19-cp5",
+          "image": "confluentinc/cp-flink-sql:1.19-cp8",
           "flinkConfiguration": {
             "pipeline.operator-chaining.enabled": "false",
             "execution.checkpointing.interval": "10s",

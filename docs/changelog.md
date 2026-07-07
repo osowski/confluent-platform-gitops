@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Operator baseline alignment on all clusters** ([#302](https://github.com/osowski/confluent-platform-gitops/issues/302)): CMF operator chart 2.3.0 → 2.3.1 on flink-demo, flink-demo-rbac-mtls, and eks-demo (flink-demo-rbac was already there), aligning every cluster with the officially-paired CMF 2.3.1 + `cp-flink-sql:1.19-cp8` release; CFK chart 0.1514.19 (3.2.1) → 0.1514.76 (3.2.3, latest 3.2.x patch — supports CP 7.4–8.2) on all four clusters. FKO verified already at the latest 1.140.1 (`1.14.0-cp1`), the version paired with CMF 2.3.x — no change. Also bumped the cp-flink-sql-sandbox compute pool image `1.19-cp5` → `1.19-cp8` — cp5 is below the 1.19-cp7 minimum for CMF 2.3.x and fails statement-plan loading with a `key.format requires ... confluent.key.fields` error.
+
 ### Added
 - **Headlamp Kubernetes dashboard on all clusters** ([#148](https://github.com/osowski/confluent-platform-gitops/issues/148)): token-based login, reachable at `headlamp.<cluster>.<domain>`; new clusters get it automatically via `new-cluster.sh`. (Keycloak SSO deferred to a future auth-proxy design.)
 - **flink-demo-rbac — Flink SQL statement pipeline** ([#158](https://github.com/osowski/confluent-platform-gitops/issues/158)): standalone RBAC-secured Flink SQL `INSERT INTO` statement that reads the existing `shapes-input` topic and writes enriched records to a new `shapes-sql-output` topic, created via the CMF Statements API by the shapes init job. Coexists with the JAR FlinkApplications (same input, parallel output); scale `shapes-producer` to 1 to feed it. Requires CMF chart 2.3.1; Flink SQL image bumped to `cp-flink-sql:1.19-cp8`.
