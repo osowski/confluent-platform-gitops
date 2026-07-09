@@ -56,6 +56,9 @@ spec:
           enabled: true
         authentication:
           type: mtls
+          # KEEP IN SYNC: same CN-extraction rule as the controller listener
+          # (kraftcontroller-patch.yaml) and the replication listener below.
+          # NOTE: char class excludes '-'; client CNs must be hyphen-free (sr, c3).
           principalMappingRules:
             - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
           mtls:
@@ -81,15 +84,17 @@ spec:
 
     # ==============================================================================
     # REPLICATION LISTENER - TLS + mTLS for inter-broker traffic (#274)
-    # Peers are brokers (kafka-broker-mtls) and the KRaft controller's embedded
-    # clients (kraftcontroller-mtls); both certs carry CN=kafka -> User:kafka
-    # (existing RBAC superuser), so no new role bindings are needed.
+    # Peers authenticate with CA-signed CN=kafka certs -> User:kafka (existing
+    # RBAC superuser), so no new role bindings are needed.
     # ==============================================================================
     replication:
       tls:
         enabled: true
       authentication:
         type: mtls
+        # KEEP IN SYNC: same CN-extraction rule as the controller listener
+        # (kraftcontroller-patch.yaml) and the mtls-clients listener above.
+        # NOTE: char class excludes '-'; client CNs must be hyphen-free (sr, c3).
         principalMappingRules:
           - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
         mtls:

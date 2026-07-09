@@ -16,7 +16,9 @@ spec:
   commonName: kafka
   secretName: kraftcontroller-mtls
   duration: 2160h     # 90 days
-  renewBefore: 720h   # 30 days
+  # Staggered from kafka-broker-mtls (720h) so controller and broker renewals
+  # do not trigger concurrent CFK rolls across both clusters.
+  renewBefore: 696h
   privateKey:
     algorithm: RSA
     size: 2048

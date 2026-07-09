@@ -38,6 +38,9 @@ spec:
         enabled: true
       authentication:
         type: mtls
+        # KEEP IN SYNC: same CN-extraction rule as the replication and
+        # mtls-clients listeners in kafka-patch.yaml.
+        # NOTE: char class excludes '-'; client CNs must be hyphen-free (sr, c3).
         principalMappingRules:
           - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.]*)?.*/$1/"
         mtls:
