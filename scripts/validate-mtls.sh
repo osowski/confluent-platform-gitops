@@ -34,8 +34,8 @@ ERRORS=0
 WARNINGS=0
 
 # Expected per-listener security. Edit here if the cluster's listener design changes.
-EXPECTED_SSL_LISTENERS=("CONTROLLER" "REPLICATION" "MTLS-CLIENTS")
-EXPECTED_CLIENTAUTH_LISTENERS=("controller" "replication" "mtls-clients")
+EXPECTED_SSL_LISTENERS=("CONTROLLER" "REPLICATION")
+EXPECTED_CLIENTAUTH_LISTENERS=("controller" "replication")
 
 error()   { echo -e "${RED}✗ ERROR: $1${NC}" >&2; ERRORS=$((ERRORS + 1)); }
 warning() { echo -e "${YELLOW}⚠ WARNING: $1${NC}"; WARNINGS=$((WARNINGS + 1)); }
@@ -68,9 +68,9 @@ Checks:
                     keys present, trust-manager Bundle distributed
   2. Listeners    - listener.security.protocol.map + ssl.client.auth=required
   3. Functional   - URP=0, cert principals in broker/controller logs, pods ready
-  4. SchemaReg    - HTTPS API (spec.tls), SR->Kafka mTLS (User:sr), rolebindings
-  5. Negative     - anonymous (no client cert) connection to an mTLS listener
-                    is rejected
+  4. SchemaReg    - HTTPS REST API (spec.tls); C3->SR over TLS
+  5. Negative     - anonymous (no client cert) connection to the mTLS
+                    REPLICATION listener is rejected
 
 EOF
 }
@@ -221,7 +221,7 @@ check_functional() {
 
 # ── 4. Schema Registry ────────────────────────────────────────────────────────
 check_schema_registry() {
-    info "4. Schema Registry HTTPS + mTLS-to-Kafka"
+    info "4. Schema Registry HTTPS"
 
     local sr_tls
     sr_tls=$(k get schemaregistry schemaregistry -n "$NAMESPACE" -o jsonpath='{.spec.tls.secretRef}' 2>/dev/null || echo "")
@@ -231,32 +231,28 @@ check_schema_registry() {
         error "SchemaRegistry has no spec.tls.secretRef — REST API is not HTTPS"
     fi
 
-    local sr_dep_auth
-    sr_dep_auth=$(k get schemaregistry schemaregistry -n "$NAMESPACE" -o jsonpath='{.spec.dependencies.kafka.authentication.type}' 2>/dev/null || echo "")
-    if [ "$sr_dep_auth" = "mtls" ]; then
-        success "SchemaRegistry authenticates to Kafka via mTLS"
+    # SR is Ready only if its REST API bound successfully over HTTPS
+    local sr_ready
+    sr_ready=$(k get pod schemaregistry-0 -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].ready}' 2>/dev/null || echo "")
+    if [ "$sr_ready" = "true" ]; then
+        success "schemaregistry-0 is Ready (HTTPS REST API listening)"
     else
-        error "SchemaRegistry->Kafka auth is '$sr_dep_auth', expected 'mtls'"
+        error "schemaregistry-0 is not Ready — HTTPS API may have failed to start"
     fi
 
-    # User:sr must actually get a principal on the mtls-clients listener
-    local sr_princ
-    sr_princ=$(k logs -n "$NAMESPACE" kafka-0 --tail=800 2>/dev/null \
-        | grep -oE '"principal":\{[^}]*"name":"sr"[^}]*\}[^}]*"listener":"MTLS-CLIENTS"' | head -1 || true)
-    if [ -n "$sr_princ" ]; then
-        success "Broker authenticated principal User:sr on the MTLS-CLIENTS listener"
+    # C3 -> SR must be configured for HTTPS with a truststore
+    local c3_sr_tls
+    c3_sr_tls=$(k get controlcenter controlcenter -n "$NAMESPACE" -o jsonpath='{.spec.dependencies.schemaRegistry.tls.enabled}' 2>/dev/null || echo "")
+    if [ "$c3_sr_tls" = "true" ]; then
+        success "Control Center connects to Schema Registry over HTTPS"
     else
-        warning "No recent User:sr request log on MTLS-CLIENTS (SR readiness still implies a successful mTLS connect)"
+        warning "Control Center -> Schema Registry is not marked tls.enabled — verify the C3 SR dependency"
     fi
 
-    # role bindings for the cert principal
-    local rb
-    rb=$(k get confluentrolebinding -n "$NAMESPACE" -o jsonpath='{range .items[?(@.spec.principal.name=="sr")]}{.metadata.name}{" "}{end}' 2>/dev/null || echo "")
-    if [ -n "$rb" ]; then
-        success "ConfluentRolebindings exist for User:sr ($rb)"
-    else
-        error "No ConfluentRolebindings for User:sr — mTLS principal has no RBAC grants"
-    fi
+    # NOTE: SR authenticates to Kafka via OAuth (component identity is carried by
+    # the OAuth/MDS token; cert-principal auth for a component is not supported in
+    # CFK RBAC mode). SR->Kafka mTLS is intentionally out of scope.
+    info "   (SR->Kafka auth is OAuth by design — not a cert principal in RBAC mode)"
 }
 
 # ── 5. Negative test: anonymous connection rejected ───────────────────────────
@@ -269,12 +265,13 @@ check_negative() {
     fi
 
     local pod="mtls-negtest-$$"
-    # openssl s_client with NO -cert against a listener requiring client certs
-    # must fail the handshake. A successful connection => mandatory mTLS not enforced.
-    local out rc
+    # openssl s_client with NO -cert against the REPLICATION listener (9072),
+    # which requires client certs, must fail the handshake. A completed session
+    # => mandatory mTLS not enforced.
+    local out
     out=$(k run "$pod" -n "$NAMESPACE" --rm -i --restart=Never --image=alpine/openssl \
         --command --timeout=90s -- \
-        sh -c 'echo Q | openssl s_client -connect kafka.kafka.svc.cluster.local:9095 -verify_quiet 2>&1; echo "RC=$?"' 2>/dev/null || true)
+        sh -c 'echo Q | openssl s_client -connect kafka.kafka.svc.cluster.local:9072 -verify_quiet 2>&1; echo "RC=$?"' 2>/dev/null || true)
 
     if [ -z "$out" ]; then
         warning "Negative test inconclusive — could not run openssl debug pod (offline image pull?). Re-run with connectivity or --skip-negative."
@@ -285,9 +282,9 @@ check_negative() {
     # A required-client-auth server aborts the handshake; openssl reports an
     # alert / no peer cert exchange and a non-zero code.
     if echo "$out" | grep -qiE 'alert handshake failure|sslv3 alert|peer did not return a certificate|no peer certificate|tlsv13 alert certificate required|errno'; then
-        success "Anonymous client was rejected on mtls-clients (9095) — mandatory mTLS enforced"
+        success "Anonymous client was rejected on the REPLICATION listener (9072) — mandatory mTLS enforced"
     elif echo "$out" | grep -qE 'Verify return code|Server certificate' && echo "$out" | grep -q 'RC=0'; then
-        error "Anonymous client COMPLETED a TLS session on mtls-clients (9095) — client certs are NOT required"
+        error "Anonymous client COMPLETED a TLS session on REPLICATION (9072) — client certs are NOT required"
     else
         warning "Negative test inconclusive; openssl output did not clearly indicate rejection or success"
     fi

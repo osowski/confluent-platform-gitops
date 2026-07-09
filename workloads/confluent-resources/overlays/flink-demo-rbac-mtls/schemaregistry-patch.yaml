@@ -3,10 +3,12 @@
 # ==============================================================================
 # This patch consolidates all Schema Registry configuration including:
 # - Resource limits for local demo environment
-# - mTLS authentication to Kafka via the dedicated mtls-clients listener (#275)
-# - HTTPS on the SR REST API (spec.tls)
-# - OAuth authentication to MDS (RBAC identity)
+# - HTTPS on the SR REST API (spec.tls, #275)
+# - OAuth authentication to Kafka and MDS (RBAC identity)
 # - RBAC authorization
+# NOTE: SR authenticates to Kafka via OAuth, not a client cert — cert-principal
+# auth for a component is not supported in CFK RBAC mode (the component identity
+# is carried by the OAuth/MDS token). SR still serves its own API over HTTPS.
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
@@ -15,8 +17,7 @@ metadata:
   namespace: kafka
 spec:
   # ==============================================================================
-  # TLS - SR identity from cert-manager (CN=sr): serves the REST API over HTTPS
-  # and is presented as the client cert for Kafka mTLS.
+  # TLS - SR serves its REST API over HTTPS using the cert-manager cert (CN=sr).
   # ==============================================================================
   tls:
     secretRef: schemaregistry-mtls
@@ -43,14 +44,16 @@ spec:
   # DEPENDENCIES - Kafka and MDS with OAuth authentication
   # ==============================================================================
   dependencies:
-    # Kafka connection over the dedicated mtls-clients listener: SR presents
-    # its spec.tls cert (CN=sr -> User:sr) instead of an OAuth token.
+    # Kafka connection with OAuth authentication (internal listener)
     kafka:
-      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9095
+      bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:
-        type: mtls
-      tls:
-        enabled: true
+        type: oauth
+        jaasConfig:
+          secretRef: kafka-oauth-client
+        oauthSettings:
+          subClaimName: client_id
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
 
     # MDS connection with OAuth authentication
     mds:

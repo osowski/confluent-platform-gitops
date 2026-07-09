@@ -73,9 +73,7 @@ spec:
     - server auth
     - client auth
 ---
-# Schema Registry identity cert: serves the SR HTTPS API and acts as the
-# client cert for SR -> Kafka mTLS on the mtls-clients listener (#275).
-# CN=sr maps to User:sr (see confluentrolebindings.yaml).
+# Schema Registry server cert: serves the SR REST API over HTTPS (#275).
 # renewBefore staggered from the broker/controller certs so renewals do not
 # trigger concurrent rolls across components.
 apiVersion: cert-manager.io/v1
@@ -106,10 +104,10 @@ spec:
     - server auth
     - client auth
 ---
-# Control Center identity cert (CN=c3, #275): currently used only as the
-# truststore source for C3 -> Schema Registry HTTPS (dependency-level tls
-# secretRef, so C3's own UI stays behind the Traefik edge); also positions C3
-# for a future migration to cert-based Kafka authentication.
+# Control Center cert (CN=c3, #275): supplies the truststore for the
+# C3 -> Schema Registry HTTPS dependency (dependency-level tls secretRef, whose
+# ca.crt lets C3 trust the SR server cert). C3's own UI stays behind the
+# Traefik edge unchanged.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

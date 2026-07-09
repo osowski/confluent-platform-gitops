@@ -27,14 +27,13 @@ This variant layers cert-manager-automated TLS + mutual TLS on top of the existi
 |---|---|---|
 | KRaft controller listener (quorum) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
 | Kafka `REPLICATION` listener (inter-broker, 9072) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
-| Kafka `mtls-clients` listener (cert-auth clients, 9095) | TLS + mTLS, client certs **required** | cert CN → RBAC principal (SR: CN=sr → `User:sr`) |
-| Kafka `INTERNAL` listener (C3/CMF clients, 9071) | OAuth over plaintext | Keycloak service accounts |
+| Kafka `INTERNAL` listener (SR/C3/CMF clients, 9071) | OAuth over plaintext | Keycloak service accounts |
 | Kafka external NodePort (31000) | OAuth over plaintext | Keycloak service accounts |
-| Schema Registry API (8081) | **HTTPS** (`schemaregistry-mtls` cert); Traefik proxies TLS end-to-end | clients: OAuth; SR→Kafka: cert CN=sr |
+| Schema Registry REST API (8081) | **HTTPS** (`schemaregistry-mtls` server cert); Traefik proxies TLS end-to-end | clients authenticate via OAuth |
 
-- Identity certs (all issued by `rbac-mtls-ca-issuer`): `kafka-broker-mtls`, `kraftcontroller-mtls` (CN=kafka → superuser, no extra role bindings), `schemaregistry-mtls` (CN=sr → `User:sr` with explicit role bindings), `controlcenter-mtls` (CN=c3 — currently truststore-only for C3→SR HTTPS).
-- The `mtls-clients` listener is the migration on-ramp for moving service accounts from OAuth to certificate authentication ([#271](https://github.com/osowski/confluent-platform-gitops/issues/271)); Schema Registry is its first tenant.
-- Verify on a running cluster: controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener; broker config shows `REPLICATION:SSL` and `MTLS-CLIENTS:SSL` in `listener.security.protocol.map` with `ssl.client.auth=required`; under-replicated partitions stay at 0; `curl -k https://schema-registry.<domain>/subjects` returns. Or run `./scripts/validate-mtls.sh flink-demo-rbac-mtls`.
+- Identity certs (all issued by `rbac-mtls-ca-issuer`): `kafka-broker-mtls`, `kraftcontroller-mtls` (CN=kafka → superuser), `schemaregistry-mtls` (SR HTTPS server cert), `controlcenter-mtls` (truststore source for the C3→SR HTTPS dependency).
+- **Component→Kafka authentication stays OAuth by design.** In CFK's RBAC model a component's Kafka identity is carried by its OAuth/MDS token, not a client certificate; CFK renders `SASL_SSL`/OAuth for component Kafka dependencies even when mTLS is requested. So Schema Registry, Control Center, and CMF authenticate to Kafka via OAuth. The mTLS work therefore targets the broker↔broker/controller machine-to-machine paths (above) plus TLS on the SR REST API.
+- Verify on a running cluster: controller request logs show `securityProtocol: SSL` and `principal User:kafka` (`tokenAuthenticated: false`) on the `CONTROLLER` listener; broker config shows `REPLICATION:SSL` in `listener.security.protocol.map` with `ssl.client.auth=required`; under-replicated partitions stay at 0; the SR pod is Ready serving HTTPS. Or run `./scripts/validate-mtls.sh flink-demo-rbac-mtls`.
 
 ### Certificate renewal — what to expect (safe, automatic)
 
