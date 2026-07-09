@@ -255,38 +255,41 @@ check_schema_registry() {
     info "   (SR->Kafka auth is OAuth by design — not a cert principal in RBAC mode)"
 }
 
-# ── 5. Negative test: anonymous connection rejected ───────────────────────────
+# ── 5. Negative test: no-client-cert client rejected ──────────────────────────
 check_negative() {
-    info "5. Negative test — anonymous (no client cert) rejection on an mTLS listener"
+    info "5. Negative test — no-client-cert client rejected on the mTLS REPLICATION listener"
 
     if [ "$SKIP_NEGATIVE" = true ]; then
         warning "Negative test skipped (--skip-negative)"
         return
     fi
 
-    local pod="mtls-negtest-$$"
-    # openssl s_client with NO -cert against the REPLICATION listener (9072),
-    # which requires client certs, must fail the handshake. A completed session
-    # => mandatory mTLS not enforced.
+    # A pure-TLS openssl handshake cannot prove this: with TLS 1.3, client-cert
+    # validation happens at the Kafka application layer, after the handshake.
+    # So we make a real Kafka-protocol call with a truststore but NO keystore
+    # (no client cert) and require it to fail with an SslAuthenticationException.
+    # Runs inside kafka-0 using the broker's own tools/certs — no external image.
     local out
-    out=$(k run "$pod" -n "$NAMESPACE" --rm -i --restart=Never --image=alpine/openssl \
-        --command --timeout=90s -- \
-        sh -c 'echo Q | openssl s_client -connect kafka.kafka.svc.cluster.local:9072 -verify_quiet 2>&1; echo "RC=$?"' 2>/dev/null || true)
-
-    if [ -z "$out" ]; then
-        warning "Negative test inconclusive — could not run openssl debug pod (offline image pull?). Re-run with connectivity or --skip-negative."
-        return
-    fi
+    out=$(k exec -n "$NAMESPACE" kafka-0 -c kafka -- sh -c '
+        JKSPW=$(sed "s/jksPassword=//" /mnt/sslcerts/jksPassword.txt 2>/dev/null)
+        cat >/tmp/nocert.properties <<EOF
+security.protocol=SSL
+ssl.truststore.location=/mnt/sslcerts/truststore.p12
+ssl.truststore.password=$JKSPW
+ssl.truststore.type=PKCS12
+EOF
+        timeout 30 kafka-broker-api-versions \
+            --bootstrap-server kafka.kafka.svc.cluster.local:9072 \
+            --command-config /tmp/nocert.properties 2>&1
+    ' 2>/dev/null || true)
     debug "$out"
 
-    # A required-client-auth server aborts the handshake; openssl reports an
-    # alert / no peer cert exchange and a non-zero code.
-    if echo "$out" | grep -qiE 'alert handshake failure|sslv3 alert|peer did not return a certificate|no peer certificate|tlsv13 alert certificate required|errno'; then
-        success "Anonymous client was rejected on the REPLICATION listener (9072) — mandatory mTLS enforced"
-    elif echo "$out" | grep -qE 'Verify return code|Server certificate' && echo "$out" | grep -q 'RC=0'; then
-        error "Anonymous client COMPLETED a TLS session on REPLICATION (9072) — client certs are NOT required"
+    if echo "$out" | grep -qiE 'SslAuthenticationException|failed authentication|SSL handshake failed'; then
+        success "No-cert client rejected on REPLICATION (9072) with an SSL auth error — mandatory mTLS enforced"
+    elif echo "$out" | grep -qiE 'apiVersion|SupportedApiVersions|api-versions'; then
+        error "No-cert client SUCCESSFULLY queried REPLICATION (9072) — client certs are NOT being enforced"
     else
-        warning "Negative test inconclusive; openssl output did not clearly indicate rejection or success"
+        warning "Negative test inconclusive; could not classify the Kafka client output (broker reachable?)"
     fi
 }
 
