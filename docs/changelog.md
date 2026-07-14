@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`workloads` AppProject permits ValidatingAdmissionPolicy** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CFK 3.2.3 renders a KRaft-migration `ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` on Kubernetes ≥1.30; added both to the project's `clusterResourceWhitelist` so `cfk-operator` syncs cleanly (previously failed with "resource ... is not permitted in project workloads").
+
 ### Changed
 - **CMF 2.4.0 upgrade on all clusters** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CMF operator chart 2.3.1 → 2.4.0 and cp-flink Kubernetes operator (`flink-kubernetes-operator`) 1.140.1 → 1.140.3 (`1.14.0-cp3`, latest patch on the CMF-paired 1.14.x line) across all four clusters; `cp-flink-sql:1.19-cp8` unchanged (≥ the 1.19-cp7 interop floor).
 - **Operator baseline alignment on all clusters** ([#302](https://github.com/osowski/confluent-platform-gitops/issues/302)): CMF operator chart 2.3.0 → 2.3.1 on flink-demo, flink-demo-rbac-mtls, and eks-demo (flink-demo-rbac was already there), aligning every cluster with the officially-paired CMF 2.3.1 + `cp-flink-sql:1.19-cp8` release; CFK chart 0.1514.19 (3.2.1) → 0.1514.76 (3.2.3, latest 3.2.x patch — supports CP 7.4–8.2) on all four clusters. FKO verified already at the latest 1.140.1 (`1.14.0-cp1`), the version paired with CMF 2.3.x — no change. Also bumped the cp-flink-sql-sandbox compute pool image `1.19-cp5` → `1.19-cp8` — cp5 is below the 1.19-cp7 minimum for CMF 2.3.x and fails statement-plan loading with a `key.format requires ... confluent.key.fields` error.
