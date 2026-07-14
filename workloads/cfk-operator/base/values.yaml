@@ -44,3 +44,12 @@ namespaceList:
   - flink
   - kafka
   - operator
+
+# Flink SQL controllers (RFC 68, preview — CFK 3.3.0+)
+# Registers the FlinkComputePool / FlinkKafkaCatalog / FlinkKafkaDatabase /
+# FlinkStatement / FlinkSecret / FlinkEnvironmentSecretMapping controllers so
+# CMF Flink SQL objects can be managed declaratively via CRDs. CRDs are always
+# installed by the chart; this flag activates the controllers. The CFK 2.10
+# controllers (CMFRestClass, FlinkEnvironment, FlinkApplication) stay on via
+# enableCMFDay2Ops (default true) and are not gated by this flag.
+enableFlinkSQL: true
