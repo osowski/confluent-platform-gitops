@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-15
+
 ### Fixed
 - **`workloads` AppProject permits ValidatingAdmissionPolicy** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CFK 3.2.3 renders a KRaft-migration `ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` on Kubernetes ≥1.30; added both to the project's `clusterResourceWhitelist` so `cfk-operator` syncs cleanly (previously failed with "resource ... is not permitted in project workloads").
 
@@ -404,7 +406,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.5.2...v0.6.0
