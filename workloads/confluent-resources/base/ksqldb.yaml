@@ -7,5 +7,5 @@ spec:
   replicas: 1
   image:
     application: confluentinc/cp-ksqldb-server:8.2.0
-    init: confluentinc/confluent-init-container:3.1.1
+    init: confluentinc/confluent-init-container:3.3.0
   dataVolumeCapacity: 10Gi

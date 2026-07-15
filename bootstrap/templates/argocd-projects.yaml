@@ -72,6 +72,10 @@ spec:
       kind: ValidatingWebhookConfiguration
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicy
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicyBinding
     - group: rbac.authorization.k8s.io
       kind: ClusterRole
     - group: rbac.authorization.k8s.io
@@ -149,6 +153,19 @@ spec:
       kind: FlinkEnvironment
     - group: platform.confluent.io
       kind: FlinkApplication
+    # RFC 68 Flink SQL CRDs (CFK 3.3.0+, preview)
+    - group: platform.confluent.io
+      kind: FlinkComputePool
+    - group: platform.confluent.io
+      kind: FlinkKafkaCatalog
+    - group: platform.confluent.io
+      kind: FlinkKafkaDatabase
+    - group: platform.confluent.io
+      kind: FlinkStatement
+    - group: platform.confluent.io
+      kind: FlinkSecret
+    - group: platform.confluent.io
+      kind: FlinkEnvironmentSecretMapping
     - group: monitoring.coreos.com
       kind: ServiceMonitor
     - group: monitoring.coreos.com
