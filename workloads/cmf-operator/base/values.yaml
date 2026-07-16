@@ -19,3 +19,39 @@ resources:
 # Chart default: auto-generated name
 serviceAccount:
   name: cmf
+
+# ---------------------------------------------------------------------------
+# Artifact Management (Issue #306) — enabled by default on all clusters.
+# Backed by the in-cluster MinIO (namespace `storage`). CMF uses these
+# credentials only for artifact upload/download/delete; running Flink jobs
+# fetch artifacts with their own per-deployment filesystem credentials.
+# ---------------------------------------------------------------------------
+
+# Inject MinIO credentials as AWS-style env vars. `minio-credentials` is
+# reflected into the `operator` namespace by the Emberstack Reflector
+# (see infrastructure/minio/overlays/*/secret-patch.yaml). Referenced as
+# ${...} in cmf.artifacts.configuration below (resolved by CMF at runtime,
+# NOT by Helm — values must arrive via valueFiles, never --set).
+extraEnv:
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: minio-credentials
+        key: root-user
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-credentials
+        key: root-password
+
+cmf:
+  artifacts:
+    enabled: true
+    # Required when enabled — CMF refuses to start without basePath.
+    basePath: s3://artifacts/cmf
+    configuration:
+      fs.s3a.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      fs.s3a.access.key: "${AWS_ACCESS_KEY_ID}"
+      fs.s3a.secret.key: "${AWS_SECRET_ACCESS_KEY}"
+      fs.s3a.path.style.access: "true"
+      fs.s3a.connection.ssl.enabled: "false"
