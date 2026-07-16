@@ -47,4 +47,7 @@ spec:
           echo "Creating warehouse bucket if it doesn't exist..."
           mc mb myminio/warehouse --ignore-existing
 
+          echo "Creating artifacts bucket (CMF artifact management) if it doesn't exist..."
+          mc mb myminio/artifacts --ignore-existing
+
           echo "MinIO initialization complete"
