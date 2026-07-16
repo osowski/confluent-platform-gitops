@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CMF Artifact Management on all clusters** ([#306](https://github.com/osowski/confluent-platform-gitops/issues/306)): CMF 2.4.0 artifact management enabled fleet-wide, backed by the in-cluster MinIO (dedicated `artifacts` bucket, `basePath: s3://artifacts/cmf`); credentials injected via `extraEnv` from the reflected `minio-credentials` secret.
+
 ## [0.8.0] - 2026-07-15
 
 ### Fixed

@@ -226,6 +226,7 @@ Add these entries to `/etc/hosts`:
 - **Bucket**: `warehouse`
 - **Purpose**: Backend storage for Flink state management (checkpoints, savepoints, HA)
 - **Cyberduck**: Import the [S3_flink-demo.cyberduckprofile](./cyberduck/S3_flink-demo.cyberduckprofile) connection profile for GUI access
+- **CMF Artifact Management**: enabled, backed by a dedicated `artifacts` bucket (`basePath: s3://artifacts/cmf`)
 
 **Headlamp Kubernetes Dashboard:**
 - **URL**: https://headlamp.flink-demo.confluentdemo.local

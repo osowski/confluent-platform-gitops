@@ -231,6 +231,7 @@ confluent flink application list --environment shapes-env
 **MinIO (S3-compatible storage):**
 - **Console URL**: http://s3-console.flink-demo-rbac.confluentdemo.local
 - **S3 API URL**: http://s3.flink-demo-rbac.confluentdemo.local
+- **CMF Artifact Management**: enabled, backed by a dedicated `artifacts` bucket (`basePath: s3://artifacts/cmf`)
 
 **Kafka Bootstrap (for direct client access):**
 - Kafka is exposed via NodePort at `kafka.flink-demo-rbac.confluentdemo.local:31000`
