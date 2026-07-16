@@ -192,6 +192,7 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 
 **MinIO Console:**
 - **URL**: https://s3-console.eks-demo.platform.dspdemos.com
+- **CMF Artifact Management**: enabled, backed by a dedicated `artifacts` bucket (`basePath: s3://artifacts/cmf`)
 
 **Keycloak**:
 - **URL**: https://keycloak.eks-demo.platform.dspdemos.com
