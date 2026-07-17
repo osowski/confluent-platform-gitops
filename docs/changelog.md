@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-07-17
+
 ### Added
 - **flink-demo-rbac — CMF UI browser login** ([#311](https://github.com/osowski/confluent-platform-gitops/issues/311)): new `cmf-ui.flink-demo-rbac…` host fronted by oauth2-proxy provides Keycloak SSO to the CMF UI (and its artifacts upload page); the existing `cmf.*` host stays direct for CLI/API bearer access. Requires a `cmf-ui.*` `/etc/hosts` entry. (Native CMF SSO evaluated as a follow-up in [#312](https://github.com/osowski/confluent-platform-gitops/issues/312).)
 - **CMF UI endpoint on all clusters** ([#313](https://github.com/osowski/confluent-platform-gitops/issues/313)): uniform `cmf-ui.<cluster>` host — Keycloak SSO via oauth2-proxy on flink-demo-rbac-mtls and eks-demo, direct pass-through on flink-demo; oauth2-proxy/realm-sync refactored to be cluster-generic. (flink-demo-rbac-mtls `cmf.*` also brought to HTTPS.)
@@ -421,7 +423,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.1...v0.7.0
