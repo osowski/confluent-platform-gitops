@@ -7,21 +7,21 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "50" # After core infra, before ingresses (80)
+    argocd.argoproj.io/sync-wave: "50"  # After core infra, before ingresses (80)
 spec:
   project: infrastructure
   sources:
-    - repoURL: https://kubernetes-sigs.github.io/headlamp/
-      targetRevision: 0.43.0
-      chart: headlamp
-      helm:
-        ignoreMissingValueFiles: true
-        valueFiles:
-          - $values/infrastructure/headlamp/base/values.yaml
-          - $values/infrastructure/headlamp/overlays/flink-demo/values.yaml
-    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: v0.8.2
-      ref: values
+  - repoURL: https://kubernetes-sigs.github.io/headlamp/
+    targetRevision: 0.43.0
+    chart: headlamp
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - $values/infrastructure/headlamp/base/values.yaml
+        - $values/infrastructure/headlamp/overlays/flink-demo/values.yaml
+  - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: headlamp
