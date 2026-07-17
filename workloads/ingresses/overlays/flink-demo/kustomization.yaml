@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ../../base
   - cmf-certificate.yaml              # flink-demo only: TLS cert for HTTPS cmf route
+  - cmf-ui-ingressroute.yaml          # flink-demo only: direct cmf-ui alias (no SSO)
   - schema-registry-certificate.yaml  # flink-demo only: TLS cert for HTTPS schema-registry route
 
 patches:

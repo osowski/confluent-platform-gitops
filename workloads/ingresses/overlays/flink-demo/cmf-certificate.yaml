@@ -11,6 +11,7 @@ metadata:
 spec:
   dnsNames:
     - cmf.flink-demo.confluentdemo.local
+    - cmf-ui.flink-demo.confluentdemo.local
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

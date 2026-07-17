@@ -1,0 +1,22 @@
+---
+# flink-demo has no Keycloak/RBAC; cmf-ui.* is a URL-parity alias that routes
+# straight to CMF (no oauth2-proxy). Same backend as cmf.*.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cmf-ui
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`cmf-ui.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: cmf-service
+          port: 80
+          scheme: http
+  tls:
+    secretName: cmf-tls
