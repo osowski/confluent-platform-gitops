@@ -31,6 +31,8 @@ spec:
             - --client-id=cmf-ui
             - --redirect-url=https://cmf.flink-demo-rbac.confluentdemo.local/oauth2/callback
             - --email-domain=*
+            # Demo Keycloak users have unverified emails; skip the email_verified check
+            - --insecure-oidc-allow-unverified-email=true
             - --scope=openid profile email
             - --set-authorization-header=true
             - --pass-authorization-header=true
