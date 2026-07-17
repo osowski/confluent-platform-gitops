@@ -199,6 +199,10 @@ Add these entries to `/etc/hosts`:
   `cmf.*` host (below) stays for programmatic/CLI access with a bearer token and is not
   intercepted by SSO. Artifact upload/management lives in this UI (Control Center has no
   artifacts page).
+- **Use `cmf-ui.*` for the browser, not `cmf.*`.** `https://cmf.flink-demo-rbac.confluentdemo.local/`
+  still resolves and serves the CMF UI SPA, but **interactive login is broken there** — that host
+  has no SSO layer, so the UI cannot obtain a token and API calls return 401. Always use
+  `https://cmf-ui.flink-demo-rbac.confluentdemo.local/` for the UI.
 
 **Keycloak Admin Console:**
 - **URL**: http://keycloak.flink-demo-rbac.confluentdemo.local:30080
