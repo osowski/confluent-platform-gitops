@@ -141,6 +141,7 @@ Add these entries to `/etc/hosts`:
 127.0.0.1  alertmanager.flink-demo-rbac.confluentdemo.local
 127.0.0.1  argocd.flink-demo-rbac.confluentdemo.local
 127.0.0.1  cmf.flink-demo-rbac.confluentdemo.local
+127.0.0.1  cmf-ui.flink-demo-rbac.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo-rbac.confluentdemo.local
 127.0.0.1  grafana.flink-demo-rbac.confluentdemo.local
 127.0.0.1  headlamp.flink-demo-rbac.confluentdemo.local
@@ -162,6 +163,7 @@ Add these entries to `/etc/hosts`:
 > ::1  alertmanager.flink-demo-rbac.confluentdemo.local
 > ::1  argocd.flink-demo-rbac.confluentdemo.local
 > ::1  cmf.flink-demo-rbac.confluentdemo.local
+> ::1  cmf-ui.flink-demo-rbac.confluentdemo.local
 > ::1  controlcenter.flink-demo-rbac.confluentdemo.local
 > ::1  grafana.flink-demo-rbac.confluentdemo.local
 > ::1  headlamp.flink-demo-rbac.confluentdemo.local
@@ -188,6 +190,15 @@ Add these entries to `/etc/hosts`:
 - **URL**: https://controlcenter.flink-demo-rbac.confluentdemo.local
 - **Username**: `admin@osow.ski` (via Keycloak SSO)
 - **Password**: `admin123`
+
+**CMF UI (Flink environments, applications, artifacts):**
+- **URL**: https://cmf-ui.flink-demo-rbac.confluentdemo.local (browser SSO via Keycloak)
+- **Username**: `admin@osow.ski` (redirected to Keycloak on first access)
+- **Password**: `admin123`
+- The browser UI is fronted by oauth2-proxy on the dedicated `cmf-ui.*` host. The direct
+  `cmf.*` host (below) stays for programmatic/CLI access with a bearer token and is not
+  intercepted by SSO. Artifact upload/management lives in this UI (Control Center has no
+  artifacts page).
 
 **Keycloak Admin Console:**
 - **URL**: http://keycloak.flink-demo-rbac.confluentdemo.local:30080
