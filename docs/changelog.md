@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **flink-demo-rbac — CMF UI browser login** ([#311](https://github.com/osowski/confluent-platform-gitops/issues/311)): new `cmf-ui.flink-demo-rbac…` host fronted by oauth2-proxy provides Keycloak SSO to the CMF UI (and its artifacts upload page); the existing `cmf.*` host stays direct for CLI/API bearer access. Requires a `cmf-ui.*` `/etc/hosts` entry. (Native CMF SSO evaluated as a follow-up in [#312](https://github.com/osowski/confluent-platform-gitops/issues/312).)
+
 ## [0.8.1] - 2026-07-16
 
 ### Added

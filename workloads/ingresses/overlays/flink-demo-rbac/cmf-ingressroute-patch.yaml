@@ -1,4 +1,8 @@
 ---
+# cmf.* is the direct CMF endpoint for programmatic/CLI access (clients present
+# their own bearer token; CMF validates + authorizes). Browser SSO lives on the
+# separate cmf-ui.* host (see cmf-ui-ingressroute.yaml) so oauth2-proxy never
+# intercepts CLI/API traffic here.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:

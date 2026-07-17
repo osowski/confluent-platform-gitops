@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-cmf
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "117"
+  labels:
+    app: oauth2-proxy-cmf
+spec:
+  selector:
+    app: oauth2-proxy-cmf
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
