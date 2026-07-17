@@ -8,21 +8,14 @@ spec:
   entryPoints:
     - websecure
   routes:
-    # oauth2-proxy login/callback endpoints — must NOT be behind the auth middleware
-    - match: Host(`cmf.flink-demo-rbac.confluentdemo.local`) && PathPrefix(`/oauth2/`)
+    # All CMF traffic flows through oauth2-proxy (reverse-proxy mode): it does
+    # the Keycloak login (auto-redirect) and proxies authenticated requests to
+    # cmf-service with the bearer token injected. The /oauth2/* login+callback
+    # endpoints are served by oauth2-proxy itself.
+    - match: Host(`cmf.flink-demo-rbac.confluentdemo.local`)
       kind: Rule
       services:
         - name: oauth2-proxy-cmf
           port: 4180
-    # Everything else → CMF, gated by oauth2-proxy (errors redirect first, then auth)
-    - match: Host(`cmf.flink-demo-rbac.confluentdemo.local`)
-      kind: Rule
-      middlewares:
-        - name: cmf-oauth-errors
-        - name: cmf-oauth-auth
-      services:
-        - name: cmf-service
-          port: 80
-          scheme: http
   tls:
     secretName: cmf-tls

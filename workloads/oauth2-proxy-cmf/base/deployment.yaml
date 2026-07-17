@@ -37,7 +37,9 @@ spec:
             - --set-authorization-header=true
             - --pass-authorization-header=true
             - --reverse-proxy=true
-            - --upstream=static://202
+            # oauth2-proxy sits in the request path and proxies authenticated
+            # traffic to CMF, auto-redirecting unauthenticated browsers to Keycloak.
+            - --upstream=http://cmf-service.operator.svc.cluster.local:80
             - --http-address=0.0.0.0:4180
             - --cookie-secure=true
             - --cookie-domain=.flink-demo-rbac.confluentdemo.local
