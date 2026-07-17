@@ -1,0 +1,21 @@
+---
+# TLS certificate for the CMF HTTPS IngressRoute.
+# flink-demo-rbac only: other clusters use different TLS models.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-tls
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "110"
+spec:
+  dnsNames:
+    - cmf.flink-demo-rbac.confluentdemo.local
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: cmf-tls
+  usages:
+    - digital signature
+    - key encipherment

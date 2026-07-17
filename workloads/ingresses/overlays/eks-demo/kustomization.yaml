@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ../../base
   - schema-registry-certificate.yaml
+  - cmf-certificate.yaml
 
 patches:
   - path: cmf-ingressroute-patch.yaml

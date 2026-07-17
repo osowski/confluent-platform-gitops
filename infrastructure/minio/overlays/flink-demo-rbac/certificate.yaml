@@ -1,0 +1,22 @@
+---
+# TLS certificate for the MinIO S3 API and Console HTTPS IngressRoutes.
+# flink-demo-rbac only: other clusters use different TLS models.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minio-tls
+  namespace: storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  dnsNames:
+    - s3.flink-demo-rbac.confluentdemo.local
+    - s3-console.flink-demo-rbac.confluentdemo.local
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: minio-tls
+  usages:
+    - digital signature
+    - key encipherment
