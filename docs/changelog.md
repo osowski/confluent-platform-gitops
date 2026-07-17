@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-16
+
 ### Added
 - **CMF Artifact Management on all clusters** ([#306](https://github.com/osowski/confluent-platform-gitops/issues/306)): CMF 2.4.0 artifact management enabled fleet-wide, backed by the in-cluster MinIO (dedicated `artifacts` bucket, `basePath: s3://artifacts/cmf`); credentials injected via `extraEnv` from the reflected `minio-credentials` secret.
 
@@ -412,7 +414,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.6.0...v0.6.1
