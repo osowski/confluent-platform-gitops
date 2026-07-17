@@ -35,6 +35,11 @@ patches:
       kind: Service
       name: keycloak-external
 
+  - path: realm-sync-job-patch.yaml
+    target:
+      kind: Job
+      name: keycloak-realm-sync
+
 labels:
 - includeSelectors: false
   includeTemplates: true

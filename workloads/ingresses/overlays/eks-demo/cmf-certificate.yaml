@@ -8,6 +8,7 @@ spec:
   secretName: cmf-tls
   dnsNames:
     - cmf.eks-demo.platform.dspdemos.com
+    - cmf-ui.eks-demo.platform.dspdemos.com
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer
