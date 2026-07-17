@@ -29,7 +29,7 @@ spec:
             - --redeem-url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
             - --oidc-jwks-url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             - --client-id=cmf-ui
-            - --redirect-url=https://cmf.flink-demo-rbac.confluentdemo.local/oauth2/callback
+            - --redirect-url=https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback
             - --email-domain=*
             # Demo Keycloak users have unverified emails; skip the email_verified check
             - --insecure-oidc-allow-unverified-email=true

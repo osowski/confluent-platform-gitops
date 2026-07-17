@@ -1,0 +1,23 @@
+---
+# Browser SSO entrypoint for the CMF UI. All traffic flows through oauth2-proxy
+# (reverse-proxy mode), which runs the Keycloak login (auto-redirect) and proxies
+# authenticated requests to cmf-service with the bearer token injected. Kept on a
+# dedicated host so the direct cmf.* endpoint stays usable for CLI/API clients.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cmf-ui
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`cmf-ui.flink-demo-rbac.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: oauth2-proxy-cmf
+          port: 4180
+  tls:
+    secretName: cmf-tls

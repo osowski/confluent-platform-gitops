@@ -318,9 +318,9 @@ data:
           "directAccessGrantsEnabled": false,
           "serviceAccountsEnabled": false,
           "redirectUris": [
-            "https://cmf.flink-demo-rbac.confluentdemo.local/oauth2/callback"
+            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback"
           ],
-          "webOrigins": ["https://cmf.flink-demo-rbac.confluentdemo.local"],
+          "webOrigins": ["https://cmf-ui.flink-demo-rbac.confluentdemo.local"],
           "secret": "cmf-ui-secret",
           "protocolMappers": [
             {

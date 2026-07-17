@@ -5,7 +5,8 @@ kind: Kustomization
 resources:
   - ../../base
   - mds-ingressroute.yaml             # flink-demo-rbac only: MDS endpoint
-  - cmf-certificate.yaml              # flink-demo-rbac only: TLS cert for HTTPS cmf route
+  - cmf-certificate.yaml              # flink-demo-rbac only: TLS cert for HTTPS cmf + cmf-ui routes
+  - cmf-ui-ingressroute.yaml          # flink-demo-rbac only: browser SSO host (oauth2-proxy) for the CMF UI
   - schema-registry-certificate.yaml  # flink-demo-rbac only: TLS cert for HTTPS schema-registry route
 
 patches:
