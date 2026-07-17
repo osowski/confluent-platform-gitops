@@ -158,6 +158,35 @@ spec:
                 echo "WARNING: Control Center client not found, may need realm re-import"
               fi
 
+              # Ensure cmf-ui client (browser login for the CMF UI via oauth2-proxy)
+              echo "Ensuring cmf-ui client..."
+              CMFUI_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=cmf-ui" \
+                -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+              if [ -z "$CMFUI_ID" ]; then
+                echo "Creating cmf-ui client..."
+                curl -sf -X POST "http://keycloak:8080/admin/realms/confluent/clients" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+                  -d '{"clientId":"cmf-ui","enabled":true,"protocol":"openid-connect","publicClient":false,"standardFlowEnabled":true,"directAccessGrantsEnabled":false,"serviceAccountsEnabled":false,"redirectUris":["https://cmf.flink-demo-rbac.confluentdemo.local/oauth2/callback"],"webOrigins":["https://cmf.flink-demo-rbac.confluentdemo.local"],"secret":"cmf-ui-secret"}' \
+                  2>&1 | grep -v "Conflict detected" || echo "cmf-ui client created or exists"
+                CMFUI_ID=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/clients?clientId=cmf-ui" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+              else
+                echo "cmf-ui client exists: $CMFUI_ID"
+                curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CMFUI_ID" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+                  -d '{"secret":"cmf-ui-secret"}'
+              fi
+              if [ -n "$CMFUI_ID" ]; then
+                echo "Adding client_id-from-username mapper to cmf-ui..."
+                curl -sf -X POST "http://keycloak:8080/admin/realms/confluent/clients/$CMFUI_ID/protocol-mappers/models" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+                  -d '{"name":"clientid-from-username","protocol":"openid-connect","protocolMapper":"oidc-usermodel-property-mapper","consentRequired":false,"config":{"user.attribute":"username","claim.name":"client_id","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"false"}}' \
+                  2>&1 | grep -v "Conflict detected" || echo "cmf-ui mapper created or exists"
+                echo "cmf-ui client configured"
+              else
+                echo "WARNING: cmf-ui client not found after create"
+              fi
+
               echo "=== Realm sync complete ==="
           resources:
             requests:
