@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: v0.8.2
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,7 @@ spec:
           name: flink-demo-rbac-mtls
           domain: confluentdemo.local
         git:
-          targetRevision: "HEAD"
+          targetRevision: "v0.8.2"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
