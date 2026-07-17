@@ -143,6 +143,8 @@ spec:
       kind: Issuer
     - group: traefik.io
       kind: IngressRoute
+    - group: traefik.io
+      kind: Middleware
     - group: flink.apache.org
       kind: FlinkDeployment
     - group: flink.apache.org
