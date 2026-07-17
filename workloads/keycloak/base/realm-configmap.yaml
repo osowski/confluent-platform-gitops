@@ -259,7 +259,8 @@ data:
           "serviceAccountsEnabled": true,
           "standardFlowEnabled": true,
           "redirectUris": [
-            "https://controlcenter.flink-demo-rbac.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback"
+            "https://controlcenter.flink-demo-rbac.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback",
+            "https://controlcenter.flink-demo-rbac-mtls.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback"
           ],
           "webOrigins": ["*"],
           "secret": "controlcenter-secret",
