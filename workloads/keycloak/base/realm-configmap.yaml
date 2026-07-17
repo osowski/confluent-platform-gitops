@@ -318,9 +318,13 @@ data:
           "directAccessGrantsEnabled": false,
           "serviceAccountsEnabled": false,
           "redirectUris": [
-            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback"
+            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback",
+            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/oauth2/callback"
           ],
-          "webOrigins": ["https://cmf-ui.flink-demo-rbac.confluentdemo.local"],
+          "webOrigins": [
+            "https://cmf-ui.flink-demo-rbac.confluentdemo.local",
+            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local"
+          ],
           "secret": "cmf-ui-secret",
           "protocolMappers": [
             {
