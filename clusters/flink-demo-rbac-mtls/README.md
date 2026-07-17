@@ -174,6 +174,7 @@ Add these entries to `/etc/hosts`:
 127.0.0.1  alertmanager.flink-demo-rbac-mtls.confluentdemo.local
 127.0.0.1  argocd.flink-demo-rbac-mtls.confluentdemo.local
 127.0.0.1  cmf.flink-demo-rbac-mtls.confluentdemo.local
+127.0.0.1  cmf-ui.flink-demo-rbac-mtls.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo-rbac-mtls.confluentdemo.local
 127.0.0.1  grafana.flink-demo-rbac-mtls.confluentdemo.local
 127.0.0.1  headlamp.flink-demo-rbac-mtls.confluentdemo.local
@@ -195,6 +196,7 @@ Add these entries to `/etc/hosts`:
 > ::1  alertmanager.flink-demo-rbac-mtls.confluentdemo.local
 > ::1  argocd.flink-demo-rbac-mtls.confluentdemo.local
 > ::1  cmf.flink-demo-rbac-mtls.confluentdemo.local
+> ::1  cmf-ui.flink-demo-rbac-mtls.confluentdemo.local
 > ::1  controlcenter.flink-demo-rbac-mtls.confluentdemo.local
 > ::1  grafana.flink-demo-rbac-mtls.confluentdemo.local
 > ::1  headlamp.flink-demo-rbac-mtls.confluentdemo.local
@@ -221,6 +223,19 @@ Add these entries to `/etc/hosts`:
 - **URL**: https://controlcenter.flink-demo-rbac-mtls.confluentdemo.local
 - **Username**: `admin@osow.ski` (via Keycloak SSO)
 - **Password**: `admin123`
+
+**CMF UI (Flink environments, applications, artifacts):**
+- **URL**: https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local (browser SSO via Keycloak)
+- **Username**: `admin@osow.ski` (redirected to Keycloak on first access)
+- **Password**: `admin123`
+- The browser UI is fronted by oauth2-proxy on the dedicated `cmf-ui.*` host. The direct
+  `cmf.*` host (below) stays for programmatic/CLI access with a bearer token — now served over
+  HTTPS — and is not intercepted by SSO. Artifact upload/management lives in this UI (Control
+  Center has no artifacts page).
+- **Use `cmf-ui.*` for the browser, not `cmf.*`.** `https://cmf.flink-demo-rbac-mtls.confluentdemo.local/`
+  still resolves and serves the CMF UI SPA, but **interactive login is broken there** — that host
+  has no SSO layer, so the UI cannot obtain a token and API calls return 401. Always use
+  `https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/` for the UI.
 
 **Keycloak Admin Console:**
 - **URL**: http://keycloak.flink-demo-rbac-mtls.confluentdemo.local:30080

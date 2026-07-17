@@ -159,6 +159,7 @@ Add these entries to `/etc/hosts`:
 127.0.0.1  alertmanager.flink-demo.confluentdemo.local
 127.0.0.1  argocd.flink-demo.confluentdemo.local
 127.0.0.1  cmf.flink-demo.confluentdemo.local
+127.0.0.1  cmf-ui.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  headlamp.flink-demo.confluentdemo.local
@@ -176,6 +177,7 @@ Add these entries to `/etc/hosts`:
 > ::1  alertmanager.flink-demo.confluentdemo.local
 > ::1  argocd.flink-demo.confluentdemo.local
 > ::1  cmf.flink-demo.confluentdemo.local
+> ::1  cmf-ui.flink-demo.confluentdemo.local
 > ::1  controlcenter.flink-demo.confluentdemo.local
 > ::1  grafana.flink-demo.confluentdemo.local
 > ::1  headlamp.flink-demo.confluentdemo.local
@@ -218,6 +220,9 @@ Add these entries to `/etc/hosts`:
 **CMF API:**
 - **URL**: http://cmf.flink-demo.confluentdemo.local
 - **Documentation**: [CMF REST API](https://docs.confluent.io/platform/current/flink/index.html)
+- `cmf-ui.flink-demo.confluentdemo.local` is a direct alias to the same CMF UI/API — no login,
+  since flink-demo has no authentication layer. Provided for host-naming parity with clusters
+  that front CMF with SSO.
 
 **MinIO:**
 - **API URL**: http://s3.flink-demo.confluentdemo.local
