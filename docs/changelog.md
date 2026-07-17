@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CMF Artifact Management on all clusters** ([#306](https://github.com/osowski/confluent-platform-gitops/issues/306)): CMF 2.4.0 artifact management enabled fleet-wide, backed by the in-cluster MinIO (dedicated `artifacts` bucket, `basePath: s3://artifacts/cmf`); credentials injected via `extraEnv` from the reflected `minio-credentials` secret.
 
 ### Fixed
-- **flink-demo — HTTPS on MinIO, CMF, and Schema Registry endpoints** ([#309](https://github.com/osowski/confluent-platform-gitops/issues/309)): the `s3`, `s3-console`, `cmf`, and `schema-registry` IngressRoutes were HTTP-only (served Traefik's default self-signed cert over HTTPS); each now gets a cert-manager `Certificate` and `websecure` + `tls` so all endpoints serve valid HTTPS.
+- **HTTPS on MinIO, CMF, and Schema Registry endpoints** ([#309](https://github.com/osowski/confluent-platform-gitops/issues/309)): the previously HTTP-only `s3`, `s3-console`, `cmf`, and `schema-registry` IngressRoutes now serve valid HTTPS via per-route cert-manager `Certificate`s + `websecure`/`tls` on flink-demo and flink-demo-rbac; eks-demo's `cmf` route likewise gets a proper cert (was falling back to Traefik's default self-signed cert).
 
 ## [0.8.0] - 2026-07-15
 

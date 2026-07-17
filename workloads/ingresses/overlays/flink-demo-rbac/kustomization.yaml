@@ -4,7 +4,9 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - mds-ingressroute.yaml  # flink-demo-rbac only: MDS endpoint
+  - mds-ingressroute.yaml             # flink-demo-rbac only: MDS endpoint
+  - cmf-certificate.yaml              # flink-demo-rbac only: TLS cert for HTTPS cmf route
+  - schema-registry-certificate.yaml  # flink-demo-rbac only: TLS cert for HTTPS schema-registry route
 
 patches:
   - path: cmf-ingressroute-patch.yaml

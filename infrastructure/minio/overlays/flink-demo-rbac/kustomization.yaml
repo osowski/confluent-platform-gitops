@@ -5,6 +5,7 @@ kind: Kustomization
 # Reference base configuration
 resources:
   - ../../base
+  - certificate.yaml  # flink-demo-rbac only: TLS cert for HTTPS s3 / s3-console routes
 
 # Cluster-specific patches
 patches:
