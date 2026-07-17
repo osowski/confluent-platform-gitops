@@ -251,6 +251,34 @@ data:
           ]
         },
         {
+          "clientId": "cmf-ui",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "redirectUris": ["https://cmf-ui.eks-demo.platform.dspdemos.com/oauth2/callback"],
+          "webOrigins": ["https://cmf-ui.eks-demo.platform.dspdemos.com"],
+          "secret": "cmf-ui-secret",
+          "protocolMappers": [
+            {
+              "name": "clientid-from-username",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-property-mapper",
+              "consentRequired": false,
+              "config": {
+                "user.attribute": "username",
+                "claim.name": "client_id",
+                "jsonType.label": "String",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "false"
+              }
+            }
+          ]
+        },
+        {
           "clientId": "controlcenter",
           "enabled": true,
           "protocol": "openid-connect",

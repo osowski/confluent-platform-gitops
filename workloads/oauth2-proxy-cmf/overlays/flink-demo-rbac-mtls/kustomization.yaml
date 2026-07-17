@@ -8,4 +8,4 @@ labels:
   - includeSelectors: false
     includeTemplates: true
     pairs:
-      cluster: flink-demo-rbac
+      cluster: flink-demo-rbac-mtls

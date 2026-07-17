@@ -1,6 +1,4 @@
 ---
-# TLS certificate for the CMF HTTPS IngressRoute.
-# flink-demo only: other clusters use different TLS models.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -10,8 +8,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "110"
 spec:
   dnsNames:
-    - cmf.flink-demo.confluentdemo.local
-    - cmf-ui.flink-demo.confluentdemo.local
+    - cmf.flink-demo-rbac-mtls.confluentdemo.local
+    - cmf-ui.flink-demo-rbac-mtls.confluentdemo.local
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

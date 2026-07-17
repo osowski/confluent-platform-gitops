@@ -6,6 +6,7 @@ resources:
   - ../../base
   - schema-registry-certificate.yaml
   - cmf-certificate.yaml
+  - cmf-ui-ingressroute.yaml
 
 patches:
   - path: cmf-ingressroute-patch.yaml

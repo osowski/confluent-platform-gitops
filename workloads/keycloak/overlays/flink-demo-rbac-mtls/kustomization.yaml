@@ -21,6 +21,11 @@ patches:
       kind: IngressRoute
       name: keycloak
 
+  - path: realm-sync-job-patch.yaml
+    target:
+      kind: Job
+      name: keycloak-realm-sync
+
 # Cluster-specific labels
 labels:
 - includeSelectors: false

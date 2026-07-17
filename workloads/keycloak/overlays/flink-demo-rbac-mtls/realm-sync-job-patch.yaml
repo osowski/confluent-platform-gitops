@@ -1,0 +1,16 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-realm-sync
+  namespace: keycloak
+spec:
+  template:
+    spec:
+      containers:
+        - name: realm-sync
+          env:
+            - name: CMF_UI_REDIRECT_URI
+              value: https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/oauth2/callback
+            - name: CMF_UI_WEB_ORIGIN
+              value: https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local

@@ -24,12 +24,9 @@ spec:
           args:
             - --provider=oidc
             - --skip-oidc-discovery=true
-            - --oidc-issuer-url=https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-            - --login-url=https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
             - --redeem-url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
             - --oidc-jwks-url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             - --client-id=cmf-ui
-            - --redirect-url=https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback
             - --email-domain=*
             # Demo Keycloak users have unverified emails; skip the email_verified check
             - --insecure-oidc-allow-unverified-email=true
@@ -42,9 +39,10 @@ spec:
             - --upstream=http://cmf-service.operator.svc.cluster.local:80
             - --http-address=0.0.0.0:4180
             - --cookie-secure=true
-            - --cookie-domain=.flink-demo-rbac.confluentdemo.local
-            - --whitelist-domain=.flink-demo-rbac.confluentdemo.local
             - --skip-provider-button=true
+          envFrom:
+            - configMapRef:
+                name: oauth2-proxy-cmf-cluster
           env:
             - name: OAUTH2_PROXY_CLIENT_SECRET
               valueFrom:

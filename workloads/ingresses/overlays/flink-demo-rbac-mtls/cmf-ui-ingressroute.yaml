@@ -2,17 +2,18 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: cmf
+  name: cmf-ui
   namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
 spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`cmf.flink-demo-rbac-mtls.confluentdemo.local`)
+    - match: Host(`cmf-ui.flink-demo-rbac-mtls.confluentdemo.local`)
       kind: Rule
       services:
-        - name: cmf-service
-          port: 80
-          scheme: http
+        - name: oauth2-proxy-cmf
+          port: 4180
   tls:
     secretName: cmf-tls
