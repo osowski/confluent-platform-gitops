@@ -57,6 +57,9 @@ If you have experience with GitOps or want to understand how the inner workings 
 | `colima` | v0.5+ | `brew install colima` |
 | `kind` | v0.20+ | `brew install kind` |
 
+> [!IMPORTANT]
+> The Colima VM requires `fs.inotify.max_user_instances` raised above its default of `128` before creating a kind cluster. Leaving it at the default exhausts the limit quickly. See [Cluster Setup](docs/getting-started-for-the-uninitiated.md#cluster-setup) for the one-time configuration.
+
 See [Getting Started for the Uninitiated](docs/getting-started-for-the-uninitiated.md) for the full local cluster walkthrough.
 
 #### For EKS Clusters

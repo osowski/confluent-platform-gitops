@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- **Colima inotify limit required for local kind clusters**: documented the one-time `fs.inotify.max_user_instances` increase (default `128` is too low) plus a "Too Many Open Files" troubleshooting section, since exhausting it breaks `kube-proxy`/`coredns` and prevents Kafka brokers from starting.
+
 ## [0.8.2] - 2026-07-17
 
 ### Added

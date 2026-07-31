@@ -67,6 +67,35 @@ Checking out a release tag ensures you are working from a known-good snapshot wh
 colima start --arch arm64 --memory 16 --cpu 8 --disk 256
 ```
 
+Then raise the Colima VM's inotify limits. The default `fs.inotify.max_user_instances` of `128` is **not enough** for a multi-node kind cluster running Confluent Platform, and exhausting it breaks the cluster in confusing ways:
+
+```bash
+colima ssh -- sudo sh -c 'cat > /etc/sysctl.d/99-inotify-k8s.conf <<EOF
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_user_watches = 1048576
+EOF
+sysctl -p /etc/sysctl.d/99-inotify-k8s.conf'
+```
+
+To make this survive a Colima VM *recreation* (`colima delete`), also add a provision block to `~/.colima/default/colima.yaml`, replacing the default `provision: null`:
+
+```yaml
+provision:
+  - mode: system
+    script: |
+      cat > /etc/sysctl.d/99-inotify-k8s.conf <<'SYSCTL'
+      fs.inotify.max_user_instances = 1024
+      fs.inotify.max_user_watches = 1048576
+      SYSCTL
+      sysctl -p /etc/sysctl.d/99-inotify-k8s.conf
+```
+
+Verify the limit is in effect before creating the cluster:
+
+```bash
+colima ssh -- cat /proc/sys/fs/inotify/max_user_instances   # expect 1024
+```
+
 5. Create the kind cluster:
 
 ```bash
