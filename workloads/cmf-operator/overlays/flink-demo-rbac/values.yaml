@@ -179,6 +179,21 @@ cmf:
       basicAuthEnabled: false
       ssoEnabled: true
 
+    # The effective-configuration view is ON by default (BUILT_IN_DEFAULT) and is
+    # NOT RBAC-gated: any authenticated principal, including one with zero role
+    # bindings, can read all resolved config properties and their provenance.
+    # Secrets are masked, so this is topology disclosure rather than credential leak.
+    #
+    # ⚠️ Use the HYPHENATED key. The camelCase form the docs show
+    # (cmf.ui.effectiveConfiguration.enabled, ui.rst:142-149) is INERT - it passes
+    # the chart's values.schema.json but never binds, and the app silently keeps
+    # the built-in default of true. Probe-verified on 2.4.1.
+    #
+    # Left enabled here because this is a diagnostic lab. Set false for any
+    # multi-tenant/prod deployment.
+    effective-configuration:
+      enabled: true
+
 # Mount the MDS RSA keypair (mds-token secret, reflected into `operator`)
 mountedVolumes:
   volumes:
