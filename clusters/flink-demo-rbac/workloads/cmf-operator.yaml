@@ -12,14 +12,14 @@ spec:
   sources:
     - repoURL: https://packages.confluent.io/helm
       chart: confluent-manager-for-apache-flink
-      targetRevision: 2.4.0
+      targetRevision: 2.4.1
       helm:
         valueFiles:
           - $values/workloads/cmf-operator/base/values.yaml
           - $values/workloads/cmf-operator/overlays/flink-demo-rbac/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: probe/embedded-mds-group-rbac
       ref: values
   destination:
     server: https://kubernetes.default.svc
