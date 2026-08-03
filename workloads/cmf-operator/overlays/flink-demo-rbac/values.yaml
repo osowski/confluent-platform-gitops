@@ -95,8 +95,12 @@ cmf:
     # the API layer and the MDS layer compute different principals for one token.
     sub-claim-name: preferred_username
 
-    # THE KEY UNDER TEST. Step 4 of the probe removes this to establish whether
-    # it is load-bearing or whether something supplies a default.
+    # PROBE RESULT: this key is INERT in 2.4.1. Setting it alone does NOT make
+    # `Group:` bindings resolve, and removing it while
+    # cmf.authentication.config.oauthbearer.groups.claim.name is set changes
+    # nothing. The load-bearing key is the oauthbearer one, below.
+    # Kept set anyway: it is the documented key, it is schema-valid, and it
+    # costs nothing if a later release wires it up. Do not rely on it.
     groups-claim-name: groups
 
     # Super-users bypass RBAC entirely. Semicolon-separated.
@@ -138,11 +142,21 @@ cmf:
 
       # Must agree with cmf.mds.sub-claim-name above.
       oauthbearer.sub.claim.name: preferred_username
+
+      # LOAD-BEARING for `Group:` role bindings. This - not
+      # cmf.mds.groups-claim-name - is what actually makes group RBAC work.
+      # Remove it and every `Group:` binding silently stops matching while
+      # `User:` bindings keep working. The embedded-MDS docs' own OIDC example
+      # omits it, so a verbatim copy of that example cannot resolve groups.
       oauthbearer.groups.claim.name: groups
 
       # Audience check. Only exists at this API layer - there is NO audience key
-      # in the cmf.mds.* reference table, so the embedded MDS itself cannot
-      # audience-check. Probe step 9 tests what this actually gates.
+      # in the cmf.mds.* reference table.
+      # PROBE RESULT: this gates /cmf/api/v1/* ONLY. The MDS-proxied
+      # /security/1.0/* surface (where role bindings are read AND written) does
+      # NOT audience-check, so a token minted for another environment's
+      # audience is still accepted there. Do not treat audience as the
+      # prod/non-prod boundary; separate databases + distinct super-users are.
       oauthbearer.expected.audience: cmf
 
       token.issuer: Confluent
