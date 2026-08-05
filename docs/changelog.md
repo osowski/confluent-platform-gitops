@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **cp-flink-sql-sandbox — Flink SQL resources now declarative** ([#319](https://github.com/osowski/confluent-platform-gitops/issues/319)): the catalog, database, and compute pool are CFK 3.3 `FlinkKafkaCatalog`/`FlinkKafkaDatabase`/`FlinkComputePool` CRs instead of two PostSync hook Jobs, so they are visible and prunable in ArgoCD rather than fire-and-forget. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Documentation
 - **Colima inotify limit required for local kind clusters**: documented the one-time `fs.inotify.max_user_instances` increase (default `128` is too low) plus a "Too Many Open Files" troubleshooting section, since exhausting it breaks `kube-proxy`/`coredns` and prevents Kafka brokers from starting.
 

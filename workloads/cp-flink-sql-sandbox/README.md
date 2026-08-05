@@ -8,9 +8,15 @@ This workload deploys all necessary resources to enable the [cp-flink-sql demo](
 
 - **Kafka Topics**: `myevent` (source) and `myaggregated` (sink)
 - **Schemas**: Avro schemas registered in Schema Registry for both topics
-- **Flink Catalog**: Kafka catalog configured to recognize topics and schemas
-- **Flink Database**: Connection to Kafka cluster
-- **Compute Pool**: Flink compute pool with S3 checkpoint/savepoint storage
+- **Flink Catalog**: `FlinkKafkaCatalog` `kafka-cat`, bound to Schema Registry so topics surface as tables
+- **Flink Database**: `FlinkKafkaDatabase` `main-kafka-cluster`, bound to the Kafka cluster
+- **Compute Pool**: `FlinkComputePool` `pool` (DEDICATED) with S3 checkpoint/savepoint storage
+
+The Flink resources are declarative CFK custom resources (CFK 3.3.0+), not
+imperative CMF API calls. They form a dependency chain that must be applied in
+order and deleted in reverse; sync waves 40/45/50 enforce both directions. See
+[architecture.md](../../docs/architecture.md) for the constraints that apply to
+the whole chain.
 
 ## Prerequisites
 

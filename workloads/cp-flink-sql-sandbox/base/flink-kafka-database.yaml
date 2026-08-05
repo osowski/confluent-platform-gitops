@@ -1,0 +1,37 @@
+---
+# FlinkKafkaDatabase for the cp-flink-sql demo (CFK 3.3.0+, RFC 68)
+#
+# Replaces the `POST /cmf/api/v1/catalogs/kafka/kafka-cat/databases` call
+# previously made by the cmf-catalog-database-init PostSync hook Job.
+#
+# The database is the SQL namespace that statements read from and write to.
+# Existing Kafka topics surface as tables; the `myevent` and `myaggregated`
+# topics and their Avro schemas are created in earlier sync waves (30 and 35).
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: main-kafka-cluster
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+spec:
+  flinkEnvironment: env1
+
+  catalogRef:
+    name: kafka-cat
+
+  kafkaCluster:
+    connectionConfig:
+      bootstrap.servers: kafka.kafka.svc.cluster.local:9071
+
+  # ddlEnvironments is intentionally omitted to match the behaviour of the
+  # hook Job this replaces, whose database.json set no DDL environments. Add
+  # `env1` here to allow CREATE TABLE and other DDL to run against this
+  # database — CMF gates DDL on this list, and rejects it everywhere else.
+  #
+  # ddlEnvironments:
+  #   - env1
+
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink

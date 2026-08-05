@@ -183,6 +183,44 @@ ArgoCD deploys each wave sequentially within the application and waits for resou
 
 See [ADR-0002](../adrs/0002-cfk-component-sync-wave-ordering.md) for the full decision record.
 
+### Intra-Application Sync Waves: Flink SQL Resources
+
+CFK 3.3.0 introduced declarative CRDs for the CMF Flink SQL object model, replacing the ArgoCD hook Jobs that previously drove the CMF REST API. These resources form a strict dependency chain:
+
+```
+FlinkSecret → FlinkEnvironmentSecretMapping → FlinkKafkaCatalog → FlinkKafkaDatabase → FlinkComputePool → FlinkStatement
+```
+
+Apply in that order and delete in reverse, so each CMF-side resource is removed before the resource it depends on. Sync-wave annotations express both directions, since ArgoCD deletes in reverse wave order. `cp-flink-sql-sandbox` uses waves 40/45/50 for catalog/database/pool, following its topics (30) and schemas (35).
+
+The following constraints are enforced by CEL rules on the CRDs or by CMF runtime behaviour, and are easy to trip over:
+
+| Constraint | Consequence |
+|---|---|
+| `FlinkStatement.spec.statement` is immutable once running | Editing SQL in Git fails the sync **permanently** — see below |
+| `FlinkComputePool.spec.type` is immutable | Switching DEDICATED↔SHARED requires a new CR |
+| `FlinkComputePool.spec.state` valid only on `SHARED` pools | CEL rejects `state` on a DEDICATED pool |
+| `FlinkKafkaCatalog.spec.flinkEnvironment` is required and immutable | Sharing a catalog across environments needs one CR per environment, even though CMF catalogs are global |
+| `FlinkEnvironmentSecretMapping` name must equal the `connectionSecretId` referenced by the catalog/database | **Not validated by CFK.** CMF silently ignores an unmapped catalog rather than erroring |
+| DDL (`CREATE TABLE`) runs only in environments listed in the database's `ddlEnvironments` | DDL is rejected everywhere else |
+| `clusterSpec.image` must match the deployed CMF version | JobManager fails to load the statement plan |
+| `FlinkSecret` requires CMF secret encryption (`encryption.enabled=true`) | Secrets cannot be stored encrypted at rest, so the sync fails |
+
+#### Changing the SQL of a running FlinkStatement
+
+`FlinkStatement.spec.statement` carries the CEL rule `self.statement == oldSelf.statement || oldSelf.statement == ''`. Once a statement is running, the API server rejects any update that changes the SQL, so editing the manifest in Git makes the ArgoCD sync fail permanently — retrying never succeeds. This is the most likely way to wedge a Flink SQL deployment in this repository, precisely because the normal GitOps workflow is what breaks.
+
+**To change the SQL, create a new CR with a versioned name** (for example `shapes-sql-enrich-v2`) rather than editing in place. Two things that do not help:
+
+- `spec.stopped: true` stops a statement without deleting it, but does not unlock `spec.statement`.
+- `argocd.argoproj.io/sync-options: Force=true,Replace=true` forces a delete-and-recreate that passes validation, but silently discards job state.
+
+Versioning the name is preferred: it is explicit, auditable, and leaves the previous statement's history intact.
+
+#### Health assessment
+
+ArgoCD does not yet evaluate health for these kinds in this repository, so each CR reports Healthy on creation and the wave ordering above is best-effort — CFK converges on its own, but a failed catalog does not block the database or pool. Extending the custom health checks to cover them is tracked in [#320](https://github.com/osowski/confluent-platform-gitops/issues/320).
+
 ## Sync Policies
 
 ### Automated Sync

@@ -1,0 +1,110 @@
+---
+# FlinkComputePool for the cp-flink-sql demo (CFK 3.3.0+, RFC 68)
+#
+# Replaces the `confluent flink compute-pool create --environment env1` call
+# previously made by the cmf-compute-pool-init PostSync hook Job.
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT: FlinkStatement.spec.statement is immutable once running
+# ---------------------------------------------------------------------------
+# Statements run on this pool. If you add FlinkStatement CRs against it, be
+# aware that the CRD carries a CEL validation rule:
+#
+#   rule:    self.statement == oldSelf.statement || oldSelf.statement == ''
+#   message: statement is immutable once running
+#
+# Editing the SQL of a running statement in git therefore makes the ArgoCD sync
+# fail permanently — the API server rejects the update, and retries never
+# succeed. This is the easiest way to wedge a Flink SQL deployment, because the
+# natural GitOps instinct (edit the manifest, commit, sync) is exactly what
+# fails.
+#
+# To change the SQL, create a new CR with a versioned name — for example
+# `myevent-agg-v2` — rather than editing in place. Two things that do NOT help:
+#
+#   * `spec.stopped: true` stops a statement without deleting it, but does not
+#     unlock `spec.statement`.
+#   * `argocd.argoproj.io/sync-options: Force=true,Replace=true` forces a
+#     delete-and-recreate that does pass validation, but silently discards job
+#     state. Prefer versioning the name so the change is explicit and auditable.
+#
+# See issue #326 for the full set of Flink SQL CR constraints.
+# ---------------------------------------------------------------------------
+#
+# NOTE: spec.type is immutable after creation. spec.state (RUNNING/SUSPENDED)
+# is valid only on SHARED pools and is rejected by a CEL rule on DEDICATED ones.
+#
+# NOTE: clusterSpec.image must match the deployed CMF version, or the JobManager
+# fails to load the statement plan. cp-flink-sql:1.19-cp8 is the floor for
+# CMF 2.3.x and later; earlier tags fail with a `key.format requires ...
+# confluent.key.fields` error.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkComputePool
+metadata:
+  name: pool
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  type: DEDICATED
+  flinkEnvironment: env1
+
+  clusterSpec:
+    flinkVersion: v1_19
+    image: confluentinc/cp-flink-sql:1.19-cp8
+
+    flinkConfiguration:
+      pipeline.operator-chaining.enabled: "false"
+      execution.checkpointing.interval: "10s"
+      taskmanager.numberOfTaskSlots: "4"
+      metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+      metrics.reporter.prom.port: "9249-9250"
+      state.checkpoints.dir: "s3://warehouse/checkpoints/"
+      state.savepoints.dir: "s3://warehouse/savepoints/"
+      s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      s3.path.style.access: "true"
+      s3.connection.ssl.enabled: "false"
+      state.backend: "filesystem"
+      state.checkpoints.timeout: "600000"
+      execution.checkpointing.min-pause: "5000"
+      execution.checkpointing.max-concurrent-checkpoints: "1"
+      high-availability.type: "kubernetes"
+      high-availability.storageDir: "s3://warehouse/"
+      state.checkpoints.num-retained: "10"
+
+    podTemplate:
+      spec:
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        containers:
+          - name: flink-main-container
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              runAsUser: 9999
+            env:
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: root-user
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: root-password
+
+    # Both jobManager and taskManager resources must be specified, including
+    # memory — CFK does not default them, and the pool fails to start without.
+    taskManager:
+      resource:
+        cpu: 1.0
+        memory: "1700m"
+
+    jobManager:
+      resource:
+        cpu: 1
+        memory: "1700m"
+
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
