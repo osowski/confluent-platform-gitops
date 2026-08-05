@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-320/flink-sql-health-checks
+    targetRevision: HEAD
     path: workloads/flink-agents/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
