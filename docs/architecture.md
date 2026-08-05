@@ -205,6 +205,8 @@ The following constraints are enforced by CEL rules on the CRDs or by CMF runtim
 | DDL (`CREATE TABLE`) runs only in environments listed in the database's `ddlEnvironments` | DDL is rejected everywhere else |
 | `clusterSpec.image` must match the deployed CMF version | JobManager fails to load the statement plan |
 | `FlinkSecret` requires CMF secret encryption (`encryption.enabled=true`) | Secrets cannot be stored encrypted at rest, so the sync fails |
+| CMF encryption mode is fixed at database initialization and the key cannot be rotated | Enabling encryption on an existing CMF database requires a **fresh database** — see [flink-demo-rbac README](../clusters/flink-demo-rbac/README.md#enabling-cmf-secret-encryption-requires-a-fresh-cmf-database) |
+| The CMF encryption key must be exactly 16 or 32 bytes | Any other length and CMF fails to start |
 
 #### Changing the SQL of a running FlinkStatement
 

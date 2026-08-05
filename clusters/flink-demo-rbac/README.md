@@ -399,6 +399,59 @@ concerns entirely. See `cmf-secret-configmaps.yaml` for details.
 
 ## Troubleshooting
 
+### Enabling CMF secret encryption requires a fresh CMF database
+
+CMF's encryption mode is fixed when its metadata database is first initialized. Per the [CMF encryption docs](https://docs.confluent.io/platform/current/flink/installation/encryption.html), a database initialized with encryption disabled can **never** be switched to enabled (and vice versa), and the encryption key can **never** be rotated.
+
+This matters because the `FlinkSecret` CRD syncs Kubernetes Secrets into CMF's database and requires `encryption.enabled: true`. If CMF already came up with encryption off, flipping the Helm value is not enough — CMF keeps the mode its database was initialized with.
+
+To switch an existing cluster over, reset CMF's database:
+
+CMF fails loudly rather than silently in this state — it crash-loops with:
+
+```
+java.lang.IllegalStateException: Cannot change the encryption mode. Previous
+state was encryption.enabled=false, current configuration has
+encryption.enabled=true. This operation is not allowed for data safety reasons.
+```
+
+```bash
+# 1. Confirm the encryption key is exactly 16 or 32 bytes. CMF rejects any
+#    other length and fails to start.
+kubectl get secret cmf-encryption-key --namespace operator \
+  --output jsonpath="{.data.key}" | base64 --decode | wc -c   # must print 16 or 32
+
+# 2. Delete the PostgreSQL backing store. This discards all CMF metadata -
+#    environments, applications, compute pools, catalogs, and statements. They
+#    are all declared in Git, so ArgoCD recreates them.
+#
+#    NOTE: PostgreSQL is owned by the `cmf-operator-secrets` Application, not
+#    `cmf-operator` (which deploys only the Helm chart).
+kubectl delete deployment cmf-postgres --namespace operator
+kubectl delete pvc cmf-postgres-pvc --namespace operator
+
+# 3. Sync `cmf-operator-secrets` to recreate PostgreSQL. An explicit sync is
+#    required: the app runs with selfHeal=false, so a refresh alone will NOT
+#    recreate the deleted resources - it will just report them OutOfSync.
+argocd app sync cmf-operator-secrets
+#    ...or, without the ArgoCD CLI:
+kubectl patch application cmf-operator-secrets --namespace argocd --type merge \
+  --patch '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
+
+# 4. CMF recovers on its own once PostgreSQL is reachable - no manual restart
+#    needed. It crash-loops on connection-refused in the meantime and can take
+#    a few minutes to settle.
+kubectl get pods --namespace operator --watch
+
+# 5. Confirm the encryption-mode error is gone from the running pod.
+kubectl logs deployment/confluent-manager-for-apache-flink \
+  --namespace operator | grep -c "Cannot change the encryption mode"   # expect 0
+```
+
+Note that the `DATABASE ENCRYPTION FOR SECRETS DISABLED` banner in the CMF docs is Helm `NOTES.txt` output, not pod logs — it is not visible under ArgoCD, so use the checks above instead.
+
+On a local kind cluster it is usually faster to delete and recreate the whole cluster than to run this procedure.
+
 ### ArgoCD Applications Not Syncing
 
 Check parent Application health:
