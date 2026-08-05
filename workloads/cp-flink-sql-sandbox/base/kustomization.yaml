@@ -10,4 +10,3 @@ resources:
   - flink-kafka-catalog.yaml
   - flink-kafka-database.yaml
   - flink-compute-pool.yaml
-  - tmp-verify-statement.yaml
