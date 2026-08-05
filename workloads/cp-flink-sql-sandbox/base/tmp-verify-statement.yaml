@@ -1,0 +1,21 @@
+---
+# TEMPORARY verification manifest for #320 - deliberately invalid SQL.
+# Proves FlinkStatement health reports Degraded when phase=FAILED even though
+# cmfSync.status=Created. Reverted before merge.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: tmp-verify-320
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  flinkEnvironment: env1
+  computePoolName: pool
+  properties:
+    sql.current-catalog: kafka-cat
+    sql.current-database: main-kafka-cluster
+  statement: "INSERT INTO no_such_table SELECT id FROM also_missing;"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
