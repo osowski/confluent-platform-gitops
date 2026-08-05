@@ -1,6 +1,6 @@
 ---
 # CMF Encryption Key for AES-GCM encryption of Secret spec.data
-# CMF requires this key to encrypt and store Flink SQL secrets in its metadata database.
+# CMF requires this key to encrypt and store Flink SQL secrets in its metadata database
 apiVersion: v1
 kind: Secret
 metadata:
@@ -8,18 +8,6 @@ metadata:
   namespace: operator
 type: Opaque
 stringData:
-  # CMF requires a key that is EXACTLY 16 bytes (AES-128) or 32 bytes (AES-256).
-  # No other length is accepted and CMF fails to start otherwise. Kubernetes
-  # base64-encodes this stringData value itself, so put the raw key here - do
-  # NOT pre-encode it.
-  #
-  # Verify the deployed length with:
-  #   kubectl get secret cmf-encryption-key -n operator \
-  #     -o jsonpath="{.data.key}" | base64 --decode | wc -c
-  #
-  # This is a deliberately obvious 32-byte demo value. Real deployments should
-  # source the key from external-secrets or Vault instead of committing it.
-  #
-  # WARNING: key rotation is not supported by CMF. The same key must be used for
-  # the entire lifetime of a CMF database.
-  key: "confluent-cmf-demo-encryption-32"
+  # AES-256 key (32 bytes base64 encoded)
+  # In production, use external-secrets or vault to manage this
+  key: "Y29uZmx1ZW50LWNtZi1lbmNyeXB0aW9uLWtleS0zMmJ5dGVz"

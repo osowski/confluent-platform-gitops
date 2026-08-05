@@ -14,19 +14,9 @@ env:
   - name: LOGGING_LEVEL_IO_CONFLUENT_COMMON_SECURITY
     value: DEBUG
 
-# Encryption of CMF Secrets - required by the FlinkSecret CRD, which syncs
-# Kubernetes Secrets into CMF's metadata database. CMF uses AES-GCM.
-#
-# WARNING: encryption mode is fixed at database initialization. A CMF database
-# initialized with encryption disabled can NEVER be switched to enabled (and
-# vice versa), and the key can never be rotated. Turning this on against an
-# existing CMF database therefore requires a fresh database - see the cluster
-# README for the reset procedure.
-#
-# The chart defaults enabled to false, so this must be set explicitly; setting
-# only `key` below leaves encryption off and CMF logs a startup warning.
+# Encryption key for CMF Secrets - Required for storing Flink SQL secret data
+# CMF uses AES-GCM encryption to store spec.data in its metadata database
 encryption:
-  enabled: true
   key:
     kubernetesSecretName: cmf-encryption-key
     kubernetesSecretProperty: key
