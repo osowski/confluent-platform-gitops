@@ -219,7 +219,30 @@ Versioning the name is preferred: it is explicit, auditable, and leaves the prev
 
 #### Health assessment
 
-ArgoCD does not yet evaluate health for these kinds in this repository, so each CR reports Healthy on creation and the wave ordering above is best-effort — CFK converges on its own, but a failed catalog does not block the database or pool. Extending the custom health checks to cover them is tracked in [#320](https://github.com/osowski/confluent-platform-gitops/issues/320).
+Custom Lua health checks in `argocd-cm` evaluate every CMF-backed Flink kind, keyed on `status.cmfSync.status`. Without them ArgoCD treats an unknown custom resource as Healthy the instant it is created, which both hides failures and defeats the wave ordering above.
+
+All Flink checks share one skeleton, evaluated in order:
+
+| Condition | Result |
+|---|---|
+| no `status` yet | Progressing |
+| `status.observedGeneration` < `metadata.generation` | Progressing — spec not yet observed |
+| `status.cfkInternalState` = `FAILED` | Degraded |
+| `status.cmfSync.status` = `Failed` | Degraded, surfacing `cmfSync.errorMessage` |
+| `status.cmfSync.status` = `Unknown` or absent | Progressing |
+| `status.cmfSync.status` = `Deleted` | Progressing — transient teardown |
+| `status.cmfSync.status` = `Created` | kind-specific checks below, then Healthy |
+
+The `observedGeneration` guard is what makes wave gating correct across updates: without it an edited CR reports Healthy from its *previous* reconcile while the controller is still catching up.
+
+Kind-specific behaviour worth knowing:
+
+- **`FlinkStatement`** additionally keys on `status.phase`. `RUNNING`, `COMPLETED`, and `STOPPED` are all Healthy — `COMPLETED` is a success terminal state, since DDL statements such as `CREATE TABLE` run once and finish there. A check accepting only `RUNNING` would leave every DDL statement Progressing forever and hang its wave. `FAILED`/`FAILING` are Degraded with `status.detail`. `PENDING` is Progressing, which means an interactive `SELECT` sits Progressing by design until a client fetches its results.
+- **`FlinkComputePool`** deliberately does *not* key on `status.phase`: CMF echoes the pool **type** into that field (observed value `DEDICATED`), not a lifecycle state, so a `phase == "RUNNING"` check would never report Healthy. Pod presence is not a signal either, since a DEDICATED pool has no pods at rest.
+- **`FlinkKafkaCatalog`** returns Degraded when the catalog declares a `connectionSecretId` but `status.environmentsWithAccess` is empty. That is the silent-failure case CMF does not report as an error, and the CRDs do not validate.
+- **`FlinkApplication`** defers to the Flink job after CMF registration: only `jobStatus.state` of `FAILED`/`FAILING`, or a non-empty `status.error`, Degrade. A long-running deploy or an intentionally suspended job is never reported broken.
+
+Note the CP data-plane checks (`Kafka`, `KRaftController`, `SchemaRegistry`, `Connect`, `ControlCenter`) use an older convention: they key on `status.phase == "RUNNING"` and return Progressing for everything else, so a terminally failed CP resource sits Progressing rather than Degraded.
 
 ## Sync Policies
 
