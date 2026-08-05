@@ -1,0 +1,48 @@
+---
+# FlinkKafkaCatalog for the cp-flink-sql demo (CFK 3.3.0+, RFC 68)
+#
+# Replaces the `confluent flink catalog create` call previously made by the
+# cmf-catalog-database-init PostSync hook Job.
+#
+# CR CHAIN: the Flink SQL resources form a strict dependency chain and must be
+# applied in order (and deleted in reverse). Sync waves 40/45/50 express both
+# directions, since ArgoCD deletes in reverse wave order:
+#
+#   FlinkSecret -> FlinkEnvironmentSecretMapping -> FlinkKafkaCatalog
+#     -> FlinkKafkaDatabase -> FlinkComputePool -> FlinkStatement
+#
+# CAVEAT: the wave ordering is best-effort until issue #320 lands. ArgoCD has no
+# health assessment for these kinds yet, so each CR reports Healthy the moment
+# it is created and the next wave advances without waiting for CFK to reconcile
+# it against CMF. CFK retries on its own, so the chain converges — but a failed
+# catalog will not block the database or pool.
+#
+# flink-demo has no authentication on Kafka or Schema Registry, so the
+# FlinkSecret and FlinkEnvironmentSecretMapping links are omitted here. On an
+# authenticated cluster, `srInstance.connectionSecretId` would name a
+# FlinkEnvironmentSecretMapping instead of leaving the SR client unauthenticated.
+#
+# NOTE: spec.flinkEnvironment is required and immutable, even though CMF
+# catalogs are global. Sharing this catalog with a second environment requires a
+# second CR rather than an edit.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: kafka-cat
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  # FlinkEnvironment env1 is owned by the `flink-resources` ArgoCD Application
+  # (sync-wave 110), which syncs before this one (sync-wave 115).
+  flinkEnvironment: env1
+
+  # Schema Registry instance backing this catalog's databases. Topics with
+  # schemas registered here surface as Flink SQL tables.
+  srInstance:
+    connectionConfig:
+      schema.registry.url: http://schemaregistry.kafka.svc.cluster.local:8081
+
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
