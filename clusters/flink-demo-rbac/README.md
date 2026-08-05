@@ -399,6 +399,43 @@ concerns entirely. See `cmf-secret-configmaps.yaml` for details.
 
 ## Troubleshooting
 
+### Enabling CMF secret encryption requires a fresh CMF database
+
+CMF's encryption mode is fixed when its metadata database is first initialized. Per the [CMF encryption docs](https://docs.confluent.io/platform/current/flink/installation/encryption.html), a database initialized with encryption disabled can **never** be switched to enabled (and vice versa), and the encryption key can **never** be rotated.
+
+This matters because the `FlinkSecret` CRD syncs Kubernetes Secrets into CMF's database and requires `encryption.enabled: true`. If CMF already came up with encryption off, flipping the Helm value is not enough — CMF keeps the mode its database was initialized with.
+
+To switch an existing cluster over, reset CMF's database:
+
+```bash
+# 1. Confirm the encryption key is exactly 16 or 32 bytes. CMF rejects any
+#    other length and fails to start.
+kubectl get secret cmf-encryption-key --namespace operator \
+  --output jsonpath="{.data.key}" | base64 --decode | wc -c   # must print 16 or 32
+
+# 2. Scale CMF down so it releases the database.
+kubectl scale deployment confluent-manager-for-apache-flink \
+  --namespace operator --replicas=0
+
+# 3. Delete the PostgreSQL backing store. This discards all CMF metadata -
+#    environments, applications, compute pools, catalogs, and statements. They
+#    are all declared in Git, so ArgoCD recreates them.
+kubectl delete deployment cmf-postgres --namespace operator
+kubectl delete pvc cmf-postgres-pvc --namespace operator
+
+# 4. Let ArgoCD recreate PostgreSQL and scale CMF back up.
+kubectl annotate application cmf-operator --namespace argocd \
+  argocd.argoproj.io/refresh=hard --overwrite
+
+# 5. Confirm encryption is active - the startup banner below must be ABSENT.
+kubectl logs deployment/confluent-manager-for-apache-flink \
+  --namespace operator | grep -i "ENCRYPTION FOR SECRETS DISABLED"
+```
+
+With encryption disabled CMF prints a `DATABASE ENCRYPTION FOR SECRETS DISABLED` banner at startup; its absence is the signal that encryption took effect.
+
+On a local kind cluster it is usually faster to delete and recreate the whole cluster than to run this procedure.
+
 ### ArgoCD Applications Not Syncing
 
 Check parent Application health:

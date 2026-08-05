@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CMF secret encryption now actually enabled** ([#321](https://github.com/osowski/confluent-platform-gitops/issues/321)): `encryption.enabled: true` was never set on flink-demo-rbac, flink-demo-rbac-mtls, or eks-demo (the chart defaults it to `false`), and the committed key was 36 bytes where CMF accepts only 16 or 32 — so encryption was off and would have failed had it been switched on. Required by the `FlinkSecret` CRD. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Added
 - **ArgoCD health checks for CMF-backed Flink resources** ([#320](https://github.com/osowski/confluent-platform-gitops/issues/320)): the eight Flink kinds (`FlinkEnvironment`, `FlinkApplication`, and the six CFK 3.3 Flink SQL CRDs) now report Degraded with the CMF error message instead of a misleading Healthy, so broken catalogs and failed statements are visible and sync waves actually gate. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 

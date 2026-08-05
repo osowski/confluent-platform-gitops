@@ -347,6 +347,16 @@ See the [External Secrets Operator documentation](https://external-secrets.io/la
 
 ## Troubleshooting
 
+### CMF secret encryption on a persistent PostgreSQL backend
+
+CMF's encryption mode is fixed when its metadata database is first initialized, and cannot be changed afterward. Unlike the kind clusters, eks-demo's CMF runs against a long-lived PostgreSQL instance, so there is no "just recreate the cluster" escape hatch — enabling encryption on a CMF database that was initialized without it means **discarding CMF's metadata**.
+
+CMF metadata (environments, applications, compute pools, catalogs, statements) is all declared in Git and recreated by ArgoCD, so the loss is recoverable — but savepoint history and running job state are not. Drain Flink jobs before attempting it.
+
+The reset procedure is documented in the [flink-demo-rbac README](../flink-demo-rbac/README.md#enabling-cmf-secret-encryption-requires-a-fresh-cmf-database). Validate it on a kind cluster first.
+
+Since this cluster already runs External Secrets Operator, prefer sourcing `cmf-encryption-key` from a real secret store rather than the committed demo value — and back the key up before enabling encryption, because CMF does not support key rotation and cannot decrypt its database without it.
+
 ### ArgoCD Applications Not Syncing
 
 Check parent Application health:
