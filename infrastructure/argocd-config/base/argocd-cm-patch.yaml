@@ -7,6 +7,35 @@ metadata:
     app.kubernetes.io/name: argocd-cm
     app.kubernetes.io/part-of: argocd
 data:
+  # ---------------------------------------------------------------------------
+  # Custom health checks
+  # ---------------------------------------------------------------------------
+  # Two families live in this ConfigMap, and they use different conventions:
+  #
+  # 1. CP data-plane kinds (KRaftController, Kafka, SchemaRegistry, Connect,
+  #    ControlCenter) key on `status.phase == "RUNNING"` and return Progressing
+  #    for anything else. A terminally failed resource therefore sits
+  #    Progressing rather than Degraded. Left as-is here to avoid changing the
+  #    health semantics of running clusters in a Flink-scoped change.
+  #
+  # 2. CMF-backed Flink kinds (below) key on `status.cmfSync.status` and return
+  #    Degraded on a terminal failure, so a broken resource is visible in the UI
+  #    and stops its sync wave from advancing. Without these, ArgoCD treats an
+  #    unknown CR as Healthy the moment it is created, and the sync-wave
+  #    ordering of the Flink SQL dependency chain never actually gates.
+  #
+  # All Flink checks share the same skeleton:
+  #   * no status yet                     -> Progressing
+  #   * observedGeneration < generation   -> Progressing (spec not yet observed)
+  #   * cfkInternalState FAILED           -> Degraded
+  #   * cmfSync.status Failed             -> Degraded (surfaces errorMessage)
+  #   * cmfSync.status Unknown / absent   -> Progressing
+  #   * cmfSync.status Deleted            -> Progressing (transient teardown)
+  #   * cmfSync.status Created            -> kind-specific checks, then Healthy
+  #
+  # The observedGeneration guard matters for wave gating: without it a CR that
+  # has been edited reports Healthy from its previous reconcile while the
+  # controller is still catching up.
   resource.customizations.health.networking.k8s.io_Ingress: |
     hs = {}
     hs.status = "Healthy"
@@ -85,4 +114,405 @@ data:
       hs.status = "Progressing"
       hs.message = "Waiting for ControlCenter status"
     end
+    return hs
+
+  # --- CMF-backed Flink kinds (CFK 3.3.0+) ----------------------------------
+  resource.customizations.health.platform.confluent.io_FlinkEnvironment: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkEnvironment status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side environment deleted"
+      return hs
+    end
+    hs.status = "Healthy"
+    hs.message = "Environment registered in CMF"
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkSecret: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkSecret status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side secret deleted"
+      return hs
+    end
+    hs.status = "Healthy"
+    msg = "Secret synced to CMF"
+    if obj.status.observedSecretResourceVersion ~= nil and obj.status.observedSecretResourceVersion ~= "" then
+      msg = msg .. " (backing Secret resourceVersion " .. obj.status.observedSecretResourceVersion .. ")"
+    end
+    hs.message = msg
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkEnvironmentSecretMapping: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkEnvironmentSecretMapping status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side secret mapping deleted"
+      return hs
+    end
+    hs.status = "Healthy"
+    hs.message = "Secret mapped into environment"
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkKafkaCatalog: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkKafkaCatalog status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side catalog deleted"
+      return hs
+    end
+    -- A catalog whose connectionSecretId has no matching secret mapping is
+    -- silently ignored by CMF rather than rejected, and shows up as an empty
+    -- environmentsWithAccess. Treat that as Degraded: the catalog exists but no
+    -- environment can use it, which is the failure mode the CRDs do not catch.
+    if obj.spec ~= nil and obj.spec.srInstance ~= nil and obj.spec.srInstance.connectionSecretId ~= nil and obj.spec.srInstance.connectionSecretId ~= "" then
+      if obj.status.environmentsWithAccess == nil or #obj.status.environmentsWithAccess == 0 then
+        hs.status = "Degraded"
+        hs.message = "Catalog registered but no environment can access it - check that a FlinkEnvironmentSecretMapping is named '" .. obj.spec.srInstance.connectionSecretId .. "'"
+        return hs
+      end
+    end
+    hs.status = "Healthy"
+    hs.message = "Catalog registered in CMF"
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkKafkaDatabase: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkKafkaDatabase status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side database deleted"
+      return hs
+    end
+    hs.status = "Healthy"
+    msg = "Database registered in CMF"
+    if obj.status.environmentsWithAccess ~= nil and #obj.status.environmentsWithAccess > 0 then
+      msg = msg .. " (" .. tostring(#obj.status.environmentsWithAccess) .. " environment(s) with access)"
+    end
+    hs.message = msg
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkComputePool: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkComputePool status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side compute pool deleted"
+      return hs
+    end
+    -- NOTE: do NOT key on status.phase here. For a compute pool CMF echoes the
+    -- pool type into phase (observed value: "DEDICATED"), not a lifecycle
+    -- state, so a `phase == "RUNNING"` check would never report Healthy.
+    -- A DEDICATED pool also has no pods at rest - CMF launches a Flink cluster
+    -- per statement - so pod presence is not a health signal either.
+    hs.status = "Healthy"
+    msg = "Compute pool registered in CMF"
+    if obj.status.warning ~= nil and obj.status.warning ~= "" then
+      msg = msg .. " (warning: " .. obj.status.warning .. ")"
+    end
+    hs.message = msg
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkStatement: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkStatement status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side statement deleted"
+      return hs
+    end
+    if obj.status.phase == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for statement phase"
+      return hs
+    end
+    -- COMPLETED is a success terminal state, not a stall: DDL statements such as
+    -- CREATE TABLE run once and finish there. A check that only accepts RUNNING
+    -- would leave every DDL statement Progressing forever and hang its wave.
+    if obj.status.phase == "RUNNING" or obj.status.phase == "COMPLETED" or obj.status.phase == "STOPPED" then
+      hs.status = "Healthy"
+      hs.message = "Statement phase: " .. obj.status.phase
+      if obj.status.warning ~= nil and obj.status.warning ~= "" then
+        hs.message = hs.message .. " (warning: " .. obj.status.warning .. ")"
+      end
+      return hs
+    end
+    if obj.status.phase == "FAILED" or obj.status.phase == "FAILING" then
+      hs.status = "Degraded"
+      msg = "Statement phase: " .. obj.status.phase
+      if obj.status.detail ~= nil and obj.status.detail ~= "" then
+        msg = msg .. " - " .. obj.status.detail
+      end
+      hs.message = msg
+      return hs
+    end
+    -- PENDING covers compilation and cluster startup. Note an interactive
+    -- SELECT stays PENDING until a client fetches its results, so such a
+    -- statement will sit Progressing by design.
+    hs.status = "Progressing"
+    msg = "Statement phase: " .. obj.status.phase
+    if obj.status.detail ~= nil and obj.status.detail ~= "" then
+      msg = msg .. " - " .. obj.status.detail
+    end
+    hs.message = msg
+    return hs
+  resource.customizations.health.platform.confluent.io_FlinkApplication: |
+    hs = {}
+    if obj.status == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for FlinkApplication status"
+      return hs
+    end
+    if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for generation " .. tostring(obj.metadata.generation) .. " to be observed"
+      return hs
+    end
+    if obj.status.cfkInternalState == "FAILED" then
+      hs.status = "Degraded"
+      hs.message = "CFK internal state FAILED"
+      return hs
+    end
+    if obj.status.cmfSync == nil or obj.status.cmfSync.status == nil or obj.status.cmfSync.status == "Unknown" then
+      hs.status = "Progressing"
+      hs.message = "Waiting for CMF sync"
+      return hs
+    end
+    if obj.status.cmfSync.status == "Failed" then
+      hs.status = "Degraded"
+      msg = "CMF sync failed"
+      if obj.status.cmfSync.errorMessage ~= nil and obj.status.cmfSync.errorMessage ~= "" then
+        msg = msg .. ": " .. obj.status.cmfSync.errorMessage
+      end
+      hs.message = msg
+      return hs
+    end
+    if obj.status.cmfSync.status == "Deleted" then
+      hs.status = "Progressing"
+      hs.message = "CMF-side application deleted"
+      return hs
+    end
+    if obj.status.error ~= nil and obj.status.error ~= "" then
+      hs.status = "Degraded"
+      hs.message = "Application error: " .. obj.status.error
+      return hs
+    end
+    -- Beyond CMF registration, defer to the Flink job itself. Only explicit
+    -- failure states Degrade, so a long-running deploy or an intentionally
+    -- suspended job is never reported as broken.
+    if obj.status.jobStatus == nil or obj.status.jobStatus.state == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for Flink job status"
+      return hs
+    end
+    if obj.status.jobStatus.state == "FAILED" or obj.status.jobStatus.state == "FAILING" then
+      hs.status = "Degraded"
+      hs.message = "Flink job state: " .. obj.status.jobStatus.state
+      return hs
+    end
+    if obj.status.jobStatus.state == "RUNNING" or obj.status.jobStatus.state == "FINISHED" or obj.status.jobStatus.state == "SUSPENDED" then
+      hs.status = "Healthy"
+      msg = "Flink job state: " .. obj.status.jobStatus.state
+      if obj.status.lifecycleState ~= nil and obj.status.lifecycleState ~= "" then
+        msg = msg .. ", lifecycle: " .. obj.status.lifecycleState
+      end
+      hs.message = msg
+      return hs
+    end
+    hs.status = "Progressing"
+    hs.message = "Flink job state: " .. obj.status.jobStatus.state
     return hs

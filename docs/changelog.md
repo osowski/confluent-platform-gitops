@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ArgoCD health checks for CMF-backed Flink resources** ([#320](https://github.com/osowski/confluent-platform-gitops/issues/320)): the eight Flink kinds (`FlinkEnvironment`, `FlinkApplication`, and the six CFK 3.3 Flink SQL CRDs) now report Degraded with the CMF error message instead of a misleading Healthy, so broken catalogs and failed statements are visible and sync waves actually gate. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Changed
 - **cp-flink-sql-sandbox — Flink SQL resources now declarative** ([#319](https://github.com/osowski/confluent-platform-gitops/issues/319)): the catalog, database, and compute pool are CFK 3.3 `FlinkKafkaCatalog`/`FlinkKafkaDatabase`/`FlinkComputePool` CRs instead of two PostSync hook Jobs, so they are visible and prunable in ArgoCD rather than fire-and-forget. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 
