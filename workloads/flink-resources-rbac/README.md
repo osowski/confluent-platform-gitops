@@ -120,8 +120,9 @@ demonstrating JAR/SQL parity. It does **not** write to the JAR output topics (`s
 1. The statement is a declarative `FlinkStatement` CR in `base/flink-statements.yaml`, reconciled
    into CMF by CFK. Its SQL is **immutable once running** — a CEL rule on the CRD rejects any
    update that changes `spec.statement`, so editing it in Git fails the sync permanently. Add a
-   versioned CR (`shapes-sql-enrich-v2`) instead; see the file header for why
-   `Force=true,Replace=true` is the worse option.
+   versioned CR (`shapes-sql-enrich-v2`) instead. See
+   [architecture.md](../../docs/architecture.md#changing-the-sql-of-a-running-flinkstatement)
+   for that rule and the rest of the Flink SQL CR constraints.
 2. The statement reads the inferred `shapes-input` table, adds an `encoded` column (mirroring the
    JAR enrichment), and writes `ProcessedSensorEvent` records to `shapes-sql-output`. The Kafka
    tables are auto-inferred from the registered SR schemas; an explicit `INSERT` column list
