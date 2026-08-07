@@ -3,8 +3,12 @@ kind: Kustomization
 
 resources:
   - cfk-oauth-secret.yaml
-  - cmf-secret-configmaps.yaml
   - cmfrestclass.yaml
+  # Flink SQL CR chain, applied in dependency order via sync waves 10-70
+  - flink-secrets.yaml
+  - flink-catalogs-databases.yaml
+  - flink-compute-pools.yaml
+  - flink-statements.yaml
   - flink-application-colors.yaml
   - flink-application-shapes.yaml
   - flink-environment-colors.yaml
@@ -15,6 +19,4 @@ resources:
   - producers.yaml
   - schemas.yaml
   - service.yaml
-  - sql-config-configmaps.yaml
-  - sql-init-jobs.yaml
   - topics.yaml

@@ -354,48 +354,28 @@ The following topics are pre-created via KafkaTopic resources in `workloads/conf
 
 Users can create additional topics following their group's naming pattern, subject to RBAC permissions.
 
-### Schema Registry Token Lifecycle (STATIC_TOKEN)
+### Schema Registry Authentication for Flink SQL Catalogs
 
-CMF 2.2 does not support `OAUTHBEARER` as a `bearer.auth.credentials.source` in its
-embedded Schema Registry client. As a workaround, the sql-init jobs obtain a fresh
-OAuth token from Keycloak at runtime and embed it as a `STATIC_TOKEN` in each catalog's
-`connectionConfig`.
+Each Flink SQL catalog authenticates to Schema Registry with `OAUTHBEARER`, using its group's service account (`sa-shapes-flink` / `sa-colors-flink`). CMF obtains and refreshes tokens itself, so there is nothing to rotate and no sync required to keep a catalog working.
 
-#### How It Works
+Credentials reach CMF through the declarative chain in `workloads/flink-resources-rbac/base/flink-secrets.yaml`:
 
-1. The `shapes-sql-init` and `colors-sql-init` jobs run as ArgoCD **PostSync hooks**
-2. Each job obtains a fresh SR token from Keycloak using team-specific OAuth credentials
-   (`sa-shapes-flink` / `sa-colors-flink`)
-3. The token is embedded inline in the catalog's `connectionConfig` as `bearer.auth.credentials.source: STATIC_TOKEN`
-4. If the catalog already exists, it is updated via PUT with the new token
+```
+Kubernetes Secret -> FlinkSecret -> FlinkEnvironmentSecretMapping -> FlinkKafkaCatalog
+```
 
-#### Token Lifetime
+Two credential pairs exist per environment, and they intentionally use different identities:
 
-- **Default Keycloak token lifetime:** 7 days (604800 seconds), configured in the
-  `confluent` realm's client settings
-- **Token refresh:** Automatic on every ArgoCD sync of the `flink-resources` application
-- **Manual refresh:** Trigger an ArgoCD sync of `flink-resources` to regenerate tokens
+| Purpose | Identity | Mapping name |
+|---|---|---|
+| Schema Registry (catalog) | `sa-<group>-flink` | `sr-conn-secret-id-<group>` |
+| Kafka (database) | `cmf` | `kafka-conn-secret-id-<group>` |
 
-#### When Tokens Expire
+Kafka uses the `cmf` service account because CMF validates the database connection while registering a catalog, which needs broader Kafka permissions than the per-group accounts hold.
 
-If a catalog's STATIC_TOKEN expires before the next sync:
-- `SHOW TABLES` will continue to work (table listing uses Kafka metadata, not SR)
-- `SELECT` queries will fail with "Permission denied to access the Schema Registry"
-- **Fix:** Sync `flink-resources` in ArgoCD to refresh the token
+A mapping's **name** must exactly equal the `connectionSecretId` (catalog) or `connectionSecretRef.name` (database) that references it. CMF keys an environment's secrets by mapping name and silently ignores a catalog whose secret is unmapped, rather than returning an error. CFK does not validate this either — the ArgoCD health check reports such a catalog as Degraded with the mapping name it expected.
 
-#### Adjusting Token Lifetime
-
-To change the token lifetime, update the Keycloak client session settings:
-1. Open Keycloak Admin Console (`https://keycloak.flink-demo-rbac.confluentdemo.local`)
-2. Navigate to: Confluent realm > Clients > `sa-shapes-flink` (or `sa-colors-flink`) > Settings
-3. Adjust "Client Session Max" or "Access Token Lifespan" under Advanced Settings
-
-#### Future Improvement
-
-When CMF supports `OAUTHBEARER` as a `bearer.auth.credentials.source` in its SR client
-(expected in a future CMF release), catalogs should be updated to use `connectionSecretId`
-with CMF Secrets instead of inline STATIC_TOKEN. This would eliminate token expiration
-concerns entirely. See `cmf-secret-configmaps.yaml` for details.
+To rotate a credential, edit the backing Kubernetes Secret. CFK tracks its `resourceVersion` and re-syncs to CMF automatically.
 
 ## Troubleshooting
 

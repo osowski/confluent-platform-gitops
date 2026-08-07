@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **flink-resources-rbac — Flink SQL resources now declarative** ([#322](https://github.com/osowski/confluent-platform-gitops/issues/322)): the two 744-line `sql-init` PostSync hook Jobs and their JSON ConfigMaps are replaced by 20 CFK 3.3 custom resources, so catalogs, databases, compute pools, and statements are visible, diffable, and prunable in ArgoCD. Schema Registry now authenticates with `OAUTHBEARER` and CMF-managed token refresh, retiring the `STATIC_TOKEN` that had to be re-minted on every sync. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Fixed
 - **CMF secret encryption now actually enabled on flink-demo-rbac** ([#321](https://github.com/osowski/confluent-platform-gitops/issues/321)): `encryption.enabled: true` was never set (the chart defaults it to `false`) and the committed key was 36 bytes where CMF accepts only 16 or 32 — so encryption was off and would have failed had it been switched on. Required by the `FlinkSecret` CRD; enabling it on an existing CMF database needs a database reset (procedure in the cluster README). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 
