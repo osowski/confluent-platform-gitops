@@ -6,7 +6,6 @@ metadata:
   name: colors
   namespace: flink-colors
   annotations:
-    # Applied after the FlinkEnvironment (wave 5).
     argocd.argoproj.io/sync-wave: "80"
 spec:
   # Reference to FlinkEnvironment

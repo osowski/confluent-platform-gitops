@@ -6,7 +6,6 @@ metadata:
   name: colors-env
   namespace: flink-colors
   annotations:
-    # Registered in CMF before anything that references it.
     argocd.argoproj.io/sync-wave: "5"
 spec:
   kubernetesNamespace: flink-colors

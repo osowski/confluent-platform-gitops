@@ -1,10 +1,5 @@
 ---
-# Flink SQL statements (CFK 3.3.0+, RFC 68)
-#
-# Replaces step [7] of the sql-init hook Jobs, which GET-checked the statement,
-# DELETEd it if it was FAILED, POSTed it, tolerated a 409, then polled the phase
-# and failed the sync only on FAILED. All of that collapses into a CR whose
-# status.phase ArgoCD now evaluates directly via the health check from #320.
+# Flink SQL statements.
 #
 # ---------------------------------------------------------------------------
 # IMPORTANT: spec.statement is immutable once the statement is running
@@ -14,13 +9,10 @@
 #   rule:    self.statement == oldSelf.statement || oldSelf.statement == ''
 #   message: statement is immutable once running
 #
-# Editing the SQL below and syncing will therefore FAIL PERMANENTLY - the API
-# server rejects the update and no amount of retrying helps. This is the
-# easiest way to wedge a Flink SQL deployment in this repository, because the
-# natural GitOps instinct (edit, commit, sync) is exactly what breaks.
-#
-# To change the SQL, add a new CR with a versioned name - `shapes-sql-enrich-v2`
-# - and remove the old one once it has drained. Two things that do NOT help:
+# Editing the SQL below and syncing FAILS PERMANENTLY - the API server rejects
+# the update and retrying never helps. To change the SQL, add a new CR with a
+# versioned name (`shapes-sql-enrich-v2`) and remove the old one once it has
+# drained. Two things that do NOT help:
 #
 #   * `spec.stopped: true` stops a statement without deleting it, but does not
 #     unlock spec.statement.
@@ -28,16 +20,13 @@
 #     delete-and-recreate that passes validation but silently discards job
 #     state, including savepoints.
 #
-# Versioning the name is preferred: explicit, auditable, and it leaves the
-# previous statement's history intact.
-#
 # See docs/architecture.md for the full set of Flink SQL CR constraints.
 # ---------------------------------------------------------------------------
 #
-# Both statements are continuous INSERT INTO enrichments reading the existing
-# *-input topic (shared with the JAR FlinkApplications) and writing to the
-# dedicated *-sql-output topic. An explicit column list leaves the inferred
-# sink's leading raw `key` (BYTES) column NULL. SQL targets Flink 1.19
+# Both statements are continuous INSERT INTO enrichments reading the *-input
+# topic (shared with the JAR FlinkApplications) and writing to the dedicated
+# *-sql-output topic. An explicit column list leaves the inferred sink's
+# leading raw `key` (BYTES) column NULL. SQL targets Flink 1.19
 # (cp-flink-sql:1.19-cp8).
 
 apiVersion: platform.confluent.io/v1beta1

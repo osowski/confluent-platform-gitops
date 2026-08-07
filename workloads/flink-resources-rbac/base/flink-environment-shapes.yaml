@@ -6,7 +6,6 @@ metadata:
   name: shapes-env
   namespace: flink-shapes
   annotations:
-    # Registered in CMF before anything that references it.
     argocd.argoproj.io/sync-wave: "5"
 spec:
   kubernetesNamespace: flink-shapes

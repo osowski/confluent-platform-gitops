@@ -1,13 +1,5 @@
 ---
 # Flink SQL catalogs and databases (CFK 3.3.0+, RFC 68)
-#
-# Replaces steps [4] and [5] of the sql-init hook Jobs: POST /catalogs/kafka
-# and POST /catalogs/kafka/{catalog}/databases, each with a create-then-update
-# fallback because the CMF API has no upsert.
-#
-# The catalog authenticates to Schema Registry through the sr-conn-secret-id-*
-# mapping rather than the STATIC_TOKEN the Jobs embedded - see the header of
-# flink-secrets.yaml for why that workaround is no longer needed.
 
 # ---------------------------------------------------------------------------
 # shapes

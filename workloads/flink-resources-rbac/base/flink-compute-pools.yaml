@@ -1,21 +1,6 @@
 ---
 # Flink SQL compute pools (CFK 3.3.0+, RFC 68)
 #
-# Replaces step [6] of the sql-init hook Jobs. The Jobs POSTed the pool and, on
-# a 409, PUT it - but CMF rejects a pool update while a statement is running on
-# it, so the Jobs swallowed that failure with a warning and relied on step [7]
-# deleting a FAILED statement so a later sync could apply the config. The CRs
-# have no such dance: CFK reconciles continuously and surfaces the outcome in
-# status.cmfSync.
-#
-# clusterSpec is carried over verbatim from the compute-pool.json ConfigMaps.
-# The CRD marks it x-kubernetes-preserve-unknown-fields, so it transfers as
-# YAML with no translation.
-#
-# NOTE: spec.type is immutable after creation, and spec.state is valid only on
-# SHARED pools - a CEL rule rejects it on DEDICATED ones. A DEDICATED pool runs
-# no pods at rest; CMF launches a Flink cluster per statement.
-#
 # NOTE: clusterSpec.image must match the deployed CMF version. cp-flink-sql
 # 1.19-cp8 is the floor for CMF 2.3.x and later; earlier tags fail statement
 # plan loading with a `key.format requires ... confluent.key.fields` error.
