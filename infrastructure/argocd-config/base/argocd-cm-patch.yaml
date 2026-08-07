@@ -274,19 +274,19 @@ data:
       hs.message = "CMF-side catalog deleted"
       return hs
     end
-    -- A catalog whose connectionSecretId has no matching secret mapping is
-    -- silently ignored by CMF rather than rejected, and shows up as an empty
-    -- environmentsWithAccess. Treat that as Degraded: the catalog exists but no
-    -- environment can use it, which is the failure mode the CRDs do not catch.
-    if obj.spec ~= nil and obj.spec.srInstance ~= nil and obj.spec.srInstance.connectionSecretId ~= nil and obj.spec.srInstance.connectionSecretId ~= "" then
-      if obj.status.environmentsWithAccess == nil or #obj.status.environmentsWithAccess == 0 then
-        hs.status = "Degraded"
-        hs.message = "Catalog registered but no environment can access it - check that a FlinkEnvironmentSecretMapping is named '" .. obj.spec.srInstance.connectionSecretId .. "'"
-        return hs
-      end
-    end
+    -- NOTE: status.environmentsWithAccess is NOT a reliable signal for catalogs.
+    -- CFK leaves it unset on a correctly configured catalog whose secret mapping
+    -- exists and whose cmfSync is Created, so degrading on an empty value fails
+    -- the sync for a perfectly healthy catalog. It is reported when present and
+    -- otherwise ignored. (A catalog whose connectionSecretId has no matching
+    -- FlinkEnvironmentSecretMapping is still silently ignored by CMF rather than
+    -- rejected - that failure mode is real, but this field does not detect it.)
     hs.status = "Healthy"
-    hs.message = "Catalog registered in CMF"
+    msg = "Catalog registered in CMF"
+    if obj.status.environmentsWithAccess ~= nil and #obj.status.environmentsWithAccess > 0 then
+      msg = msg .. " (" .. tostring(#obj.status.environmentsWithAccess) .. " environment(s) with access)"
+    end
+    hs.message = msg
     return hs
   resource.customizations.health.platform.confluent.io_FlinkKafkaDatabase: |
     hs = {}
