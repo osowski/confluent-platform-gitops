@@ -6,10 +6,7 @@ metadata:
   name: colors
   namespace: flink-colors
   annotations:
-    # Wave 80: applied after the environment (5) is registered in CMF.
-    # Unwaved, this raced the FlinkEnvironment and CFK reported
-    # 'FlinkEnvironment not found', which the health checks added in #320
-    # surface as a hard sync failure rather than a silently-retried blip.
+    # Applied after the FlinkEnvironment (wave 5).
     argocd.argoproj.io/sync-wave: "80"
 spec:
   # Reference to FlinkEnvironment

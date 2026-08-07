@@ -6,10 +6,7 @@ metadata:
   name: shapes-env
   namespace: flink-shapes
   annotations:
-    # Wave 5: the environment must be registered in CMF before any resource
-    # that references it. Everything downstream - the secret chain (10-30),
-    # catalog (40), database (50), pool (60), statement (70) and the
-    # FlinkApplications (80) - names this environment.
+    # Registered in CMF before anything that references it.
     argocd.argoproj.io/sync-wave: "5"
 spec:
   kubernetesNamespace: flink-shapes
