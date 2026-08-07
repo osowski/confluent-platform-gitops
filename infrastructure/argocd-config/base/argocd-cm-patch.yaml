@@ -420,17 +420,9 @@ data:
       hs.message = "Waiting for statement phase"
       return hs
     end
-    -- COMPLETED is a success terminal state, not a stall: DDL statements such as
-    -- CREATE TABLE run once and finish there. A check that only accepts RUNNING
-    -- would leave every DDL statement Progressing forever and hang its wave.
-    if obj.status.phase == "RUNNING" or obj.status.phase == "COMPLETED" or obj.status.phase == "STOPPED" then
-      hs.status = "Healthy"
-      hs.message = "Statement phase: " .. obj.status.phase
-      if obj.status.warning ~= nil and obj.status.warning ~= "" then
-        hs.message = hs.message .. " (warning: " .. obj.status.warning .. ")"
-      end
-      return hs
-    end
+    -- Only an explicit failure degrades. FAILED is written promptly and
+    -- reliably (a statement whose SQL does not compile lands there within
+    -- seconds), so it is a trustworthy negative signal.
     if obj.status.phase == "FAILED" or obj.status.phase == "FAILING" then
       hs.status = "Degraded"
       msg = "Statement phase: " .. obj.status.phase
@@ -440,13 +432,26 @@ data:
       hs.message = msg
       return hs
     end
-    -- PENDING covers compilation and cluster startup. Note an interactive
-    -- SELECT stays PENDING until a client fetches its results, so such a
-    -- statement will sit Progressing by design.
-    hs.status = "Progressing"
-    msg = "Statement phase: " .. obj.status.phase
-    if obj.status.detail ~= nil and obj.status.detail ~= "" then
-      msg = msg .. " - " .. obj.status.detail
+    -- Everything else is Healthy once CMF has accepted the statement.
+    --
+    -- Deliberately NOT gating on phase == RUNNING. CFK writes status.phase when
+    -- the statement is created and when it fails, but does not refresh it when
+    -- the statement starts running. Observed on flink-demo-rbac: CMF logged
+    -- `phase: RUNNING`, the FlinkDeployment was RUNNING/STABLE with its pods up
+    -- and processing, while the CR still read PENDING with
+    -- "Statement execution pending." many minutes later. Treating PENDING as
+    -- Progressing therefore hangs the wave forever on a working statement.
+    --
+    -- Note also that COMPLETED is a success terminal state - DDL such as
+    -- CREATE TABLE runs once and finishes there - so it must never be treated
+    -- as a stall either.
+    hs.status = "Healthy"
+    msg = "Statement accepted by CMF"
+    if obj.status.phase ~= nil and obj.status.phase ~= "" then
+      msg = msg .. " (phase: " .. obj.status.phase .. ")"
+    end
+    if obj.status.warning ~= nil and obj.status.warning ~= "" then
+      msg = msg .. " (warning: " .. obj.status.warning .. ")"
     end
     hs.message = msg
     return hs
