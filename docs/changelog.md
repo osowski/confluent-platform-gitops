@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **flink-demo-rbac-mtls — Flink SQL CR chain and CMF secret encryption** ([#323](https://github.com/osowski/confluent-platform-gitops/issues/323)): the shared `flink-resources-rbac` CR chain is now verified on the mTLS cluster, with `encryption.enabled: true` and a valid 32-byte key brought over from [#321](https://github.com/osowski/confluent-platform-gitops/issues/321). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Documentation
 - **Flink SQL CR constraints and preview-adoption ADR** ([#326](https://github.com/osowski/confluent-platform-gitops/issues/326)): `architecture.md` is now the canonical reference for the Flink SQL dependency chain, its sync-wave scheme, and the constraints that are not validated by CFK — notably the three-way secret naming rule and the status fields that cannot be used as health signals; [ADR-0010](../adrs/0010-adopt-cfk-preview-flink-sql-crds.md) records the decision to adopt preview CRDs. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 

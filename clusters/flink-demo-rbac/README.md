@@ -373,7 +373,7 @@ Two credential pairs exist per environment, and they intentionally use different
 
 Kafka uses the `cmf` service account because CMF validates the database connection while registering a catalog, which needs broader Kafka permissions than the per-group accounts hold.
 
-A mapping's **name** must exactly equal the `connectionSecretId` (catalog) or `connectionSecretRef.name` (database) that references it. CMF keys an environment's secrets by mapping name and silently ignores a catalog whose secret is unmapped, rather than returning an error. CFK does not validate this either — the ArgoCD health check reports such a catalog as Degraded with the mapping name it expected.
+The `FlinkSecret`, its `FlinkEnvironmentSecretMapping`, and the `connectionSecretId`/`connectionSecretRef` that references them must all share one identical name — see [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources) for that rule and the rest of the Flink SQL CR constraints.
 
 To rotate a credential, edit the backing Kubernetes Secret. CFK tracks its `resourceVersion` and re-syncs to CMF automatically.
 
