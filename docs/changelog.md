@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- **Flink SQL CR constraints and preview-adoption ADR** ([#326](https://github.com/osowski/confluent-platform-gitops/issues/326)): `architecture.md` is now the canonical reference for the Flink SQL dependency chain, its sync-wave scheme, and the constraints that are not validated by CFK — notably the three-way secret naming rule and the status fields that cannot be used as health signals; [ADR-0010](../adrs/0010-adopt-cfk-preview-flink-sql-crds.md) records the decision to adopt preview CRDs. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Changed
 - **flink-resources-rbac — Flink SQL resources now declarative** ([#322](https://github.com/osowski/confluent-platform-gitops/issues/322)): the two 744-line `sql-init` PostSync hook Jobs and their JSON ConfigMaps are replaced by 20 CFK 3.3 custom resources, so catalogs, databases, compute pools, and statements are visible, diffable, and prunable in ArgoCD. Schema Registry now authenticates with `OAUTHBEARER` and CMF-managed token refresh, retiring the `STATIC_TOKEN` that had to be re-minted on every sync. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 

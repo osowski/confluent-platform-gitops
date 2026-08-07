@@ -185,13 +185,23 @@ See [ADR-0002](../adrs/0002-cfk-component-sync-wave-ordering.md) for the full de
 
 ### Intra-Application Sync Waves: Flink SQL Resources
 
-CFK 3.3.0 introduced declarative CRDs for the CMF Flink SQL object model, replacing the ArgoCD hook Jobs that previously drove the CMF REST API. These resources form a strict dependency chain:
+The CMF Flink SQL object model is expressed as CFK custom resources (CFK 3.3.0+). They form a strict dependency chain, with the `FlinkEnvironment` ahead of it and `FlinkApplication` behind it:
 
 ```
-FlinkSecret → FlinkEnvironmentSecretMapping → FlinkKafkaCatalog → FlinkKafkaDatabase → FlinkComputePool → FlinkStatement
+FlinkEnvironment
+  → FlinkSecret → FlinkEnvironmentSecretMapping → FlinkKafkaCatalog
+    → FlinkKafkaDatabase → FlinkComputePool → FlinkStatement
+                                                → FlinkApplication
 ```
 
-Apply in that order and delete in reverse, so each CMF-side resource is removed before the resource it depends on. Sync-wave annotations express both directions, since ArgoCD deletes in reverse wave order. `cp-flink-sql-sandbox` uses waves 40/45/50 for catalog/database/pool, following its topics (30) and schemas (35).
+Apply in that order and delete in reverse, so each CMF-side resource is removed before the resource it depends on. Sync-wave annotations express both directions, since ArgoCD deletes in reverse wave order.
+
+| App | Wave scheme |
+|---|---|
+| `flink-resources-rbac` | environment 5; Secret 10; FlinkSecret 20; mapping 30; catalog 40; database 50; pool 60; statement 70; application 80 |
+| `cp-flink-sql-sandbox` | topics 30; schemas 35; catalog 40; database 45; pool 50 |
+
+`FlinkApplication` must come after `FlinkEnvironment` rather than sharing its wave. Unwaved they race, and CFK reports `FlinkEnvironment "<env>" not found` on the application. Without a health check that failure is invisible — ArgoCD marks the application Healthy on creation and CFK retries in the background — but once health is evaluated it fails the sync outright.
 
 The following constraints are enforced by CEL rules on the CRDs or by CMF runtime behaviour, and are easy to trip over:
 
@@ -201,7 +211,7 @@ The following constraints are enforced by CEL rules on the CRDs or by CMF runtim
 | `FlinkComputePool.spec.type` is immutable | Switching DEDICATED↔SHARED requires a new CR |
 | `FlinkComputePool.spec.state` valid only on `SHARED` pools | CEL rejects `state` on a DEDICATED pool |
 | `FlinkKafkaCatalog.spec.flinkEnvironment` is required and immutable | Sharing a catalog across environments needs one CR per environment, even though CMF catalogs are global |
-| `FlinkEnvironmentSecretMapping` name must equal the `connectionSecretId` referenced by the catalog/database | **Not validated by CFK.** CMF silently ignores an unmapped catalog rather than erroring |
+| The `FlinkSecret`, its `FlinkEnvironmentSecretMapping`, and the `connectionSecretId`/`connectionSecretRef` that references them must all share **one identical name** | Two mechanisms enforce it: CMF keys an environment's secrets by mapping name and silently ignores an unmapped catalog rather than erroring; and CFK resolves `connectionSecretId` to a `FlinkSecret` resource, failing with `flinksecret "<id>" not found in namespace` on a mismatch |
 | DDL (`CREATE TABLE`) runs only in environments listed in the database's `ddlEnvironments` | DDL is rejected everywhere else |
 | `clusterSpec.image` must match the deployed CMF version | JobManager fails to load the statement plan |
 | `FlinkSecret` requires CMF secret encryption (`encryption.enabled=true`) | Secrets cannot be stored encrypted at rest, so the sync fails |
@@ -218,6 +228,21 @@ The following constraints are enforced by CEL rules on the CRDs or by CMF runtim
 - `argocd.argoproj.io/sync-options: Force=true,Replace=true` forces a delete-and-recreate that passes validation, but silently discards job state.
 
 Versioning the name is preferred: it is explicit, auditable, and leaves the previous statement's history intact.
+
+These CRDs are a **preview feature** in CFK 3.3.0. The decision to adopt them anyway, and the rollback path if the API changes before GA, is recorded in [ADR-0010](../adrs/0010-adopt-cfk-preview-flink-sql-crds.md).
+
+#### Renaming a FlinkSecret deadlocks a live cluster
+
+CMF refuses to delete a secret that an environment still maps:
+
+```
+Secret 'sr-oauth-secret-shapes' is still mapped to environments [shapes-env].
+Remove those mappings first.
+```
+
+Because the `FlinkSecret` sits at wave 20 and its mapping at wave 30, a rename makes the two waves deadlock: wave 20 cannot prune the old secret while the mapping that references it still exists, and the wave that would update that mapping never runs. The old resources sit `ERROR` with the CFK finalizer held, and the sync hangs.
+
+To rename in place, delete the `FlinkEnvironmentSecretMapping` resources first so the old secrets can finalize, then sync. A cluster built from scratch never hits this — it only bites when renaming an existing deployment, and it is a concrete instance of the reverse-order teardown rule above.
 
 #### Health assessment
 
