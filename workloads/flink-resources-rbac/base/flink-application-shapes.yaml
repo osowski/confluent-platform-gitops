@@ -5,6 +5,8 @@ kind: FlinkApplication
 metadata:
   name: shapes
   namespace: flink-shapes
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
 spec:
   # Reference to FlinkEnvironment
   flinkEnvironment: shapes-env

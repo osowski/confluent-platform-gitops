@@ -117,10 +117,11 @@ demonstrating JAR/SQL parity. It does **not** write to the JAR output topics (`s
 | Producer | `shapes-producer` | existing Deployment, `replicas: 0` by default |
 
 **How it works:**
-1. The `shapes-sql-init` PostSync-hook Job (step `[7/7]`) POSTs the statement JSON from the
-   `shapes-statement-config` ConfigMap to `POST /cmf/api/v1/environments/shapes-env/statements`.
-   Idempotent on re-sync: a `409` is left in place; a statement left in `FAILED` is deleted and
-   recreated (statement SQL is immutable in CMF).
+1. The statement is a declarative `FlinkStatement` CR in `base/flink-statements.yaml`, reconciled
+   into CMF by CFK. Its SQL is **immutable once running** — a CEL rule on the CRD rejects any
+   update that changes `spec.statement`, so editing it in Git fails the sync permanently. Add a
+   versioned CR (`shapes-sql-enrich-v2`) instead; see the file header for why
+   `Force=true,Replace=true` is the worse option.
 2. The statement reads the inferred `shapes-input` table, adds an `encoded` column (mirroring the
    JAR enrichment), and writes `ProcessedSensorEvent` records to `shapes-sql-output`. The Kafka
    tables are auto-inferred from the registered SR schemas; an explicit `INSERT` column list

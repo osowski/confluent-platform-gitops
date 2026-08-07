@@ -5,6 +5,8 @@ kind: FlinkApplication
 metadata:
   name: colors
   namespace: flink-colors
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
 spec:
   # Reference to FlinkEnvironment
   flinkEnvironment: colors-env

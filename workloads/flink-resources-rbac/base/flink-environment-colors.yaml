@@ -5,6 +5,8 @@ kind: FlinkEnvironment
 metadata:
   name: colors-env
   namespace: flink-colors
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   kubernetesNamespace: flink-colors
 
