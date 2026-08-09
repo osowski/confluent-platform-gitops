@@ -48,8 +48,8 @@ After migration, the `terraform/eks-demo/` directory can be removed from the rep
 | Resource group | Description |
 |----------------|-------------|
 | VPC | `/16` CIDR, 3 private `/20` + 3 public `/24` subnets across 3 AZs |
-| NAT Gateway | Single NAT gateway for private subnet egress |
-| VPC Interface Endpoints | SSM, SSMMessages, EC2Messages, ECR API, ECR DKR, EKS, STS, CloudWatch Logs |
+| NAT Gateway | Single NAT gateway for private subnet egress — AZ selectable via `nat_gateway_az` |
+| VPC Interface Endpoints | SSM, SSMMessages, EC2Messages, EC2, ECR API, ECR DKR, EKS, STS, CloudWatch Logs |
 | VPC Gateway Endpoint | S3 (ECR image layer pulls) |
 | EKS Control Plane | Kubernetes 1.32, private-only API endpoint |
 | Managed Node Group | `workers-v2`: t3.2xlarge, 4–6 nodes, AL2023, 100 GiB gp3 root volume |
@@ -156,6 +156,42 @@ terraform destroy
 ```
 
 The `default` security group is deleted automatically when the VPC itself is removed; don't delete it manually.
+
+### Troubleshooting: node group stuck at 0 registered nodes
+
+Symptom: the node group sits in `CREATING` with `health.issues` empty, while every instance shows `running` and healthy in the EC2 console. After roughly 25 minutes the node group fails with `NodeCreationFailure`.
+
+The usual cause is that the private subnets have no route out. AL2023 `nodeadm` calls `ec2:DescribeInstances` during init, before kubelet starts — with no egress it retries forever, so the instance boots normally but never registers.
+
+**1. Check the private route table for a default route:**
+```bash
+aws ec2 describe-route-tables --filters "Name=vpc-id,Values=<vpc-id>" \
+  --query 'RouteTables[?Tags[?Value==`eks-demo-private`]].Routes' --output table
+```
+A healthy table has `0.0.0.0/0` pointing at a NAT gateway. If it only has `local` and the S3 prefix list, the NAT gateway is missing.
+
+**2. Confirm on the instance itself** — `get-console-output` shows the retry loop directly:
+```bash
+aws ec2 get-console-output --instance-id <node-instance-id> --query Output --output text \
+  | grep -E 'nodeadm|DescribeInstances'
+```
+
+**3. Find why the NAT gateway wasn't created.** The most common reason is the per-AZ NAT gateway quota (`L-FE5A380F`, 20 by default). Terraform reports this at apply time, but the node group is created in parallel and buries it:
+```bash
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=CreateNatGateway \
+  --start-time <apply-start-time> --query 'Events[].CloudTrailEvent' --output text | grep -o 'errorMessage[^,]*'
+```
+
+**4. Remedy.** Count NAT gateways per AZ to find one with headroom:
+```bash
+aws ec2 describe-nat-gateways --filter Name=state,Values=available,pending \
+  --query 'NatGateways[].SubnetId' --output text | tr '\t' '\n' > /tmp/natsub.txt
+aws ec2 describe-subnets --subnet-ids $(tr '\n' ' ' < /tmp/natsub.txt) \
+  --query 'Subnets[].AvailabilityZone' --output text | tr '\t' '\n' | sort | uniq -c | sort -rn
+```
+Then set `nat_gateway_az` in `terraform.tfvars` to an AZ below quota and re-apply. Alternatively, request a quota increase for `L-FE5A380F`, or delete stale NAT gateways from abandoned demo VPCs in the crowded AZ.
+
+Note that the failed node group must be deleted before re-applying — EKS will not re-drive a node group out of `CREATING`.
 
 ## Adding a New Cluster
 

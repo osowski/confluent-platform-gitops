@@ -28,6 +28,12 @@ variable "vpc_cidr" {
   type        = string
 }
 
+variable "nat_gateway_az" {
+  description = "Availability zone to place the single NAT gateway in. Defaults to the first endpoint-capable AZ in the region. Set this when that AZ is at its NAT gateway quota (L-FE5A380F, 20 per AZ) — CreateNatGateway fails there and leaves the private subnets without a default route."
+  type        = string
+  default     = null
+}
+
 variable "node_instance_type" {
   description = "EC2 instance type for EKS managed node group workers"
   type        = string
