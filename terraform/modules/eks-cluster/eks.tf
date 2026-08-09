@@ -67,16 +67,6 @@ module "eks" {
   }
 
   tags = var.common_tags
-
-  # Do not add depends_on here to order the node group behind module.vpc or the
-  # VPC endpoints. A module-level depends_on defers this module's internal data
-  # sources to apply time, and the upstream eks-managed-node-group submodule sizes
-  # count off data.aws_partition / data.aws_caller_identity — so every plan fails
-  # with "Invalid count argument". The node group is therefore created in parallel
-  # with the VPC egress path: if the NAT gateway fails, nodes boot without a route
-  # out, nodeadm blocks on ec2:DescribeInstances, and the node group times out after
-  # ~25 minutes rather than failing fast. See the eks-demo README troubleshooting
-  # section for how to recognize and unstick that case.
 }
 
 # Allow the bastion's SOCKS5 proxy to reach the private EKS API endpoint.
