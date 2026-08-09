@@ -4,6 +4,8 @@ kubernetes_version = "1.35"
 platform_zone_id   = "<output from dns-bootstrap: platform_zone_id>"
 platform_domain    = "platform.dspdemos.com"
 vpc_cidr           = "10.0.0.0/16"
+# Uncomment to move the NAT gateway off an AZ that is at its per-AZ quota
+# nat_gateway_az   = "us-east-1b"
 node_instance_type = "t3.2xlarge"
 node_desired_size  = 4
 node_min_size      = 4

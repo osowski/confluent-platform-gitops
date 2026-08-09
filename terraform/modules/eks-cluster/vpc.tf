@@ -5,11 +5,11 @@ module "vpc" {
   name = var.cluster_name
   cidr = var.vpc_cidr
 
-  azs             = local.azs
+  azs = local.azs
   # /20 private subnets — sized for EKS node pools (4096 addresses each)
   private_subnets = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
   # /24 public subnets — NAT gateway only, minimal address space needed
-  public_subnets  = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 8, i + 48)]
+  public_subnets = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 8, i + 48)]
 
   enable_nat_gateway   = true
   single_nat_gateway   = true
@@ -88,7 +88,22 @@ resource "aws_vpc_endpoint" "ec2messages" {
 }
 
 # ── EKS node endpoints — required for private-endpoint-only cluster ───────────
-# Without these, nodes cannot pull images or reach the EKS API and will never join.
+# These cover the AWS APIs a node touches during bootstrap and image pull. They do
+# not replace the NAT gateway: images hosted outside ECR (quay.io, docker.io,
+# ghcr.io) still need egress through it.
+
+# AL2023 nodeadm calls ec2:DescribeInstances during init, before kubelet starts.
+# Without a reachable EC2 API the call retries indefinitely, so the instance boots
+# and looks healthy in the EC2 console while the node never registers with EKS.
+resource "aws_vpc_endpoint" "ec2" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ec2"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+  tags                = merge(var.common_tags, { Name = "${var.cluster_name}-ec2" })
+}
 
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = module.vpc.vpc_id
