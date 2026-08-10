@@ -1,7 +1,7 @@
 ---
 clusterName: eks-demo
 region: us-east-1
-vpcId: vpc-0f3e3de0efc336067
+vpcId: vpc-04b988b7882ab2bcf
 
 serviceAccount:
   annotations:
