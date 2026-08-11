@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **eks-demo producers now emit Avro, unblocking the Flink SQL statements** ([#338](https://github.com/osowski/confluent-platform-gitops/issues/338)): the pinned amd64 producer image was built without the Avro serializer and wrote plain JSON, so every statement restart-looped on `Unknown magic byte!` while the JAR pipeline (which does its own parsing) looked healthy. Now pins `v0.2.1-avro-amd64`; verified end-to-end on eks-demo with 8k+ records and zero deserialization errors.
+
+### Fixed
 - **eks-demo nodes now register when an AZ is at its NAT gateway quota** ([#333](https://github.com/osowski/confluent-platform-gitops/issues/333)): new `nat_gateway_az` variable steers the single NAT gateway to an AZ with headroom, so `CreateNatGateway` no longer fails and strands the private subnets without a default route. Added the `ec2` interface VPC endpoint that AL2023 `nodeadm` needs before kubelet starts — without it nodes boot healthy in EC2 but never join the cluster.
 
 ### Added

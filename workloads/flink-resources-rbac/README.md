@@ -141,6 +141,14 @@ kubectl -n kafka exec -it <kafka-pod> -- kafka-avro-console-consumer \
   --topic shapes-sql-output --from-beginning --max-messages 5 ...
 ```
 
+> **Producer wire format:** the inferred input tables are `value.format = 'avro-registry'` with
+> `scan.startup.mode = 'earliest-offset'`, so the statement re-reads from offset 0 on every
+> (re)start and a single record lacking the Confluent wire prefix (magic byte `0x00` + 4-byte
+> schema ID) fails the job permanently — not just for the bad record. The producer image tag must
+> therefore be an Avro build, and if a non-Avro producer has ever written to an input topic, purge
+> the topic (delete and re-create the `KafkaTopic` CR) **before** scaling a producer back up.
+> Confirm with the producer's own log line: `first 15 bytes: [0, 0, 0, 0, 1, ...]`.
+
 > **Versions:** requires CMF chart **2.3.1+** (2.3.0 ships incorrectly built SQL jars). The
 > Flink SQL compute-pool image tracks the latest `confluentinc/cp-flink-sql` tag independently
 > (`1.19-cp8` at time of writing — verify with `skopeo list-tags docker://confluentinc/cp-flink-sql`).
