@@ -1,6 +1,13 @@
 # Override producer image for eks-demo (amd64 EKS nodes)
 # Base image is arm64-only; this patch pins the amd64-specific build until
 # multi-arch CI/CD is set up in flink-sandbox (osowski/flink-sandbox#6)
+#
+# The tag must be an Avro build: the catalog-inferred input tables use
+# value.format = 'avro-registry', so a producer writing anything without the
+# Confluent wire prefix wedges every Flink SQL statement on "Unknown magic byte!".
+# Verify before bumping:
+#   docker run --rm --platform linux/amd64 --entrypoint sh <image> \
+#     -c 'ls schemas/ && pip list | grep -i fastavro'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +19,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/kafka-producer:v0.2.0-avro-amd64
+          image: quay.io/osowski/kafka-producer:v0.2.1-avro-amd64
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -24,4 +31,4 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/kafka-producer:v0.2.0-avro-amd64
+          image: quay.io/osowski/kafka-producer:v0.2.1-avro-amd64
