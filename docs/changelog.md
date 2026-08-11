@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **JAR Flink pipelines now deserialize Avro on every cluster** ([#341](https://github.com/osowski/confluent-platform-gitops/issues/341)): eks-demo pinned a hand-built amd64 image whose JAR was the JSON-only build, so the job emitted an error record per event while never leaving `RUNNING`. The image is now multi-arch, letting eks-demo consume the base pin and removing its `FlinkApplication` image override entirely.
+
+### Fixed
 - **eks-demo producers now emit Avro, unblocking the Flink SQL statements** ([#338](https://github.com/osowski/confluent-platform-gitops/issues/338)): the pinned amd64 producer image was built without the Avro serializer and wrote plain JSON, so every statement restart-looped on `Unknown magic byte!` while the JAR pipeline (which does its own parsing) looked healthy. Now pins `v0.2.1-avro-amd64`; verified end-to-end on eks-demo with 8k+ records and zero deserialization errors.
 
 ### Fixed

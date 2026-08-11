@@ -5,7 +5,6 @@ resources:
   - ../../base
 
 patches:
-  - path: flink-application-image-patch.yaml
   - path: producer-image-patch.yaml
 
 labels:
