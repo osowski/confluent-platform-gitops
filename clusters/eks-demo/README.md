@@ -347,6 +347,21 @@ See the [External Secrets Operator documentation](https://external-secrets.io/la
 
 ## Troubleshooting
 
+### CMF secret encryption on a persistent PostgreSQL backend
+
+CMF fixes its encryption mode when its metadata database is first initialized and cannot change it afterward, so enabling `encryption.enabled` against a CMF that already started without it makes CMF crash-loop until the database is reset. Unlike the kind clusters, this one runs a long-lived PostgreSQL instance, so a reset discards CMF metadata — environments, applications, compute pools, catalogs and statements — rather than being fixed by recreating the cluster.
+
+All of that metadata is declared in Git and recreated by ArgoCD, but savepoint history and running job state are not. Check for running work before resetting:
+
+```bash
+kubectl get flinkdeployment --all-namespaces
+kubectl get flinkstatement,flinkapplication --all-namespaces
+```
+
+The reset procedure itself is documented once, in the [flink-demo-rbac README](../flink-demo-rbac/README.md#enabling-cmf-secret-encryption-requires-a-fresh-cmf-database), and applies unchanged here.
+
+Because CMF supports no key rotation and cannot decrypt its database without the key, back up `cmf-encryption-key` before enabling encryption. This cluster already runs External Secrets Operator, so sourcing that key from a real secret store rather than the committed demo value is the better end state.
+
 ### ArgoCD Applications Not Syncing
 
 Check parent Application health:
