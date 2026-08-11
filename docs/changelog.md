@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eks-demo nodes now register when an AZ is at its NAT gateway quota** ([#333](https://github.com/osowski/confluent-platform-gitops/issues/333)): new `nat_gateway_az` variable steers the single NAT gateway to an AZ with headroom, so `CreateNatGateway` no longer fails and strands the private subnets without a default route. Added the `ec2` interface VPC endpoint that AL2023 `nodeadm` needs before kubelet starts — without it nodes boot healthy in EC2 but never join the cluster.
 
 ### Added
+- **eks-demo — Flink SQL CR chain and CMF secret encryption** ([#324](https://github.com/osowski/confluent-platform-gitops/issues/324)): completes the fleet-wide rollout of the declarative Flink SQL chain, with `encryption.enabled: true` and a valid 32-byte key. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
+### Added
 - **flink-demo-rbac-mtls — Flink SQL CR chain and CMF secret encryption** ([#323](https://github.com/osowski/confluent-platform-gitops/issues/323)): the shared `flink-resources-rbac` CR chain is now verified on the mTLS cluster, with `encryption.enabled: true` and a valid 32-byte key brought over from [#321](https://github.com/osowski/confluent-platform-gitops/issues/321). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 
 ### Documentation
