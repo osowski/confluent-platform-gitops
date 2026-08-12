@@ -20,8 +20,11 @@ spec:
   flinkVersion: v2_1
 
   # Flink Docker image with bundled application JAR
-  # Updated to include Avro schema support with Schema Registry integration
-  image: quay.io/osowski/flink-kafka-demo:2.1.1-202603240800
+  # Multi-arch (amd64/arm64), so every cluster consumes this pin directly.
+  # The JAR reads and writes Avro via Schema Registry; a JSON-only build makes the
+  # job emit an error record per event without ever leaving RUNNING (see issue #341).
+  # Tag is the flink-sandbox commit the JAR was built from.
+  image: quay.io/osowski/flink-kafka-demo:2.1.1-a21a6a1
 
   # ServiceAccount for Kubernetes RBAC
   serviceAccount: flink
