@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **flink-demo — CMF environment catalog enabled** ([#335](https://github.com/osowski/confluent-platform-gitops/issues/335)): `_env_flink-demo`-style catalogs now let Flink SQL DDL run without any grant on `_confluent_sr_catalog`, testing whether Confluent Cloud Kafka access can skip that Confluent-internal topic entirely.
+
 ### Fixed
 - **JAR Flink pipelines now deserialize Avro on every cluster** ([#341](https://github.com/osowski/confluent-platform-gitops/issues/341)): eks-demo pinned a hand-built amd64 image whose JAR was the JSON-only build, so the job emitted an error record per event while never leaving `RUNNING`. The image is now multi-arch, letting eks-demo consume the base pin and removing its `FlinkApplication` image override entirely.
 

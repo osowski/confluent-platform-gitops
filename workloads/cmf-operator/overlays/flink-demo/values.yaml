@@ -9,3 +9,17 @@ cmf:
   sql:
     examples-catalog:
       enabled: true
+
+    # Environment catalog (CMF 2.4.0+, opt-in) - issue #335.
+    #
+    # Registers a writable `_env_<environment>` catalog with a `default` database
+    # in every environment. Unlike the built-in Kafka catalogs, it stores table
+    # and function metadata in CMF's own database - no Schema Registry or Kafka
+    # cluster involved.
+    #
+    # Requires artifact management for functions and custom connectors - already
+    # enabled for all clusters in ../../base/values.yaml (MinIO-backed).
+    #
+    # Verify: GET /cmf/api/v1/environments/<env>/catalog returns 200 (404 = disabled).
+    environmentCatalog:
+      enabled: true
