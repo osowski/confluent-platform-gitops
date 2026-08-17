@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-335/environment-catalog-flink-demo
+    targetRevision: HEAD
     path: workloads/cp-flink-sql-sandbox/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc
