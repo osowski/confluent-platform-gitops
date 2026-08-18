@@ -203,6 +203,12 @@ Add these entries to `/etc/hosts`:
   still resolves and serves the CMF UI SPA, but **interactive login is broken there** — that host
   has no SSO layer, so the UI cannot obtain a token and API calls return 401. Always use
   `https://cmf-ui.flink-demo-rbac.confluentdemo.local/` for the UI.
+- **Log in as `admin@osow.ski` by default.** Only `shapes`/`colors` group members have
+  RBAC access to the `shapes-env`/`colors-env` FlinkEnvironments — everything else,
+  including the `default` FlinkEnvironment (see
+  [flink-resources README](../../workloads/flink-resources/README.md#who-can-write-to-the-default-environment-rbac-clusters)),
+  is only writable by `admin`/`cmf`. Log in as a `shapes`/`colors` group user only when
+  specifically working in those tenants' environments.
 
 **Keycloak Admin Console:**
 - **URL**: http://keycloak.flink-demo-rbac.confluentdemo.local:30080
