@@ -612,6 +612,76 @@ For each resource not found in the allowlist, add an entry to the appropriate wh
 
 > **Note:** The `infrastructure` project currently uses wildcard allowlists. If it ever moves to an explicit allowlist, all resource kinds would need to be added explicitly. The `workloads` project uses an explicit allowlist with specific CRD kinds for CFK, Flink, and cert-manager.
 
+## New-Namespace Checklist
+
+**If your application introduces a namespace that didn't previously exist on
+the target cluster**, three separate allow-lists have to be updated, or the
+application will sync as `Synced` in ArgoCD while silently never actually
+running anything. All three are namespace explicit-list configs — none of
+them support wildcards, so each new namespace has to be added by name in
+each place it applies. **Run this checklist before opening a PR**, the same
+way you would the AppProject Resource Audit above — the failure mode here is
+worse, because ArgoCD reports the resources as healthy/created rather than
+erroring, so nothing in the ArgoCD UI tells you it didn't work.
+
+### 1. CFK operator's `namespaceList`
+
+`workloads/cfk-operator/overlays/<cluster>/values.yaml`. If your namespace
+holds any `platform.confluent.io` CRDs (`FlinkEnvironment`, `FlinkApplication`,
+`KafkaTopic`, `Schema`, the Flink SQL CRDs, etc.), add it here. Symptom if
+missed: the CR syncs into the cluster fine, but every status field CFK would
+normally populate (`cfkInternalState`, `cmfSync.status`, ...) stays
+permanently blank — CFK never even sees the resource. CFK's operator
+restarts automatically when this value changes (its chart wires a checksum
+annotation to the Deployment), so no manual restart is needed here.
+
+### 2. Flink Kubernetes Operator's `watchNamespaces`
+
+`workloads/flink-kubernetes-operator/overlays/<cluster>/values.yaml`. If your
+namespace holds any `flink.apache.org` `FlinkDeployment`s (which CFK creates
+under the hood for every `FlinkApplication`/Flink SQL compute pool job), add
+it here too. Symptom if missed: the `FlinkApplication`/`FlinkComputePool`
+CR itself looks fine in CFK's status, but no pods are ever created — the
+underlying `FlinkDeployment` sits with an empty `status`.
+
+**Unlike CFK, this one does NOT restart automatically on a values change** —
+the chart's Deployment has no checksum annotation tying it to the
+ConfigMap it reads `watchNamespaces` from, so ArgoCD updates the ConfigMap
+but the running pod keeps its stale in-memory config indefinitely. After
+this value changes, manually restart it once (there's no way to script this
+into the sync itself without adding a checksum annotation to the chart's
+Deployment template, which we don't control):
+
+```bash
+kubectl rollout restart deployment/flink-kubernetes-operator -n operator
+```
+
+### 3. Reflector's `reflection-allowed-namespaces` on any secret your app needs reflected
+
+If your application's pods reference a Secret that lives in another
+namespace and reaches yours via the
+[Emberstack Reflector](https://github.com/emberstack/kubernetes-reflector)
+(for example, `minio-credentials` in `storage`, reflected wherever Flink jobs
+need S3 checkpoint/savepoint credentials), the source Secret's
+`reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` annotation
+must list your new namespace by name. These patches live per-cluster, e.g.
+`infrastructure/minio/overlays/<cluster>/secret-patch.yaml`. Symptom if
+missed: pods in the new namespace fail with
+`CreateContainerConfigError` / `secret "<name>" not found` — Reflector never
+copies the secret in, and everything upstream of pod scheduling (the CR,
+CFK, FKO) reports fine.
+
+### Quick audit command
+
+```bash
+grep -rn "namespaceList:\|watchNamespaces:\|reflection-allowed-namespaces" \
+  workloads/cfk-operator/overlays/<cluster>/ \
+  workloads/flink-kubernetes-operator/overlays/<cluster>/ \
+  infrastructure/*/overlays/<cluster>/
+```
+
+Confirm your new namespace appears in every relevant result before merging.
+
 ## Next Steps
 
 - **Advanced Helm patterns**: [Adding Helm Workloads](adding-helm-workloads.md) - Comprehensive guide with real-world examples
