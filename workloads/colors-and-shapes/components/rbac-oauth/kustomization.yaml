@@ -25,28 +25,17 @@ resources:
   - keycloak-service-account-job.yaml
 
 patches:
-  # Map-key-only additions (SR bearer auth, connectionSecretId/Ref, OAuth
-  # allow-list) - safe as plain merge patches since no array field is touched.
+  # All strategic-merge, self-identifying by apiVersion/kind/metadata - no
+  # target: needed. Each file carries the complete desired state for the
+  # fields it touches (not just the OAuth additions): these CRDs have no
+  # patchMergeKey metadata for their env/list fields, so a merge patch
+  # replaces such a field wholesale rather than appending to it, and this
+  # keeps that replacement correct by construction while staying readable
+  # as one full picture of the field instead of scattered add-ops.
   - path: flink-environment-oauth-patch.yaml
   - path: flink-catalogs-databases-oauth-patch.yaml
   - path: flink-compute-pools-oauth-patch.yaml
-
-  # JSON6902: these also append to a podTemplate/container env array, which a
-  # merge patch would replace outright rather than append to (see the patch
-  # files themselves for why).
   - path: flink-application-shapes-oauth-patch.yaml
-    target:
-      kind: FlinkApplication
-      name: shapes
   - path: flink-application-colors-oauth-patch.yaml
-    target:
-      kind: FlinkApplication
-      name: colors
   - path: producer-shapes-oauth-patch.yaml
-    target:
-      kind: Deployment
-      name: shapes-producer
   - path: producer-colors-oauth-patch.yaml
-    target:
-      kind: Deployment
-      name: colors-producer

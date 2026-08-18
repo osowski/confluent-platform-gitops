@@ -1,34 +1,42 @@
-# JSON6902 - see flink-application-shapes-oauth-patch.yaml for why (env is a
-# plain array on this Deployment too; "add .../-" appends without touching
-# the existing entries).
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: KAFKA_SECURITY_PROTOCOL
-    value: "SASL_PLAINTEXT"
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: KAFKA_SASL_MECHANISM
-    value: "OAUTHBEARER"
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
-    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: KAFKA_OAUTH_CLIENT_ID
-    valueFrom:
-      secretKeyRef:
-        name: shapes-producer-oauth
-        key: client-id
-- op: add
-  path: /spec/template/spec/containers/0/env/-
-  value:
-    name: KAFKA_OAUTH_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: shapes-producer-oauth
-        key: client-secret
+# Strategic-merge patch carrying the complete desired container env - see
+# flink-application-shapes-oauth-patch.yaml for why (this Deployment's env
+# array gets the same wholesale-replace treatment from a merge patch, so
+# listing the full superset here keeps the replacement correct by
+# construction).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shapes-producer
+  namespace: flink-shapes
+spec:
+  template:
+    spec:
+      containers:
+        - name: producer
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+            - name: KAFKA_TOPIC
+              value: "shapes-input"
+            - name: DATA_TYPE
+              value: "shapes"
+            - name: MESSAGE_RATE
+              value: "10"
+            - name: SCHEMA_REGISTRY_URL
+              value: "http://schemaregistry.kafka.svc.cluster.local:8081"
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SASL_PLAINTEXT"
+            - name: KAFKA_SASL_MECHANISM
+              value: "OAUTHBEARER"
+            - name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+              value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-producer-oauth
+                  key: client-id
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shapes-producer-oauth
+                  key: client-secret
