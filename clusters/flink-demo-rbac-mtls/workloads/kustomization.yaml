@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - namespaces.yaml
   - keycloak.yaml
-  - flink-rbac.yaml
   - cfk-operator.yaml
   - mds-keygen.yaml
   - confluent-resources.yaml
@@ -14,7 +13,7 @@ resources:
   - cmf-operator-secrets.yaml
   - cmf-operator.yaml
   - oauth2-proxy-cmf.yaml
-  - flink-resources-rbac.yaml
+  - colors-and-shapes.yaml
 
 # Workload applications are deployed in sync wave order (100-120)
 # Remove any applications you don't need for your cluster

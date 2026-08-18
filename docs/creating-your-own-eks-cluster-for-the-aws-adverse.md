@@ -299,7 +299,7 @@ With the ARNs, VPC ID, and hosted zone ID updated, the infrastructure-critical v
 
 **Keycloak / OAuth Issuer Endpoints** — The cluster name embedded in these URLs was renamed correctly by the clone script. No action is needed unless you are intentionally changing the Keycloak realm name or domain from what `eks-demo` uses.
 
-**Architecture-Specific Container Images** — The Flink workload images are currently pinned to `amd64`. EKS managed node groups using `t3.2xlarge` run on x86\_64, so these work without changes. If you chose a Graviton (`t4g` or `m7g`) instance type, update the image tags in `workloads/flink-resources-rbac/overlays/new-eks-cluster/` to their `arm64` equivalents.
+**Architecture-Specific Container Images** — The Flink workload images are currently pinned to `amd64`. EKS managed node groups using `t3.2xlarge` run on x86\_64, so these work without changes. If you chose a Graviton (`t4g` or `m7g`) instance type, update the JAR `FlinkApplication` image tags in `workloads/colors-and-shapes/base/flink-application-{shapes,colors}.yaml` and the producer image override in `workloads/colors-and-shapes/overlays/new-eks-cluster/producer-image-patch.yaml` to their `arm64` equivalents.
 
 **Plain-Text Kubernetes Secrets** — These are demonstration credentials cloned from `eks-demo`. They are acceptable for a non-production demonstration cluster. Do not reuse them in any environment that requires credential isolation between deployments.
 
@@ -410,11 +410,11 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 ### 19. Deploy Confluent and Flink Resources
 
-The `confluent-resources` and `flink-resources-rbac` Applications are intentionally not configured for automatic sync. They depend on the Confluent and Flink operators being fully ready and the Keycloak realm being initialized before their resources can be applied successfully. Once the `workloads` Application shows as `Healthy`:
+The `confluent-resources` and `colors-and-shapes` Applications are intentionally not configured for automatic sync. They depend on the Confluent and Flink operators being fully ready and the Keycloak realm being initialized before their resources can be applied successfully. Once the `workloads` Application shows as `Healthy`:
 
 1. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding.
 
-2. Click on the `flink-resources-rbac` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+2. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
 
 ---
 

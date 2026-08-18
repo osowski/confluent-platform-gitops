@@ -1,0 +1,29 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: shapes-env
+  namespace: flink-shapes
+spec:
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        # Schema Registry OAuth bearer authentication
+        table.sql-catalog.confluent.schema-registry.bearer.auth.credentials.source: "OAUTHBEARER"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.token.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.id: "sa-shapes-flink"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.secret: "sa-shapes-flink-secret"
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: colors-env
+  namespace: flink-colors
+spec:
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        # Schema Registry OAuth bearer authentication
+        table.sql-catalog.confluent.schema-registry.bearer.auth.credentials.source: "OAUTHBEARER"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.token.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.id: "sa-colors-flink"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.secret: "sa-colors-flink-secret"

@@ -1,0 +1,41 @@
+# NAMING IS CRITICAL: these connectionSecretId/connectionSecretRef values
+# must exactly match the FlinkSecret/FlinkEnvironmentSecretMapping names in
+# flink-secrets.yaml. CMF keys an environment's secrets by mapping name and
+# silently ignores a catalog whose connectionSecretId is unmapped rather than
+# erroring; CFK resolves connectionSecretId to a FlinkSecret resource and
+# fails reconciliation on a mismatch instead.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: shapes-catalog
+  namespace: flink-shapes
+spec:
+  srInstance:
+    connectionSecretId: sr-conn-secret-id-shapes
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: shapes-database
+  namespace: flink-shapes
+spec:
+  connectionSecretRef:
+    name: kafka-conn-secret-id-shapes
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: colors-catalog
+  namespace: flink-colors
+spec:
+  srInstance:
+    connectionSecretId: sr-conn-secret-id-colors
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: colors-database
+  namespace: flink-colors
+spec:
+  connectionSecretRef:
+    name: kafka-conn-secret-id-colors

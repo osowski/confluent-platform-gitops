@@ -1,0 +1,39 @@
+# Strategic-merge patch - see producer-shapes-oauth-patch.yaml for why this
+# carries the full superset rather than just the OAuth additions.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: colors-producer
+  namespace: flink-colors
+spec:
+  template:
+    spec:
+      containers:
+        - name: producer
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+            - name: KAFKA_TOPIC
+              value: "colors-input"
+            - name: DATA_TYPE
+              value: "colors"
+            - name: MESSAGE_RATE
+              value: "10"
+            - name: SCHEMA_REGISTRY_URL
+              value: "http://schemaregistry.kafka.svc.cluster.local:8081"
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SASL_PLAINTEXT"
+            - name: KAFKA_SASL_MECHANISM
+              value: "OAUTHBEARER"
+            - name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+              value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: colors-producer-oauth
+                  key: client-id
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: colors-producer-oauth
+                  key: client-secret

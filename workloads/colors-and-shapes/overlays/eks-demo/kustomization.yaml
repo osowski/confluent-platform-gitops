@@ -4,9 +4,14 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Cluster-specific labels
+components:
+  - ../../components/rbac-oauth
+
+patches:
+  - path: producer-image-patch.yaml
+
 labels:
 - includeSelectors: false
   includeTemplates: true
   pairs:
-    cluster: flink-demo-rbac
+    cluster: eks-demo

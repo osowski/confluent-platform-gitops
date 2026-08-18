@@ -4,7 +4,9 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Cluster-specific labels
+components:
+  - ../../components/rbac-oauth
+
 labels:
 - includeSelectors: false
   includeTemplates: true

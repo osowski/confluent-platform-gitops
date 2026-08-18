@@ -2,7 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - namespaces.yaml
+  # flink-shapes/flink-colors namespaces are owned by workloads/namespaces
+  # (synced at wave 100, ahead of flink-kubernetes-operator's wave-116
+  # startup bootstrap into them) - not declared here.
   # Flink SQL CR chain, applied in dependency order via sync waves 5-80
   - flink-catalogs-databases.yaml
   - flink-compute-pools.yaml

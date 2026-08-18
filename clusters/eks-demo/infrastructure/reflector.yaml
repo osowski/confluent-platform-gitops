@@ -13,7 +13,7 @@ spec:
   sources:
     - repoURL: https://emberstack.github.io/helm-charts
       chart: reflector
-      targetRevision: 10.0.21  # Pin to specific chart version
+      targetRevision: 10.0.21 # Pin to specific chart version
       helm:
         valueFiles:
           - $values/infrastructure/reflector/base/values.yaml
