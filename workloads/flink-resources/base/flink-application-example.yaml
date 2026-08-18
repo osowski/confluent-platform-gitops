@@ -22,11 +22,11 @@ spec:
   jobManager:
     resource:
       memory: 1048m
-      cpu: 1
+      cpu: "1"
   taskManager:
     resource:
       memory: 1048m
-      cpu: 1
+      cpu: "1"
   job:
     jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
     state: running
