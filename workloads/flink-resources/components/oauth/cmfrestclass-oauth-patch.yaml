@@ -1,0 +1,18 @@
+# Strategic-merge patch adding OAuth authentication to the base (anonymous)
+# CMFRestClass. This is operator-level authentication (CFK -> CMF), not
+# end-user authentication - CFK uses client credentials flow to obtain and
+# refresh tokens from Keycloak on its own.
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    authentication:
+      type: oauth
+      oauth:
+        secretRef: cfk-cmf-oauth-client
+        configuration:
+          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          subClaimName: client_id

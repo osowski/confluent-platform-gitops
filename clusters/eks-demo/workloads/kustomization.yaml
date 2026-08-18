@@ -7,6 +7,7 @@ resources:
   - oauth2-proxy-cmf.yaml
   - confluent-resources.yaml
   - flink-kubernetes-operator.yaml
+  - flink-resources.yaml
   - colors-and-shapes.yaml
   - cmf-operator-secrets.yaml
   - keycloak.yaml

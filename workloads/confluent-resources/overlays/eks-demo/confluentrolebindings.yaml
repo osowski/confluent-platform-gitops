@@ -166,6 +166,43 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# CMF service account - ClusterAdmin role on default FlinkEnvironment
+# CMF needs environment-specific permissions to manage FlinkApplications
+# (the cluster-wide cmf-systemadmin binding above does not, in practice,
+# authorize FlinkApplication creation without this environment-scoped grant)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-clusteradmin-default
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: default
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - ClusterAdmin role on default FlinkEnvironment
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-clusteradmin-default
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@dspdemos.com
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: default
+  kafkaRestClassRef:
+    name: default
+---
 # Shapes group - DeveloperManage on shapes-env FlinkEnvironment resource
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding

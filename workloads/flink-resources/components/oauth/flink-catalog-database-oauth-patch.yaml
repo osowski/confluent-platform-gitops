@@ -1,0 +1,21 @@
+# NAMING IS CRITICAL: these connectionSecretId/connectionSecretRef values
+# must exactly match the FlinkSecret/FlinkEnvironmentSecretMapping names in
+# flink-secret-default.yaml. See that file for the two mechanisms that
+# enforce it.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: kafka-cat
+  namespace: flink
+spec:
+  srInstance:
+    connectionSecretId: sr-conn-secret-id-default
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: main-kafka-cluster
+  namespace: flink
+spec:
+  connectionSecretRef:
+    name: kafka-conn-secret-id-default

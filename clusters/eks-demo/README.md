@@ -284,6 +284,7 @@ Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **cmf-operator-secrets** (wave 119) - CMF operator secrets
+- **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — see [Flink Resources README](../../workloads/flink-resources/README.md)
 - **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 
 ## Cluster Specific Use Cases
