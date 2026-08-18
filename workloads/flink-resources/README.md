@@ -25,6 +25,26 @@ This is the **only** owner of `cmf-rest-class` in the `flink` namespace on
 every cluster — `colors-and-shapes` only ever references it via
 `cmfRestClassRef`, never defines its own copy.
 
+## Who Can Write to the `default` Environment (RBAC clusters)
+
+CMF delegates authorization to MDS via `ConfluentRolebinding`, scoped per
+FlinkEnvironment through `clustersScopeByIds.flinkEnvironmentId`. Unlike
+`colors-and-shapes`' `shapes`/`colors` tenants (which grant their own groups
+`DeveloperManage`/`ClusterAdmin` on `shapes-env`/`colors-env`), `default` has
+no dedicated tenant group — only `cmf` (the CFK operator's own identity) and
+`admin@osow.ski`/`admin@dspdemos.com` hold a `ClusterAdmin` binding scoped to
+it (`cmf-clusteradmin-default`, `admin-clusteradmin-default` in
+[`confluent-resources`](../confluent-resources/README.md)).
+
+**Practical effect:** on `flink-demo-rbac`, `flink-demo-rbac-mtls`, and
+`eks-demo`, only the `admin` user (logged into CMF UI/API via SSO) can
+create or update FlinkApplications/statements in `default` — any other
+authenticated user gets a 401, even with a valid token, because no
+`ConfluentRolebinding` grants them access to this environment. A cluster-wide
+`SystemAdmin` binding scoped only by `cmfId` (no `flinkEnvironmentId`) does
+**not** substitute for this — CMF requires the environment-scoped grant in
+practice, confirmed by direct REST API testing during #349.
+
 ## What's Included
 
 - **CMFRestClass** (`cmf-rest-class`) — the CFK-operator-to-CMF communication
