@@ -1,0 +1,52 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Layers Kubernetes RBAC and Keycloak OAuth onto the anonymous
+# colors-and-shapes base, for clusters that run Keycloak/MDS
+# (flink-demo-rbac, flink-demo-rbac-mtls, eks-demo). The base intentionally
+# carries no auth-specific fields of its own - see docs/architecture.md's
+# Flink SQL sections for what CMF/CFK require of each field this component
+# adds.
+
+resources:
+  # Kubernetes RBAC (namespaces already live in base - every cluster needs
+  # flink-shapes/flink-colors, RBAC or not)
+  - serviceaccounts.yaml
+  - roles.yaml
+  - rolebindings.yaml
+  - clusterrole.yaml
+  - clusterrolebinding.yaml
+
+  # CMF credential chain + Keycloak OAuth secrets
+  - flink-secrets.yaml
+  - flink-oauth-secrets.yaml
+  - producer-oauth-secrets.yaml
+  - keycloak-service-account-job.yaml
+
+patches:
+  # Map-key-only additions (SR bearer auth, connectionSecretId/Ref, OAuth
+  # allow-list) - safe as plain merge patches since no array field is touched.
+  - path: flink-environment-oauth-patch.yaml
+  - path: flink-catalogs-databases-oauth-patch.yaml
+  - path: flink-compute-pools-oauth-patch.yaml
+
+  # JSON6902: these also append to a podTemplate/container env array, which a
+  # merge patch would replace outright rather than append to (see the patch
+  # files themselves for why).
+  - path: flink-application-shapes-oauth-patch.yaml
+    target:
+      kind: FlinkApplication
+      name: shapes
+  - path: flink-application-colors-oauth-patch.yaml
+    target:
+      kind: FlinkApplication
+      name: colors
+  - path: producer-shapes-oauth-patch.yaml
+    target:
+      kind: Deployment
+      name: shapes-producer
+  - path: producer-colors-oauth-patch.yaml
+    target:
+      kind: Deployment
+      name: colors-producer

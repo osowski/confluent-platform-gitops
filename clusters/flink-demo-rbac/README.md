@@ -119,7 +119,6 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 Workload applications are defined in `workloads/kustomization.yaml`:
 
 - **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator, keycloak, storage)
-- **flink-rbac** (wave 100) - Flink RBAC ServiceAccounts and RoleBindings
 - **keycloak** (wave 102) - Keycloak identity provider for SSO/OAuth
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 106) - MDS token keypair generation
@@ -129,7 +128,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator-secrets** (wave 117) - CMF operator secret configuration
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
-- **flink-resources** (wave 120) - Flink integration resources — **manual sync**
+- **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 
 ## Environment Access
 
@@ -358,7 +357,7 @@ Users can create additional topics following their group's naming pattern, subje
 
 Each Flink SQL catalog authenticates to Schema Registry with `OAUTHBEARER`, using its group's service account (`sa-shapes-flink` / `sa-colors-flink`). CMF obtains and refreshes tokens itself, so there is nothing to rotate and no sync required to keep a catalog working.
 
-Credentials reach CMF through the declarative chain in `workloads/flink-resources-rbac/base/flink-secrets.yaml`:
+Credentials reach CMF through the declarative chain in `workloads/colors-and-shapes/components/rbac-oauth/flink-secrets.yaml`:
 
 ```
 Kubernetes Secret -> FlinkSecret -> FlinkEnvironmentSecretMapping -> FlinkKafkaCatalog

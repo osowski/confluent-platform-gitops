@@ -1,0 +1,57 @@
+# JSON6902 - see flink-application-shapes-oauth-patch.yaml for why.
+- op: add
+  path: /spec/podTemplate/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: colors-flink-oauth
+        key: client-id
+- op: add
+  path: /spec/podTemplate/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: colors-flink-oauth
+        key: client-secret
+- op: add
+  path: /spec/flinkConfiguration/kafka.security.protocol
+  value: SASL_PLAINTEXT
+- op: add
+  path: /spec/flinkConfiguration/kafka.sasl.mechanism
+  value: OAUTHBEARER
+- op: add
+  path: /spec/flinkConfiguration/kafka.sasl.jaas.config
+  value: |
+    org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required
+    clientId="sa-colors-flink"
+    clientSecret="sa-colors-flink-secret"
+    tokenEndpointUri="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token";
+- op: add
+  path: /spec/flinkConfiguration/kafka.sasl.login.callback.handler.class
+  value: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
+- op: add
+  path: /spec/flinkConfiguration/kafka.sasl.oauthbearer.token.endpoint.url
+  value: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.credentials.source
+  value: "OAUTHBEARER"
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.issuer.endpoint.url
+  value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.client.id
+  value: "sa-colors-flink"
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.client.secret
+  value: "sa-colors-flink-secret"
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.scope
+  value: ""
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.logical.cluster
+  value: ""
+- op: add
+  path: /spec/flinkConfiguration/schema.registry.bearer.auth.identity.pool.id
+  value: ""

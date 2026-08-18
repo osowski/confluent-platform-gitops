@@ -67,5 +67,5 @@ These rules are applied symmetrically to both the `shapes` and `colors` tenants.
 ## Related
 
 - [#158](https://github.com/osowski/confluent-platform-gitops/issues/158)
-- `workloads/flink-resources-rbac/` (base manifests and README)
+- `workloads/colors-and-shapes/` (base manifests, `rbac-oauth` component, and README)
 - [ADR-0002](0002-cfk-component-sync-wave-ordering.md) — sync-wave ordering for CFK/CMF resources

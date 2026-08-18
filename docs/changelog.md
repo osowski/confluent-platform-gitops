@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **colors-and-shapes replaces flink-rbac + flink-resources-rbac on the RBAC clusters** ([#348](https://github.com/osowski/confluent-platform-gitops/issues/348)): `flink-demo-rbac`, `flink-demo-rbac-mtls`, and `eks-demo` now run the same `colors-and-shapes` Application as `flink-demo`, with Kubernetes RBAC and Keycloak OAuth layered on via a new `rbac-oauth` Kustomize Component instead of two separate Applications. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
+
 ### Added
 - **colors-and-shapes demo now available on flink-demo** ([#347](https://github.com/osowski/confluent-platform-gitops/issues/347)): a new Application deploys the shapes/colors two-tenant Flink demo (JAR + SQL side by side) anonymously, extracted from `flink-resources-rbac` with all OAuth-specific fields stripped. RBAC clusters gain the same demo, plus their K8s RBAC and OAuth layer, in a later phase. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
 

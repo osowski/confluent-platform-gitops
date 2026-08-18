@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: flink-resources-rbac
+  name: colors-and-shapes
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "120"
@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: workloads/flink-resources-rbac/overlays/flink-demo-rbac-mtls
+    path: workloads/colors-and-shapes/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
     namespace: flink

@@ -21,7 +21,7 @@ The flink-demo-rbac cluster is configured with full RBAC authorization using:
 2. Kubernetes RBAC configured:
    - Namespaces: flink-shapes, flink-colors
    - ServiceAccounts and RoleBindings
-   - See: `workloads/flink-rbac/`
+   - See: `workloads/colors-and-shapes/components/rbac-oauth/`
 
 ## Initial Setup
 

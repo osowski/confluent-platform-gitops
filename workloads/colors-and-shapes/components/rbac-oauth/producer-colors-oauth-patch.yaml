@@ -1,0 +1,32 @@
+# JSON6902 - see producer-shapes-oauth-patch.yaml for why.
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SECURITY_PROTOCOL
+    value: "SASL_PLAINTEXT"
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SASL_MECHANISM
+    value: "OAUTHBEARER"
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: colors-producer-oauth
+        key: client-id
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: colors-producer-oauth
+        key: client-secret
