@@ -288,6 +288,55 @@ update_files() {
     return 0
 }
 
+# Warn about Application manifests that exist on the target revision but not
+# in the current checkout (e.g. a new workload Application added by an
+# unmerged feature branch). These files can't be found or updated by
+# find_target_files, so their targetRevision stays at whatever was committed
+# (usually HEAD) and ArgoCD will fail to render them — the content they point
+# to doesn't exist on HEAD/main yet either.
+warn_new_files() {
+    local cluster="$1"
+    local new_revision="$2"
+
+    # Only meaningful when pointing at a branch/commit other than the default
+    if [ "$new_revision" = "$DEFAULT_REVISION" ]; then
+        return 0
+    fi
+
+    # Resolve the ref locally first, falling back to origin/<ref>
+    local resolved_ref="$new_revision"
+    if ! git rev-parse --verify --quiet "$new_revision" >/dev/null; then
+        if git rev-parse --verify --quiet "origin/$new_revision" >/dev/null; then
+            resolved_ref="origin/$new_revision"
+        else
+            debug "Could not resolve '$new_revision' locally or as origin/$new_revision — skipping new-file check"
+            return 0
+        fi
+    fi
+
+    local remote_files local_files new_files
+    remote_files=$(git ls-tree -r --name-only "$resolved_ref" -- "clusters/$cluster" 2>/dev/null | grep '\.yaml$' || true)
+    local_files=$(find_target_files "$cluster" | sed 's|^\./||')
+
+    new_files=$(comm -23 <(echo "$remote_files" | sort -u) <(echo "$local_files" | sort -u) 2>/dev/null || true)
+
+    if [ -n "$new_files" ]; then
+        echo ""
+        echo -e "${YELLOW}⚠️  New Application manifest(s) found on '$new_revision' that don't exist in this checkout:${NC}"
+        echo "$new_files" | sed 's/^/  /'
+        echo ""
+        echo "  These were skipped by this script and likely still say 'targetRevision: HEAD'."
+        echo "  Since their content (Kustomize path) doesn't exist on HEAD/main yet, ArgoCD"
+        echo "  will fail with 'app path does not exist' until you manually retarget them"
+        echo "  in the feature-branch checkout, e.g.:"
+        echo ""
+        echo "    sed -i '' 's/targetRevision: HEAD/targetRevision: $new_revision/' <file>"
+        echo ""
+        echo "  Remember to revert these too before merging, alongside the usual revert."
+        echo ""
+    fi
+}
+
 # Verify all targetRevisions are updated
 verify_update() {
     local cluster="$1"
@@ -503,6 +552,9 @@ main() {
     echo ""
     success "Target revisions updated successfully!"
     echo ""
+
+    # Warn about any new Application manifests this checkout can't see yet
+    warn_new_files "$CLUSTER_NAME" "$TARGET_REVISION"
 
     if [ "$TARGET_REVISION" != "$DEFAULT_REVISION" ]; then
         echo "⚠️  WARNING: Applications are now pointing to: $TARGET_REVISION"
