@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - cfk-operator.yaml
   - cmf-operator.yaml
+  - colors-and-shapes.yaml
   - confluent-resources.yaml
   - flink-agents.yaml
   - flink-kubernetes-operator.yaml

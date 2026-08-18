@@ -1,0 +1,28 @@
+# FlinkEnvironment for the colors group demo tenant
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: colors-env
+  namespace: flink-colors
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  kubernetesNamespace: flink-colors
+
+  # Reference to CMFRestClass in flink namespace (cross-namespace reference,
+  # owned by the flink-resources Application)
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
+  # Default resource configuration for Flink applications
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        taskmanager.numberOfTaskSlots: "2"
+        metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+        metrics.reporter.prom.port: "9249-9250"
+        rest.profiling.enabled: "true"
+
+        # Schema Registry configuration for CMF table auto-discovery
+        table.sql-catalog.confluent.schema-registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"

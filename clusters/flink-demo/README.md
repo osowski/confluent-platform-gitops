@@ -65,7 +65,7 @@ kubectl get pods --namespace flink
 
 ### Manual Sync Applications
 
-The `confluent-resources` and `flink-resources` Applications require manual sync to ensure operators and namespaces are fully ready.
+The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applications require manual sync to ensure operators and namespaces are fully ready.
 
 **Wait for operators to be healthy:**
 
@@ -98,6 +98,17 @@ This deploys the CMFRestClass, a single `default` FlinkEnvironment (supporting
 both native `FlinkApplication`s and Flink SQL), and a generic Flink SQL demo —
 topics, schemas, and a Flink catalog/compute pool. See
 [Flink SQL Demo](#flink-sql-demo) below.
+
+**Sync colors-and-shapes (optional):**
+
+In the ArgoCD UI:
+1. Click on `colors-and-shapes` Application
+2. Click **Sync** → **Synchronize**
+3. Wait for `Healthy` status (~3-5 minutes)
+
+This deploys a two-tenant demo (`shapes`, `colors`) with both a JAR
+`FlinkApplication` and a Flink SQL `FlinkStatement` per tenant, anonymous on
+this cluster. See [Colors and Shapes](#colors-and-shapes) below.
 
 ## Applications
 
@@ -134,6 +145,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources — **manual sync**
+- **colors-and-shapes** (wave 121) - Two-tenant Flink demo (JAR + SQL), anonymous on this cluster — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 - **flink-agents** (wave 121) - Flink Agents workflow demo (LLM-driven review analysis) — **manual sync** — see [Flink Agents README](../../workloads/flink-agents/README.md)
 - **ollama** (wave 110) - In-cluster Ollama LLM backend — **disabled** (run Ollama natively on macOS instead; see [Flink Agents README](../../workloads/flink-agents/README.md))
 
@@ -264,6 +276,33 @@ against the `default` FlinkEnvironment, for the
 After syncing the `flink-resources` Application, you can immediately proceed to the "Let's Play" section of the [cp-flink-sql repository](https://github.com/rjmfernandes/cp-flink-sql?tab=readme-ov-file#lets-play).
 
 See **[flink-resources README](../../workloads/flink-resources/README.md)** for details.
+
+### Colors and Shapes
+
+The `colors-and-shapes` application deploys a two-tenant demo (`shapes`,
+`colors`) showing both native `FlinkApplication` (JAR) and Flink SQL
+(`FlinkStatement`) deployment models side by side. On this cluster it runs
+anonymously — no OAuth, no per-group Kubernetes RBAC (those are layered on
+by a Kustomize Component on the RBAC clusters only).
+
+**What's included:**
+- **Namespaces**: `flink-shapes`, `flink-colors`
+- **Topics**: `shapes-input`/`shapes-output`/`shapes-state`/`shapes-sql-output`
+  (and the `colors-*` equivalents)
+- **FlinkApplications**: `shapes`, `colors` — JAR-based
+- **Flink SQL**: `shapes-sql-enrich`, `colors-sql-enrich` — reads the same
+  `*-input` topic as the JAR job, writes to a dedicated `*-sql-output` topic
+- **Producers**: `shapes-producer`, `colors-producer` — `replicas: 0` by
+  default
+
+**Getting started:**
+
+```bash
+kubectl -n flink-shapes scale deploy/shapes-producer --replicas=1
+kubectl -n flink-colors scale deploy/colors-producer --replicas=1
+```
+
+See **[colors-and-shapes README](../../workloads/colors-and-shapes/README.md)** for details.
 
 ## Troubleshooting
 

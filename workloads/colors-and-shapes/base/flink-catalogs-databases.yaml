@@ -1,0 +1,84 @@
+---
+# Flink SQL catalogs and databases (CFK 3.3.0+, RFC 68)
+
+# ---------------------------------------------------------------------------
+# shapes
+# ---------------------------------------------------------------------------
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: shapes-catalog
+  namespace: flink-shapes
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  # Required and immutable, even though CMF catalogs are global.
+  flinkEnvironment: shapes-env
+  srInstance:
+    connectionConfig:
+      schema.registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: shapes-database
+  namespace: flink-shapes
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  flinkEnvironment: shapes-env
+  catalogRef:
+    name: shapes-catalog
+  kafkaCluster:
+    connectionConfig:
+      bootstrap.servers: "kafka.kafka.svc.cluster.local:9071"
+  # Environments allowed to run DDL (CREATE TABLE and friends) against this
+  # database. CMF rejects DDL from any environment not listed here.
+  ddlEnvironments:
+    - shapes-env
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
+# ---------------------------------------------------------------------------
+# colors
+# ---------------------------------------------------------------------------
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: colors-catalog
+  namespace: flink-colors
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  flinkEnvironment: colors-env
+  srInstance:
+    connectionConfig:
+      schema.registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: colors-database
+  namespace: flink-colors
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  flinkEnvironment: colors-env
+  catalogRef:
+    name: colors-catalog
+  kafkaCluster:
+    connectionConfig:
+      bootstrap.servers: "kafka.kafka.svc.cluster.local:9071"
+  ddlEnvironments:
+    - colors-env
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink

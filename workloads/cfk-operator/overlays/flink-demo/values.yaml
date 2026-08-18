@@ -3,3 +3,11 @@
 
 # Enable debug logging for homelab troubleshooting
 debug: true
+
+# Watch additional namespaces for the colors-and-shapes demo
+namespaceList:
+  - flink
+  - flink-shapes
+  - flink-colors
+  - kafka
+  - operator

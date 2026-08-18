@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespaces.yaml
+  # Flink SQL CR chain, applied in dependency order via sync waves 5-80
+  - flink-catalogs-databases.yaml
+  - flink-compute-pools.yaml
+  - flink-statements.yaml
+  - flink-application-colors.yaml
+  - flink-application-shapes.yaml
+  - flink-environment-colors.yaml
+  - flink-environment-shapes.yaml
+  - producers.yaml
+  - schemas.yaml
+  - service.yaml
+  - topics.yaml
+
+# Common labels applied to all resources
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    app.kubernetes.io/part-of: colors-and-shapes
+    app.kubernetes.io/managed-by: argocd
