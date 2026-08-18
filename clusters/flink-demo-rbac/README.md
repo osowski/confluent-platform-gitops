@@ -128,6 +128,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator-secrets** (wave 117) - CMF operator secret configuration
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
+- **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — **manual sync** — see [Flink Resources README](../../workloads/flink-resources/README.md)
 - **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 
 ## Environment Access

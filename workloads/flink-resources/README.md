@@ -1,14 +1,34 @@
 # Flink Resources
 
 Core Confluent for Kubernetes (CFK) / Confluent Manager for Apache Flink (CMF)
-integration, plus a generic, single-tenant Flink SQL demo. Deployed on every
-cluster.
+integration, plus a generic, single-tenant Flink SQL demo. Deployed
+uniformly on all four clusters (`flink-demo`, `flink-demo-rbac`,
+`flink-demo-rbac-mtls`, `eks-demo`) — auth mode is the only per-cluster
+difference.
+
+## Deployment Modes
+
+`base/` is the anonymous variant, used as-is on `flink-demo`. On
+`flink-demo-rbac`, `flink-demo-rbac-mtls`, and `eks-demo`, the
+`components/oauth` Kustomize Component layers on:
+
+- OAuth authentication on the `CMFRestClass` (CFK-operator-to-CMF, via
+  `cfk-cmf-oauth-client` — operator-level, not end-user)
+- A new OAuth-secured credential chain for the `default` environment's Kafka
+  SQL catalog/database, since these clusters have no anonymous Kafka/SR
+  listener unlike `flink-demo`. Uses the `cmf` service account for both the
+  Kafka and Schema Registry connections — `default` has no dedicated
+  per-tenant identity the way `colors-and-shapes`' `shapes`/`colors` tenants
+  do (see that workload's README).
+
+This is the **only** owner of `cmf-rest-class` in the `flink` namespace on
+every cluster — `colors-and-shapes` only ever references it via
+`cmfRestClassRef`, never defines its own copy.
 
 ## What's Included
 
 - **CMFRestClass** (`cmf-rest-class`) — the CFK-operator-to-CMF communication
-  bridge. `flink-demo` uses no authentication; the RBAC clusters patch in
-  OAuth (see [architecture.md](../../docs/architecture.md)).
+  bridge.
 - **FlinkEnvironment** (`default`) — the single environment for both native
   `FlinkApplication`s and Flink SQL (Compute Pools/Statements). Replaces the
   earlier `env1`/`default-flink-env` split.
@@ -24,7 +44,10 @@ cluster.
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
 applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50
-enforce both directions. See
+enforce both directions (RBAC clusters additionally use waves 10/20/30 for
+the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
+`FlinkApplication` at wave 10 — the two don't depend on each other, so
+sharing a wave number is harmless). See
 [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources)
 for the constraints that apply to the whole chain.
 

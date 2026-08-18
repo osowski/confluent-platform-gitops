@@ -1,0 +1,18 @@
+# Strategic-merge patch adding Schema Registry OAuth bearer auth to the
+# `default` FlinkEnvironment's flinkApplicationDefaults, used for CMF table
+# auto-discovery - mirrors what colors-and-shapes' rbac-oauth component does
+# for shapes-env/colors-env, using the `cmf` identity since `default` has no
+# dedicated per-tenant service account.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: default
+  namespace: flink
+spec:
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        table.sql-catalog.confluent.schema-registry.bearer.auth.credentials.source: "OAUTHBEARER"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.token.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.id: "cmf"
+        table.sql-catalog.confluent.schema-registry.bearer.auth.client.secret: "cmf-secret"

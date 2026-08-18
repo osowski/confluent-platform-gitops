@@ -24,11 +24,17 @@ The Flink deployment consists of three ArgoCD Applications:
    - Database: SQLite with persistent volume
    - License: Trial license auto-generated
 
-3. **flink-resources** (sync-wave 120)
+3. **flink-resources** (sync-wave 120 on `flink-demo`; 119 on the RBAC
+   clusters, ahead of `colors-and-shapes` at 120)
    - Custom resources for Flink integration
    - CMFRestClass: Communication bridge between CFK and CMF
    - FlinkEnvironment: Default settings and Kafka integration
    - Kustomize-based deployment
+   - Deployed uniformly on all four clusters (`flink-demo`,
+     `flink-demo-rbac`, `flink-demo-rbac-mtls`, `eks-demo`) — auth mode
+     (anonymous vs. Keycloak OAuth, via the `components/oauth` Kustomize
+     Component) is the only per-cluster difference. See
+     [workloads/flink-resources/README.md](../workloads/flink-resources/README.md).
 
 ### Integration with Confluent Platform
 

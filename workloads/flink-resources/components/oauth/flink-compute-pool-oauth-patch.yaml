@@ -1,0 +1,13 @@
+# OAuth allow-list: the cp-flink-sql image's shaded Kafka client enforces an
+# OAUTHBEARER token-endpoint allow-list that defaults to empty. Without this,
+# the compute pool's Flink job crash-loops with "URL cannot be accessed due
+# to restrictions".
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkComputePool
+metadata:
+  name: pool
+  namespace: flink
+spec:
+  clusterSpec:
+    flinkConfiguration:
+      env.java.opts.all: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
