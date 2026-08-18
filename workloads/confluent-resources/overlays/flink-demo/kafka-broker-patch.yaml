@@ -32,5 +32,5 @@ spec:
         cpu: 500m
         memory: 1Gi
       limits:
-        cpu: 1000m
+        cpu: "1"
         memory: 2Gi

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **flink-resources collapses cp-flink-sql-sandbox into one Application** ([#346](https://github.com/osowski/confluent-platform-gitops/issues/346)): the generic Flink SQL demo (topics, schemas, catalog, database, compute pool) now lives in `flink-resources` alongside a single `default` FlinkEnvironment, replacing the separate `cp-flink-sql-sandbox` Application and the `env1`/`default-flink-env` naming split. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
+
 ### Added
 - **flink-demo — CMF environment catalog enabled** ([#335](https://github.com/osowski/confluent-platform-gitops/issues/335)): `_env_flink-demo`-style catalogs now let Flink SQL DDL run without any grant on `_confluent_sr_catalog`, testing whether Confluent Cloud Kafka access can skip that Confluent-internal topic entirely.
 

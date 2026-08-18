@@ -6,6 +6,13 @@ namespace: flink
 resources:
   - cmfrestclass.yaml
   - service.yaml
+  - flink-environment-default.yaml
+  - flink-application-example.yaml
+  - topics.yaml
+  - schemas.yaml
+  - flink-kafka-catalog.yaml
+  - flink-kafka-database.yaml
+  - flink-compute-pool.yaml
 
 # Common labels applied to all resources
 labels:

@@ -5,7 +5,6 @@ resources:
   - cfk-operator.yaml
   - cmf-operator.yaml
   - confluent-resources.yaml
-  - cp-flink-sql-sandbox.yaml
   - flink-agents.yaml
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml

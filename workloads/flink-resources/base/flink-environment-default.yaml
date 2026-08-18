@@ -1,11 +1,13 @@
-# FlinkEnvironment CR for env1
+# FlinkEnvironment CR for the generic, single-tenant demo
 # This declarative resource replaces the imperative environment creation
 # previously done in the compute pool Job
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkEnvironment
 metadata:
-  name: env1
+  name: default
   namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   kubernetesNamespace: flink
 

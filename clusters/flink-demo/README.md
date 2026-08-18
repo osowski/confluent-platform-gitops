@@ -92,16 +92,12 @@ In the ArgoCD UI:
 In the ArgoCD UI:
 1. Click on `flink-resources` Application
 2. Click **Sync** → **Synchronize**
-3. Wait for `Healthy` status (~2-3 minutes)
-
-**Sync cp-flink-sql-sandbox (optional):**
-
-To enable the CP Flink SQL demo environment:
-1. Click on `cp-flink-sql-sandbox` Application
-2. Click **Sync** → **Synchronize**
 3. Wait for `Healthy` status (~3-5 minutes)
 
-This deploys topics, schemas, and Flink catalog/compute pool for running Flink SQL queries. See [CP Flink SQL Sandbox](#cp-flink-sql-sandbox) below.
+This deploys the CMFRestClass, a single `default` FlinkEnvironment (supporting
+both native `FlinkApplication`s and Flink SQL), and a generic Flink SQL demo —
+topics, schemas, and a Flink catalog/compute pool. See
+[Flink SQL Demo](#flink-sql-demo) below.
 
 ## Applications
 
@@ -134,7 +130,6 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes (CMF, Control Center, Schema Registry)
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
-- **cp-flink-sql-sandbox** (wave 115) - CP Flink SQL demo environment
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
@@ -252,9 +247,11 @@ Add these entries to `/etc/hosts`:
 
 ## Cluster Specific Use Cases
 
-### CP Flink SQL Sandbox
+### Flink SQL Demo
 
-The cluster includes an optional **cp-flink-sql-sandbox** application that provides a complete environment for running Flink SQL demos from the [cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) repository.
+The `flink-resources` application includes a generic Flink SQL demo, running
+against the `default` FlinkEnvironment, for the
+[cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) repository.
 
 **What's included:**
 - **Topics**: `myevent` (source), `myaggregated` (sink)
@@ -264,9 +261,9 @@ The cluster includes an optional **cp-flink-sql-sandbox** application that provi
 
 **Getting started:**
 
-After syncing the `cp-flink-sql-sandbox` Application, you can immediately proceed to the "Let's Play" section of the [cp-flink-sql repository](https://github.com/rjmfernandes/cp-flink-sql?tab=readme-ov-file#lets-play).
+After syncing the `flink-resources` Application, you can immediately proceed to the "Let's Play" section of the [cp-flink-sql repository](https://github.com/rjmfernandes/cp-flink-sql?tab=readme-ov-file#lets-play).
 
-See **[cp-flink-sql-sandbox README](../../workloads/cp-flink-sql-sandbox/README.md)** for details.
+See **[flink-resources README](../../workloads/flink-resources/README.md)** for details.
 
 ## Troubleshooting
 

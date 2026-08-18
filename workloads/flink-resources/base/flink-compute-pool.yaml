@@ -1,7 +1,7 @@
 ---
-# FlinkComputePool for the cp-flink-sql demo (CFK 3.3.0+, RFC 68)
+# FlinkComputePool for the generic, single-tenant demo (CFK 3.3.0+, RFC 68)
 #
-# Replaces the `confluent flink compute-pool create --environment env1` call
+# Replaces the `confluent flink compute-pool create --environment default` call
 # previously made by the cmf-compute-pool-init PostSync hook Job.
 #
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "50"
 spec:
   type: DEDICATED
-  flinkEnvironment: env1
+  flinkEnvironment: default
 
   clusterSpec:
     flinkVersion: v1_19
