@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    platform.confluent.io/origin: manual
+    type: flink-native-kubernetes
+  name: flink-pods
+  namespace: flink-shapes
+spec:
+  ports:
+  - name: metrics
+    port: 9249
+    protocol: TCP
+    targetPort: 9249
+  selector:
+    type: flink-native-kubernetes
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    platform.confluent.io/origin: manual
+    type: flink-native-kubernetes
+  name: flink-pods
+  namespace: flink-colors
+spec:
+  ports:
+  - name: metrics
+    port: 9249
+    protocol: TCP
+    targetPort: 9249
+  selector:
+    type: flink-native-kubernetes
+  type: ClusterIP

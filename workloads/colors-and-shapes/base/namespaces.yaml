@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flink-shapes
+  labels:
+    name: flink-shapes
+    group: shapes
+    app.kubernetes.io/part-of: colors-and-shapes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flink-colors
+  labels:
+    name: flink-colors
+    group: colors
+    app.kubernetes.io/part-of: colors-and-shapes

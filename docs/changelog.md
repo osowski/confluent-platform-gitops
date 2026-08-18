@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **colors-and-shapes demo now available on flink-demo** ([#347](https://github.com/osowski/confluent-platform-gitops/issues/347)): a new Application deploys the shapes/colors two-tenant Flink demo (JAR + SQL side by side) anonymously, extracted from `flink-resources-rbac` with all OAuth-specific fields stripped. RBAC clusters gain the same demo, plus their K8s RBAC and OAuth layer, in a later phase. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
+
 ### Changed
 - **flink-resources collapses cp-flink-sql-sandbox into one Application** ([#346](https://github.com/osowski/confluent-platform-gitops/issues/346)): the generic Flink SQL demo (topics, schemas, catalog, database, compute pool) now lives in `flink-resources` alongside a single `default` FlinkEnvironment, replacing the separate `cp-flink-sql-sandbox` Application and the `env1`/`default-flink-env` naming split. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
 
