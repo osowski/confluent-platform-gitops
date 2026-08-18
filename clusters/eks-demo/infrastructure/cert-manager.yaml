@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/cert-manager/base/values.yaml
           - $values/infrastructure/cert-manager/overlays/eks-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: feature-348/rbac-oauth-component
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
