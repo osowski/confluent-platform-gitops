@@ -1,5 +1,5 @@
 ---
-# FlinkKafkaDatabase for the cp-flink-sql demo (CFK 3.3.0+, RFC 68)
+# FlinkKafkaDatabase for the generic, single-tenant demo (CFK 3.3.0+, RFC 68)
 #
 # Replaces the `POST /cmf/api/v1/catalogs/kafka/kafka-cat/databases` call
 # previously made by the cmf-catalog-database-init PostSync hook Job.
@@ -15,7 +15,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "45"
 spec:
-  flinkEnvironment: env1
+  flinkEnvironment: default
 
   catalogRef:
     name: kafka-cat
@@ -26,11 +26,11 @@ spec:
 
   # ddlEnvironments is intentionally omitted to match the behaviour of the
   # hook Job this replaces, whose database.json set no DDL environments. Add
-  # `env1` here to allow CREATE TABLE and other DDL to run against this
+  # `default` here to allow CREATE TABLE and other DDL to run against this
   # database — CMF gates DDL on this list, and rejects it everywhere else.
   #
   # ddlEnvironments:
-  #   - env1
+  #   - default
 
   cmfRestClassRef:
     name: cmf-rest-class

@@ -72,7 +72,7 @@ Platform infrastructure components deployed before workloads.
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI access
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
-- **flink-resources** (wave 120) - Flink custom resources (CMFRestClass, FlinkEnvironment) for Kafka integration
+- **flink-resources** (wave 120) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration
 
 **Future components:**
 - **argocd** - ArgoCD self-management (currently manual install, future state target)
@@ -199,7 +199,7 @@ Apply in that order and delete in reverse, so each CMF-side resource is removed 
 | App | Wave scheme |
 |---|---|
 | `flink-resources-rbac` | environment 5; Secret 10; FlinkSecret 20; mapping 30; catalog 40; database 50; pool 60; statement 70; application 80 |
-| `cp-flink-sql-sandbox` | topics 30; schemas 35; catalog 40; database 45; pool 50 |
+| `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50 |
 
 `FlinkApplication` must come after `FlinkEnvironment` rather than sharing its wave. Unwaved they race, and CFK reports `FlinkEnvironment "<env>" not found` on the application. Without a health check that failure is invisible — ArgoCD marks the application Healthy on creation and CFK retries in the background — but once health is evaluated it fails the sync outright.
 
@@ -315,7 +315,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 115 | controlcenter-ingress | Traefik IngressRoute for Confluent Control Center UI access |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
-| 120 | flink-resources | Flink custom resources (CMFRestClass, FlinkEnvironment) for Kafka integration |
+| 120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration |
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).

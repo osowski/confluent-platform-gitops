@@ -76,7 +76,9 @@ Total estimated resources for Flink deployment:
 
 ### FlinkEnvironment
 
-Default configuration in `workloads/flink-resources/base/flink-environment.yaml`:
+Default configuration in `workloads/flink-resources/base/flink-environment-default.yaml`
+(a single `default` FlinkEnvironment, supporting both native `FlinkApplication`s
+and Flink SQL — see [architecture.md](architecture.md#intra-application-sync-waves-flink-sql-resources)):
 
 ```yaml
 spec:
@@ -114,16 +116,18 @@ To customize Flink settings for a specific cluster:
 Example patch for increased resources:
 
 ```yaml
-apiVersion: flink.confluent.io/v1beta1
+apiVersion: platform.confluent.io/v1beta1
 kind: FlinkEnvironment
 metadata:
-  name: default-flink-env
-  namespace: confluent
+  name: default
+  namespace: flink
 spec:
-  flinkConfiguration:
-    jobmanager.memory.process.size: "2048m"
-    taskmanager.memory.process.size: "2048m"
-    taskmanager.numberOfTaskSlots: "4"
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        jobmanager.memory.process.size: "2048m"
+        taskmanager.memory.process.size: "2048m"
+        taskmanager.numberOfTaskSlots: "4"
 ```
 
 ## Usage
@@ -133,16 +137,18 @@ spec:
 Create a FlinkApplication custom resource:
 
 ```yaml
-apiVersion: flink.confluent.io/v1beta1
+apiVersion: platform.confluent.io/v1beta1
 kind: FlinkApplication
 metadata:
   name: my-flink-job
-  namespace: confluent
+  namespace: flink
 spec:
   # Reference the default environment
-  flinkEnvironmentRef:
-    name: default-flink-env
-    namespace: confluent
+  flinkEnvironment: default
+
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
 
   # Application JAR location
   job:

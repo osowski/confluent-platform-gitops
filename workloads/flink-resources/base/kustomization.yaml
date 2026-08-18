@@ -6,6 +6,16 @@ namespace: flink
 resources:
   - cmfrestclass.yaml
   - service.yaml
+  - flink-environment-default.yaml
+  - flink-application-example.yaml
+  # Generic Flink SQL demo (ex-cp-flink-sql-sandbox), listed in dependency-chain
+  # order; sync waves on each resource enforce the ordering at apply time, and
+  # reverse it on delete.
+  - topics.yaml
+  - schemas.yaml
+  - flink-kafka-catalog.yaml
+  - flink-kafka-database.yaml
+  - flink-compute-pool.yaml
 
 # Common labels applied to all resources
 labels:

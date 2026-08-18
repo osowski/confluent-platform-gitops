@@ -1,11 +1,16 @@
 # REFERENCE: https://docs.confluent.io/operator/current/co-manage-flink.html#create-a-af-application
+#
+# Optional reference FlinkApplication demonstrating native Kubernetes deployment
+# against the `default` FlinkEnvironment. Not required for Flink SQL usage.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkApplication
 metadata:
   name: default-flink-app
   namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
-  flinkEnvironment: env1
+  flinkEnvironment: default
   image: confluentinc/cp-flink:1.20.3-cp2-java17
   flinkVersion: v1_20
   flinkConfiguration:
