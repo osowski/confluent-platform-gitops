@@ -9,8 +9,8 @@ spec:
   podTemplate:
     resources:
       requests:
-        cpu: 1000m
+        cpu: "1"
         memory: 1Gi
       limits:
-        cpu: 2000m
+        cpu: "2"
         memory: 2Gi
