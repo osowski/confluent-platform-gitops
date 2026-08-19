@@ -12,7 +12,6 @@ resources:
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
   - cmf-operator.yaml
-  - oauth2-proxy-cmf.yaml
   - flink-resources.yaml
   - colors-and-shapes.yaml
 
