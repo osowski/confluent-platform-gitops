@@ -9,50 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **flink-resources now deployed on the RBAC clusters too** ([#349](https://github.com/osowski/confluent-platform-gitops/issues/349)): `flink-demo-rbac`, `flink-demo-rbac-mtls`, and `eks-demo` now run the same `flink-resources` Application as `flink-demo` (CMFRestClass + `default` FlinkEnvironment + generic Flink SQL demo), with a new `oauth` Kustomize Component layering on OAuth authentication and a dedicated `default`-env credential chain. `confluent-resources` grants `cmf`/`admin` a `ClusterAdmin` `ConfluentRolebinding` scoped to `default` — without it, CMF rejects FlinkApplication writes with a 401 (see [flink-resources README](../workloads/flink-resources/README.md#who-can-write-to-the-default-environment-rbac-clusters)). Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
-
-### Changed
-- **colors-and-shapes replaces flink-rbac + flink-resources-rbac on the RBAC clusters** ([#348](https://github.com/osowski/confluent-platform-gitops/issues/348)): `flink-demo-rbac`, `flink-demo-rbac-mtls`, and `eks-demo` now run the same `colors-and-shapes` Application as `flink-demo`, with Kubernetes RBAC and Keycloak OAuth layered on via a new `rbac-oauth` Kustomize Component instead of two separate Applications. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
-
-### Added
 - **colors-and-shapes demo now available on flink-demo** ([#347](https://github.com/osowski/confluent-platform-gitops/issues/347)): a new Application deploys the shapes/colors two-tenant Flink demo (JAR + SQL side by side) anonymously, extracted from `flink-resources-rbac` with all OAuth-specific fields stripped. RBAC clusters gain the same demo, plus their K8s RBAC and OAuth layer, in a later phase. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
-
-### Changed
-- **flink-resources collapses cp-flink-sql-sandbox into one Application** ([#346](https://github.com/osowski/confluent-platform-gitops/issues/346)): the generic Flink SQL demo (topics, schemas, catalog, database, compute pool) now lives in `flink-resources` alongside a single `default` FlinkEnvironment, replacing the separate `cp-flink-sql-sandbox` Application and the `env1`/`default-flink-env` naming split. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
-
-### Added
 - **flink-demo — CMF environment catalog enabled** ([#335](https://github.com/osowski/confluent-platform-gitops/issues/335)): `_env_flink-demo`-style catalogs now let Flink SQL DDL run without any grant on `_confluent_sr_catalog`, testing whether Confluent Cloud Kafka access can skip that Confluent-internal topic entirely.
-
-### Fixed
-- **JAR Flink pipelines now deserialize Avro on every cluster** ([#341](https://github.com/osowski/confluent-platform-gitops/issues/341)): eks-demo pinned a hand-built amd64 image whose JAR was the JSON-only build, so the job emitted an error record per event while never leaving `RUNNING`. The image is now multi-arch, letting eks-demo consume the base pin and removing its `FlinkApplication` image override entirely.
-
-### Fixed
-- **eks-demo producers now emit Avro, unblocking the Flink SQL statements** ([#338](https://github.com/osowski/confluent-platform-gitops/issues/338)): the pinned amd64 producer image was built without the Avro serializer and wrote plain JSON, so every statement restart-looped on `Unknown magic byte!` while the JAR pipeline (which does its own parsing) looked healthy. Now pins `v0.2.1-avro-amd64`; verified end-to-end on eks-demo with 8k+ records and zero deserialization errors.
-
-### Fixed
-- **eks-demo nodes now register when an AZ is at its NAT gateway quota** ([#333](https://github.com/osowski/confluent-platform-gitops/issues/333)): new `nat_gateway_az` variable steers the single NAT gateway to an AZ with headroom, so `CreateNatGateway` no longer fails and strands the private subnets without a default route. Added the `ec2` interface VPC endpoint that AL2023 `nodeadm` needs before kubelet starts — without it nodes boot healthy in EC2 but never join the cluster.
-
-### Added
 - **eks-demo — Flink SQL CR chain and CMF secret encryption** ([#324](https://github.com/osowski/confluent-platform-gitops/issues/324)): completes the fleet-wide rollout of the declarative Flink SQL chain, with `encryption.enabled: true` and a valid 32-byte key. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
-
-### Added
 - **flink-demo-rbac-mtls — Flink SQL CR chain and CMF secret encryption** ([#323](https://github.com/osowski/confluent-platform-gitops/issues/323)): the shared `flink-resources-rbac` CR chain is now verified on the mTLS cluster, with `encryption.enabled: true` and a valid 32-byte key brought over from [#321](https://github.com/osowski/confluent-platform-gitops/issues/321). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
-
-### Documentation
-- **Flink SQL CR constraints and preview-adoption ADR** ([#326](https://github.com/osowski/confluent-platform-gitops/issues/326)): `architecture.md` is now the canonical reference for the Flink SQL dependency chain, its sync-wave scheme, and the constraints that are not validated by CFK — notably the three-way secret naming rule and the status fields that cannot be used as health signals; [ADR-0010](../adrs/0010-adopt-cfk-preview-flink-sql-crds.md) records the decision to adopt preview CRDs. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
-
-### Changed
-- **flink-resources-rbac — Flink SQL resources now declarative** ([#322](https://github.com/osowski/confluent-platform-gitops/issues/322)): the two 744-line `sql-init` PostSync hook Jobs and their JSON ConfigMaps are replaced by 20 CFK 3.3 custom resources, so catalogs, databases, compute pools, and statements are visible, diffable, and prunable in ArgoCD. Schema Registry now authenticates with `OAUTHBEARER` and CMF-managed token refresh, retiring the `STATIC_TOKEN` that had to be re-minted on every sync. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
-
-### Fixed
-- **CMF secret encryption now actually enabled on flink-demo-rbac** ([#321](https://github.com/osowski/confluent-platform-gitops/issues/321)): `encryption.enabled: true` was never set (the chart defaults it to `false`) and the committed key was 36 bytes where CMF accepts only 16 or 32 — so encryption was off and would have failed had it been switched on. Required by the `FlinkSecret` CRD; enabling it on an existing CMF database needs a database reset (procedure in the cluster README). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
-
-### Added
 - **ArgoCD health checks for CMF-backed Flink resources** ([#320](https://github.com/osowski/confluent-platform-gitops/issues/320)): the eight Flink kinds (`FlinkEnvironment`, `FlinkApplication`, and the six CFK 3.3 Flink SQL CRDs) now report Degraded with the CMF error message instead of a misleading Healthy, so broken catalogs and failed statements are visible and sync waves actually gate. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 
 ### Changed
+- **colors-and-shapes replaces flink-rbac + flink-resources-rbac on the RBAC clusters** ([#348](https://github.com/osowski/confluent-platform-gitops/issues/348)): `flink-demo-rbac`, `flink-demo-rbac-mtls`, and `eks-demo` now run the same `colors-and-shapes` Application as `flink-demo`, with Kubernetes RBAC and Keycloak OAuth layered on via a new `rbac-oauth` Kustomize Component instead of two separate Applications. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
+- **flink-resources collapses cp-flink-sql-sandbox into one Application** ([#346](https://github.com/osowski/confluent-platform-gitops/issues/346)): the generic Flink SQL demo (topics, schemas, catalog, database, compute pool) now lives in `flink-resources` alongside a single `default` FlinkEnvironment, replacing the separate `cp-flink-sql-sandbox` Application and the `env1`/`default-flink-env` naming split. Part of [#345](https://github.com/osowski/confluent-platform-gitops/issues/345).
+- **flink-resources-rbac — Flink SQL resources now declarative** ([#322](https://github.com/osowski/confluent-platform-gitops/issues/322)): the two 744-line `sql-init` PostSync hook Jobs and their JSON ConfigMaps are replaced by 20 CFK 3.3 custom resources, so catalogs, databases, compute pools, and statements are visible, diffable, and prunable in ArgoCD. Schema Registry now authenticates with `OAUTHBEARER` and CMF-managed token refresh, retiring the `STATIC_TOKEN` that had to be re-minted on every sync. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 - **cp-flink-sql-sandbox — Flink SQL resources now declarative** ([#319](https://github.com/osowski/confluent-platform-gitops/issues/319)): the catalog, database, and compute pool are CFK 3.3 `FlinkKafkaCatalog`/`FlinkKafkaDatabase`/`FlinkComputePool` CRs instead of two PostSync hook Jobs, so they are visible and prunable in ArgoCD rather than fire-and-forget. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 
+### Fixed
+- **JAR Flink pipelines now deserialize Avro on every cluster** ([#341](https://github.com/osowski/confluent-platform-gitops/issues/341)): eks-demo pinned a hand-built amd64 image whose JAR was the JSON-only build, so the job emitted an error record per event while never leaving `RUNNING`. The image is now multi-arch, letting eks-demo consume the base pin and removing its `FlinkApplication` image override entirely.
+- **eks-demo producers now emit Avro, unblocking the Flink SQL statements** ([#338](https://github.com/osowski/confluent-platform-gitops/issues/338)): the pinned amd64 producer image was built without the Avro serializer and wrote plain JSON, so every statement restart-looped on `Unknown magic byte!` while the JAR pipeline (which does its own parsing) looked healthy. Now pins `v0.2.1-avro-amd64`; verified end-to-end on eks-demo with 8k+ records and zero deserialization errors.
+- **eks-demo nodes now register when an AZ is at its NAT gateway quota** ([#333](https://github.com/osowski/confluent-platform-gitops/issues/333)): new `nat_gateway_az` variable steers the single NAT gateway to an AZ with headroom, so `CreateNatGateway` no longer fails and strands the private subnets without a default route. Added the `ec2` interface VPC endpoint that AL2023 `nodeadm` needs before kubelet starts — without it nodes boot healthy in EC2 but never join the cluster.
+- **CMF secret encryption now actually enabled on flink-demo-rbac** ([#321](https://github.com/osowski/confluent-platform-gitops/issues/321)): `encryption.enabled: true` was never set (the chart defaults it to `false`) and the committed key was 36 bytes where CMF accepts only 16 or 32 — so encryption was off and would have failed had it been switched on. Required by the `FlinkSecret` CRD; enabling it on an existing CMF database needs a database reset (procedure in the cluster README). Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
+
 ### Documentation
+- **Flink SQL CR constraints and preview-adoption ADR** ([#326](https://github.com/osowski/confluent-platform-gitops/issues/326)): `architecture.md` is now the canonical reference for the Flink SQL dependency chain, its sync-wave scheme, and the constraints that are not validated by CFK — notably the three-way secret naming rule and the status fields that cannot be used as health signals; [ADR-0010](../adrs/0010-adopt-cfk-preview-flink-sql-crds.md) records the decision to adopt preview CRDs. Part of [#318](https://github.com/osowski/confluent-platform-gitops/issues/318).
 - **Colima inotify limit required for local kind clusters**: documented the one-time `fs.inotify.max_user_instances` increase (default `128` is too low) plus a "Too Many Open Files" troubleshooting section, since exhausting it breaks `kube-proxy`/`coredns` and prevents Kafka brokers from starting.
 
 ## [0.8.2] - 2026-07-17
@@ -74,23 +50,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2026-07-15
 
-### Fixed
-- **`workloads` AppProject permits ValidatingAdmissionPolicy** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CFK 3.2.3 renders a KRaft-migration `ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` on Kubernetes ≥1.30; added both to the project's `clusterResourceWhitelist` so `cfk-operator` syncs cleanly (previously failed with "resource ... is not permitted in project workloads").
-
 ### Added
 - **CFK Flink SQL controllers (RFC 68, preview)** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): enabled `enableFlinkSQL` on CFK 3.3.0 and whitelisted the six new CRDs (`FlinkComputePool`, `FlinkKafkaCatalog`, `FlinkKafkaDatabase`, `FlinkStatement`, `FlinkSecret`, `FlinkEnvironmentSecretMapping`) so CMF Flink SQL objects can be managed declaratively via GitOps.
+- **Headlamp Kubernetes dashboard on all clusters** ([#148](https://github.com/osowski/confluent-platform-gitops/issues/148)): token-based login, reachable at `headlamp.<cluster>.<domain>`; new clusters get it automatically via `new-cluster.sh`. (Keycloak SSO deferred to a future auth-proxy design.)
+- **flink-demo-rbac — Flink SQL statement pipeline** ([#158](https://github.com/osowski/confluent-platform-gitops/issues/158)): standalone RBAC-secured Flink SQL `INSERT INTO` statement that reads the existing `shapes-input` topic and writes enriched records to a new `shapes-sql-output` topic, created via the CMF Statements API by the shapes init job. Coexists with the JAR FlinkApplications (same input, parallel output); scale `shapes-producer` to 1 to feed it. Requires CMF chart 2.3.1; Flink SQL image bumped to `cp-flink-sql:1.19-cp8`.
+- **flink-demo — in-cluster image registry** ([#281](https://github.com/osowski/confluent-platform-gitops/issues/281)): `registry:2` at pinned ClusterIP `10.96.0.50:5000`, with per-node containerd `hosts.toml` written by an ArgoCD PostSync-hook Job. Requires a freshly created kind cluster to pick up the new containerd `config_path` setting.
+- **flink-demo-rbac-mtls — Kafka↔KRaft controller mTLS** ([#273](https://github.com/osowski/confluent-platform-gitops/issues/273)): controller quorum listener now uses cert-manager-issued mTLS (cert CN→`User:kafka`) while OIDC/RBAC stays for all other auth. Changing listener auth requires a clean CFK redeploy (see cluster README).
+- **flink-demo-rbac-mtls — inter-broker (REPLICATION listener) mTLS** ([#274](https://github.com/osowski/confluent-platform-gitops/issues/274)): broker-to-broker replication now TLS + mandatory client certs; internal OAuth clients (SR/C3/CMF) unaffected. Cert renewal verified live: CFK performs an automatic URP-gated one-broker-at-a-time roll (see cluster README).
 
 ### Changed
 - **CMF 2.4.0 upgrade on all clusters** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CMF operator chart 2.3.1 → 2.4.0 and cp-flink Kubernetes operator (`flink-kubernetes-operator`) 1.140.1 → 1.140.3 (`1.14.0-cp3`, latest patch on the CMF-paired 1.14.x line) across all four clusters; `cp-flink-sql:1.19-cp8` unchanged (≥ the 1.19-cp7 interop floor).
 - **CFK 3.2.3 → 3.3.0 on all clusters** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): operator chart `0.1514.76` → `0.1718.10` and `confluent-init-container` `3.1.1` → `3.3.0` (required for the 3.3.0 `cfkprober` liveness probe). CP data-plane application images stay pinned at `8.2.0` — this is an operator-only upgrade, no Kafka/SR/C3 version change.
 - **Operator baseline alignment on all clusters** ([#302](https://github.com/osowski/confluent-platform-gitops/issues/302)): CMF operator chart 2.3.0 → 2.3.1 on flink-demo, flink-demo-rbac-mtls, and eks-demo (flink-demo-rbac was already there), aligning every cluster with the officially-paired CMF 2.3.1 + `cp-flink-sql:1.19-cp8` release; CFK chart 0.1514.19 (3.2.1) → 0.1514.76 (3.2.3, latest 3.2.x patch — supports CP 7.4–8.2) on all four clusters. FKO verified already at the latest 1.140.1 (`1.14.0-cp1`), the version paired with CMF 2.3.x — no change. Also bumped the cp-flink-sql-sandbox compute pool image `1.19-cp5` → `1.19-cp8` — cp5 is below the 1.19-cp7 minimum for CMF 2.3.x and fails statement-plan loading with a `key.format requires ... confluent.key.fields` error.
 
-### Added
-- **Headlamp Kubernetes dashboard on all clusters** ([#148](https://github.com/osowski/confluent-platform-gitops/issues/148)): token-based login, reachable at `headlamp.<cluster>.<domain>`; new clusters get it automatically via `new-cluster.sh`. (Keycloak SSO deferred to a future auth-proxy design.)
-- **flink-demo-rbac — Flink SQL statement pipeline** ([#158](https://github.com/osowski/confluent-platform-gitops/issues/158)): standalone RBAC-secured Flink SQL `INSERT INTO` statement that reads the existing `shapes-input` topic and writes enriched records to a new `shapes-sql-output` topic, created via the CMF Statements API by the shapes init job. Coexists with the JAR FlinkApplications (same input, parallel output); scale `shapes-producer` to 1 to feed it. Requires CMF chart 2.3.1; Flink SQL image bumped to `cp-flink-sql:1.19-cp8`.
-- **flink-demo — in-cluster image registry** ([#281](https://github.com/osowski/confluent-platform-gitops/issues/281)): `registry:2` at pinned ClusterIP `10.96.0.50:5000`, with per-node containerd `hosts.toml` written by an ArgoCD PostSync-hook Job. Requires a freshly created kind cluster to pick up the new containerd `config_path` setting.
-- **flink-demo-rbac-mtls — Kafka↔KRaft controller mTLS** ([#273](https://github.com/osowski/confluent-platform-gitops/issues/273)): controller quorum listener now uses cert-manager-issued mTLS (cert CN→`User:kafka`) while OIDC/RBAC stays for all other auth. Changing listener auth requires a clean CFK redeploy (see cluster README).
-- **flink-demo-rbac-mtls — inter-broker (REPLICATION listener) mTLS** ([#274](https://github.com/osowski/confluent-platform-gitops/issues/274)): broker-to-broker replication now TLS + mandatory client certs; internal OAuth clients (SR/C3/CMF) unaffected. Cert renewal verified live: CFK performs an automatic URP-gated one-broker-at-a-time roll (see cluster README).
+### Fixed
+- **`workloads` AppProject permits ValidatingAdmissionPolicy** ([#304](https://github.com/osowski/confluent-platform-gitops/issues/304)): CFK 3.2.3 renders a KRaft-migration `ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` on Kubernetes ≥1.30; added both to the project's `clusterResourceWhitelist` so `cfk-operator` syncs cleanly (previously failed with "resource ... is not permitted in project workloads").
 
 ## [0.7.0] - 2026-05-13
 
@@ -122,11 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2026-04-08
 
-### Changed
-- **Standardized cluster README.md structure** ([#159](https://github.com/osowski/confluent-platform-gitops/issues/159))
-  - Consolidated `flink-demo` and `flink-demo-rbac` READMEs into a common template with consistent sections
-  - Updated `templates/new-cluster/README.md.template` with the standardized structure
-
 ### Added
 - **flink-demo-rbac cluster with multi-user RBAC** ([#76](https://github.com/osowski/confluent-platform-gitops/issues/76))
   - New cluster variant demonstrating group-based namespace isolation with Keycloak OAuth, MDS authorization, and Kubernetes RBAC across 11 demo users (shapes/colors/admin groups)
@@ -135,27 +104,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - FlinkEnvironments and FlinkApplications per group with Flink SQL catalogs, Kafka topic RBAC, and S3 checkpointing via MinIO
   - Infrastructure refactors: MinIO as dedicated infrastructure app, mds-keygen as standalone application, KafkaTopics/Schemas moved to application-specific namespaces
 
+### Changed
+- **Standardized cluster README.md structure** ([#159](https://github.com/osowski/confluent-platform-gitops/issues/159))
+  - Consolidated `flink-demo` and `flink-demo-rbac` READMEs into a common template with consistent sections
+  - Updated `templates/new-cluster/README.md.template` with the standardized structure
+
 ## [0.5.2] - 2026-03-19
 
 ## [0.5.1] - 2026-03-18
 
 ## [0.5.0] - 2026-03-06
-
-### Changed
-- **Addressed TODO items for code organization and documentation** ([#65](https://github.com/osowski/confluent-platform-gitops/issues/65))
-  - Replaced imperative FlinkEnvironment creation in compute pool Job with declarative FlinkEnvironment CR (`flink-environment-env1.yaml`)
-  - Moved Kafka external listener configuration from base to flink-demo overlay for better cluster-specific separation
-  - Separated SchemaRegistry IngressRoute into dedicated file (`schema-registry-ingress.yaml`) within confluent-resources with overlay-based hostname patching
-  - Added External Access Patterns section to architecture.md documenting Kafka NodePort configuration for flink-demo cluster
-- **Updated Confluent Platform and Flink components to latest versions** ([#63](https://github.com/osowski/confluent-platform-gitops/issues/63))
-  - Confluent Manager for Apache Flink (CMF): 2.1.0 → 2.2.0
-  - Confluent Platform images: 8.1.0 → 8.2.0
-  - Confluent init container: 3.1.0 → 3.1.1
-  - Control Center next-gen: 2.2.0 → 2.4.0
-  - Prometheus/AlertManager enterprise: 2.2.0 → 2.4.0
-  - Flink image: 1.19.1-cp1 → 1.20.3-cp1
-  - Confluent CLI: latest → 4.53.0 (pinned version)
-  - Updated documentation references in `docs/confluent-flink.md`
 
 ### Added
 - **Automation script: new-application.sh** ([#46](https://github.com/osowski/confluent-platform-gitops/issues/46))
@@ -181,6 +139,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Metrics exposed by default on port 7778 via Prometheus JMX Exporter
   - Updated `docs/confluent-platform.md` with PodMonitor configuration details, verification steps, and Grafana dashboard integration guidance
 
+### Changed
+- **Addressed TODO items for code organization and documentation** ([#65](https://github.com/osowski/confluent-platform-gitops/issues/65))
+  - Replaced imperative FlinkEnvironment creation in compute pool Job with declarative FlinkEnvironment CR (`flink-environment-env1.yaml`)
+  - Moved Kafka external listener configuration from base to flink-demo overlay for better cluster-specific separation
+  - Separated SchemaRegistry IngressRoute into dedicated file (`schema-registry-ingress.yaml`) within confluent-resources with overlay-based hostname patching
+  - Added External Access Patterns section to architecture.md documenting Kafka NodePort configuration for flink-demo cluster
+- **Updated Confluent Platform and Flink components to latest versions** ([#63](https://github.com/osowski/confluent-platform-gitops/issues/63))
+  - Confluent Manager for Apache Flink (CMF): 2.1.0 → 2.2.0
+  - Confluent Platform images: 8.1.0 → 8.2.0
+  - Confluent init container: 3.1.0 → 3.1.1
+  - Control Center next-gen: 2.2.0 → 2.4.0
+  - Prometheus/AlertManager enterprise: 2.2.0 → 2.4.0
+  - Flink image: 1.19.1-cp1 → 1.20.3-cp1
+  - Confluent CLI: latest → 4.53.0 (pinned version)
+  - Updated documentation references in `docs/confluent-flink.md`
+
 ### Fixed
 - **Flink ServiceMonitor job label alignment with jmx-monitoring-stacks dashboards** ([#36](https://github.com/osowski/confluent-platform-gitops/issues/36))
   - Removed `jobLabel: type` from the Flink `ServiceMonitor`; Prometheus was assigning `job="flink-native-kubernetes"` which did not match the `job="flink"` selector hardcoded in upstream Flink Grafana dashboards
@@ -188,11 +162,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated embedded Grafana dashboard JSON in `grafana-dashboard.yaml` to use `job="flink"` in all PromQL expressions
 
 ## [0.4.0] - 2026-02-23
-
-### Changed
-- **Upgraded HashiCorp Vault to v0.31.0**
-  - Updated Vault Helm chart from version 0.28.1 to 0.31.0
-  - Includes bug fixes and improvements from upstream HashiCorp releases
 
 ### Added
 - **Kubernetes metrics-server for resource metrics** ([#30](https://github.com/osowski/confluent-platform-gitops/issues/30))
@@ -203,7 +172,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deployed to kube-system namespace
   - Cluster-specific overlay includes --kubelet-insecure-tls for local/development environments
 
-## [0.3.0] - 2026-02-20
+### Changed
+- **Upgraded HashiCorp Vault to v0.31.0**
+  - Updated Vault Helm chart from version 0.28.1 to 0.31.0
+  - Includes bug fixes and improvements from upstream HashiCorp releases
 
 ## [0.3.0] - 2026-02-20
 
@@ -269,31 +241,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ADR-0003: Documents the release versioning strategy decision
   - Updated `docs/bootstrap-procedure.md` and `docs/cluster-onboarding.md` with version-pinning guidance
 
-### Changed
-- **Refactored `prepare-release.sh` to use `yq` for YAML pinning** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
-  - Replaced fragile `sed` patterns with structured `yq` commands for `targetRevision` pinning
-  - `yq` approach is structurally aware, doesn't depend on line ordering or adjacency
-  - Safely handles both single-source (`spec.source`) and multi-source (`spec.sources[]`) Applications
-  - Only pins sources matching this repository's URL (external Helm chart versions unchanged)
-  - Removed release branch validation from `prepare-release.sh` (handled by `release.sh` orchestrator)
-  - Added `--verify` flag for dry-run validation of pinning targets
-
-### Changed
-- **Repository migration from homelab-argocd**
-  - Migrated from [homelab-argocd](https://github.com/osowski/homelab-argocd) to focus on Confluent Platform deployments
-  - Removed portcullis and artoo clusters and their overlays
-  - Consolidated to single flink-demo cluster as primary deployment target
-  - Updated all documentation to reference confluent-platform-gitops repository
-  - Removed Longhorn storage component (portcullis-specific)
-  - Removed http-echo validation service
-  - Repository now focused exclusively on Confluent Platform and Apache Flink workloads
-- **Renamed confluent-operator to cfk-operator**
-  - Renamed `workloads/confluent-operator` to `workloads/cfk-operator` for clarity
-  - Updated Application name from `confluent-operator` to `cfk-operator`
-  - Updated all documentation references
-  - Internal Helm chart references (image names, labels, service accounts) remain unchanged
-
-### Added
 - **Longhorn distributed block storage** (#8)
   - Infrastructure: `longhorn` application (sync-wave 15) deployed via Helm
   - Default StorageClass for persistent volume provisioning
@@ -336,17 +283,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Self-signed TLS certificates via cert-manager
   - Deployed in workloads project alongside confluent-resources
 
-### Changed
-- **Documentation consolidation with homelab-docs** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
-  - Rewrote `docs/code_review_checklist.md` to replace Ansible-specific content with ArgoCD/Kustomize/Helm-relevant checks
-  - Added cross-references to [homelab-docs](https://github.com/osowski/homelab-docs) for shared practices, ADR guidelines, and system architecture
-  - Updated `adrs/README.md` to reference canonical ADR template and cross-cutting ADRs in homelab-docs
-  - Replaced `adrs/0000-template.md` with pointer to canonical template in homelab-docs
-  - Added homelab-docs to Related Repositories in README.md
-  - Fixed homelab-ansible URL in README.md Related Repositories
-  - Updated CLAUDE.md to remove Ansible-specific language and align with ArgoCD codebase
-
-### Added
 - **Confluent Platform with Confluent for Kubernetes (CFK) operator**
   - **cfk-operator** (sync-wave 105) - Helm-based CFK operator deployment
     - Namespace-scoped mode for security
@@ -415,6 +351,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Parent Applications monitor these files for discovery
 
 ### Changed
+- **Refactored `prepare-release.sh` to use `yq` for YAML pinning** ([#7](https://github.com/osowski/confluent-platform-gitops/issues/7))
+  - Replaced fragile `sed` patterns with structured `yq` commands for `targetRevision` pinning
+  - `yq` approach is structurally aware, doesn't depend on line ordering or adjacency
+  - Safely handles both single-source (`spec.source`) and multi-source (`spec.sources[]`) Applications
+  - Only pins sources matching this repository's URL (external Helm chart versions unchanged)
+  - Removed release branch validation from `prepare-release.sh` (handled by `release.sh` orchestrator)
+  - Added `--verify` flag for dry-run validation of pinning targets
+
+- **Repository migration from homelab-argocd**
+  - Migrated from [homelab-argocd](https://github.com/osowski/homelab-argocd) to focus on Confluent Platform deployments
+  - Removed portcullis and artoo clusters and their overlays
+  - Consolidated to single flink-demo cluster as primary deployment target
+  - Updated all documentation to reference confluent-platform-gitops repository
+  - Removed Longhorn storage component (portcullis-specific)
+  - Removed http-echo validation service
+  - Repository now focused exclusively on Confluent Platform and Apache Flink workloads
+- **Renamed confluent-operator to cfk-operator**
+  - Renamed `workloads/confluent-operator` to `workloads/cfk-operator` for clarity
+  - Updated Application name from `confluent-operator` to `cfk-operator`
+  - Updated all documentation references
+  - Internal Helm chart references (image names, labels, service accounts) remain unchanged
+
+- **Documentation consolidation with homelab-docs** ([#27](https://github.com/osowski/confluent-platform-gitops/issues/27))
+  - Rewrote `docs/code_review_checklist.md` to replace Ansible-specific content with ArgoCD/Kustomize/Helm-relevant checks
+  - Added cross-references to [homelab-docs](https://github.com/osowski/homelab-docs) for shared practices, ADR guidelines, and system architecture
+  - Updated `adrs/README.md` to reference canonical ADR template and cross-cutting ADRs in homelab-docs
+  - Replaced `adrs/0000-template.md` with pointer to canonical template in homelab-docs
+  - Added homelab-docs to Related Repositories in README.md
+  - Fixed homelab-ansible URL in README.md Related Repositories
+  - Updated CLAUDE.md to remove Ansible-specific language and align with ArgoCD codebase
+
 - **ArgoCD self-management deferred to future state**
   - ArgoCD remains as manual installation for now (not self-managed via GitOps)
   - Self-management documentation consolidated for future reference

@@ -43,9 +43,9 @@ Refer to these documentation files for details. Claude may read them as needed:
 
 - [Project Spec](./docs/project_spec.md) - Full requirements, scope, and technical details
 - [Architecture](./docs/architecture.md) - System design and data flow
+- [Bootstrap Procedure](./docs/bootstrap-procedure.md) - Includes **Live-Testing an Unmerged Branch on a Cluster** — the mandatory `update-target-revision.sh` workflow for pointing a cluster at a feature branch, and reverting it back to `HEAD` afterward
 - [Changelog](./docs/changelog.md) - Version history
 - [Code Review Checklist](./docs/code_review_checklist.md) - **MANDATORY checklist before creating PRs**
-- [Bootstrap Procedure](./docs/bootstrap-procedure.md) - Includes **Live-Testing an Unmerged Branch on a Cluster** — the mandatory `update-target-revision.sh` workflow for pointing a cluster at a feature branch, and reverting it back to `HEAD` afterward
 - [Architecture Decision Records](./adrs/) - Sub-directory containing all architecture decision records
 
 ### Documentation Maintenance Principles
@@ -87,8 +87,10 @@ Only load task-specific docs when needed. This file is intentionally concise —
 - Optimize for long-term maintainability over short-term ingenuity.
 - Log architecture decision records in the `./adrs/` sub-directory when an architecture decision has been made that could impact future feature implementation, evolution, or refactoring.
    - Follow guidance and formatting from https://adr.github.io/ for structure of ADRs.
-- When live-testing an unmerged branch against a real cluster, follow [Live-Testing an Unmerged Branch on a Cluster](./docs/bootstrap-procedure.md#live-testing-an-unmerged-branch-on-a-cluster) — never fight ArgoCD's reconciliation loop with a manual sync or a hand-edited resource.
-- NEVER hand-edit a `targetRevision` field. Always use `./scripts/update-target-revision.sh <cluster> <revision> --yes`, and commit its output through a feature branch and PR like any other change — including reverts back to `HEAD`. There is no direct-to-`main` exception for this.
+- **Live-testing an unmerged branch on a cluster MUST follow [Live-Testing an Unmerged Branch on a Cluster](./docs/bootstrap-procedure.md#live-testing-an-unmerged-branch-on-a-cluster).**
+   - Always retarget via `./scripts/update-target-revision.sh` — never hand-edit a `targetRevision` field.
+   - Every `targetRevision` change, including reverting a live-test pin back to `HEAD`, goes through a feature branch and PR like any other change. There is no direct-to-`main` exception.
+   - Never `kubectl edit`/`kubectl patch` a live resource, or manually force an ArgoCD sync, to "test a change faster." Automated sync already triggers on a targetRevision change; manual drift gets silently reverted on the next reconciliation pass.
 
 ### Security - MUST FOLLOW
 
