@@ -45,6 +45,7 @@ Refer to these documentation files for details. Claude may read them as needed:
 - [Architecture](./docs/architecture.md) - System design and data flow
 - [Changelog](./docs/changelog.md) - Version history
 - [Code Review Checklist](./docs/code_review_checklist.md) - **MANDATORY checklist before creating PRs**
+- [Bootstrap Procedure](./docs/bootstrap-procedure.md) - Includes **Live-Testing an Unmerged Branch on a Cluster** — the mandatory `update-target-revision.sh` workflow for pointing a cluster at a feature branch, and reverting it back to `HEAD` afterward
 - [Architecture Decision Records](./adrs/) - Sub-directory containing all architecture decision records
 
 ### Documentation Maintenance Principles
@@ -86,6 +87,8 @@ Only load task-specific docs when needed. This file is intentionally concise —
 - Optimize for long-term maintainability over short-term ingenuity.
 - Log architecture decision records in the `./adrs/` sub-directory when an architecture decision has been made that could impact future feature implementation, evolution, or refactoring.
    - Follow guidance and formatting from https://adr.github.io/ for structure of ADRs.
+- When live-testing an unmerged branch against a real cluster, follow [Live-Testing an Unmerged Branch on a Cluster](./docs/bootstrap-procedure.md#live-testing-an-unmerged-branch-on-a-cluster) — never fight ArgoCD's reconciliation loop with a manual sync or a hand-edited resource.
+- NEVER hand-edit a `targetRevision` field. Always use `./scripts/update-target-revision.sh <cluster> <revision> --yes`, and commit its output through a feature branch and PR like any other change — including reverts back to `HEAD`. There is no direct-to-`main` exception for this.
 
 ### Security - MUST FOLLOW
 

@@ -369,6 +369,44 @@ At the tagged commit, all child Application manifests also reference `v0.2.0`, s
 
 For the full version pinning workflow, see [Release Process](release-process.md).
 
+## Live-Testing an Unmerged Branch on a Cluster
+
+To validate an in-progress feature branch against a real cluster before merging, point that cluster's Applications at the branch instead of `HEAD`. All of the following changes go through the normal feature-branch + PR workflow — never commit directly to `main`, and never hand-edit a `targetRevision` field.
+
+1. **Push the feature branch first.** ArgoCD has to be able to fetch it.
+
+2. **Retarget the cluster with the script, on its own branch, via a PR.** Never hand-edit `targetRevision` fields directly:
+   ```bash
+   ./scripts/update-target-revision.sh <cluster> <feature-branch> --yes
+   ```
+   Commit the result on a small branch of its own (e.g. `chore-<issue-id>/point-<cluster>-at-<feature-branch>`) and open a PR into `main` like any other change. Once merged, ArgoCD picks it up automatically.
+
+3. **Re-apply `bootstrap.yaml` locally (twice).** The live `bootstrap` Application object was `kubectl apply`'d once at cluster-creation time and does not self-heal from git — it has to be re-applied by hand whenever its own `targetRevision` changes:
+   ```bash
+   kubectl apply -f clusters/<cluster>/bootstrap.yaml
+   kubectl apply -f clusters/<cluster>/bootstrap.yaml   # yes, twice
+   ```
+
+4. **Watch for the bootstrap self-pointing gotcha.** Once `bootstrap.yaml` points at the feature branch, the `infrastructure`/`workloads` parent Applications render their *child* Application manifests from that branch too — not from `main`. Any Application file the feature branch itself carries an un-retargeted (`HEAD`-referencing) copy of will silently win over the merged `main` retarget. Fix this by running the same script again from a checkout of the feature branch itself, and pushing that commit to the branch directly (this is fine — it's already a feature branch, not `main`):
+   ```bash
+   ./scripts/update-target-revision.sh <cluster> <feature-branch> --yes
+   git commit -am "chore: point <cluster> Applications at this branch too"
+   git push
+   ```
+
+5. **Never fight ArgoCD's reconciliation loop.** Automated sync (`syncPolicy.automated`, even with `selfHeal: false`) triggers on its own once it detects the `targetRevision`/content change — manually running `kubectl patch application ... sync`, `kubectl edit`, or hand-patching a live resource gets silently reverted on the next reconciliation pass. Just poll and wait:
+   ```bash
+   kubectl get application <app> -n argocd -o jsonpath='{.status.sync.revision}{"\n"}{.status.health.status}{"\n"}'
+   ```
+
+6. **Test your change against the live cluster.**
+
+7. **Revert before merging.** Once the spike concludes, revert the `targetRevision` pinning back to `HEAD` on both the `main`-side retarget branch and the feature branch's self-pointing commit — again through the script and a PR, never a direct push:
+   ```bash
+   ./scripts/update-target-revision.sh <cluster> HEAD --yes
+   ```
+   Do this once on a branch off `main` (reverting step 2) and once on the feature branch itself (reverting step 4), each via its own commit and PR/push as appropriate to that branch.
+
 ## Upgrading Bootstrap
 
 To update the bootstrap configuration:
