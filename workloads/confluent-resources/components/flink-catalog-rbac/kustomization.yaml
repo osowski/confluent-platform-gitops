@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Group access to Flink catalogs (shapes/colors DeveloperManage), shared by
+# every RBAC-enabled cluster overlay. FlinkCatalog is a CMF cluster-level
+# resource (no flinkEnvironmentId scope) -- without these, only
+# cluster-level admins can see/use the catalogs in the Flink SQL UI.
+
+resources:
+  - developermanage-catalog.yaml

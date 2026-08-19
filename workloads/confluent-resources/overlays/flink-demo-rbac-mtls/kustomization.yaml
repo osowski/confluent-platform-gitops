@@ -12,6 +12,10 @@ resources:
   - confluentrolebindings.yaml
   - mtls-certificates.yaml  # broker + KRaft controller mTLS identity certs (#273)
 
+# Shared across every RBAC-enabled cluster variant
+components:
+  - ../../components/flink-catalog-rbac
+
 # Cluster-specific patches
 patches:
   # Kafka broker - consolidated configuration (external listener, MDS/RBAC, KRaft auth, SSO/OIDC)

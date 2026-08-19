@@ -1,0 +1,40 @@
+---
+# Shapes group - DeveloperManage on shapes-catalog
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: shapes-developermanage-catalog
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: shapes
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: shapes-catalog
+      resourceType: FlinkCatalog
+  kafkaRestClassRef:
+    name: default
+---
+# Colors group - DeveloperManage on colors-catalog
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: colors-developermanage-catalog
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: colors
+  role: DeveloperManage
+  clustersScopeByIds:
+    cmfId: CMF-id
+  resourcePatterns:
+    - patternType: LITERAL
+      name: colors-catalog
+      resourceType: FlinkCatalog
+  kafkaRestClassRef:
+    name: default

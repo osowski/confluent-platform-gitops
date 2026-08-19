@@ -11,6 +11,10 @@ resources:
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
   - confluentrolebindings.yaml
 
+# Shared across every RBAC-enabled cluster variant
+components:
+  - ../../components/flink-catalog-rbac
+
 # Cluster-specific patches
 patches:
   # Kafka broker - consolidated configuration (external listener, MDS/RBAC, KRaft auth, SSO/OIDC)
