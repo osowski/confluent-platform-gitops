@@ -262,7 +262,12 @@ data:
             "https://controlcenter.flink-demo-rbac.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback",
             "https://controlcenter.flink-demo-rbac-mtls.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback",
             "https://cmf.flink-demo-rbac.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
-            "https://cmf.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback"
+            "https://cmf.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://controlcenter.eks-demo.platform.dspdemos.com/api/metadata/security/1.0/oidc/authorization-code/callback",
+            "https://cmf.eks-demo.platform.dspdemos.com/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.eks-demo.platform.dspdemos.com/security/1.0/oidc/authorization-code/callback"
           ],
           "webOrigins": ["*"],
           "secret": "controlcenter-secret",
@@ -308,40 +313,6 @@ data:
                 "access.token.claim": "true",
                 "claim.name": "groups",
                 "userinfo.token.claim": "true"
-              }
-            }
-          ]
-        },
-        {
-          "clientId": "cmf-ui",
-          "enabled": true,
-          "protocol": "openid-connect",
-          "publicClient": false,
-          "standardFlowEnabled": true,
-          "directAccessGrantsEnabled": false,
-          "serviceAccountsEnabled": false,
-          "redirectUris": [
-            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/oauth2/callback",
-            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/oauth2/callback"
-          ],
-          "webOrigins": [
-            "https://cmf-ui.flink-demo-rbac.confluentdemo.local",
-            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local"
-          ],
-          "secret": "cmf-ui-secret",
-          "protocolMappers": [
-            {
-              "name": "clientid-from-username",
-              "protocol": "openid-connect",
-              "protocolMapper": "oidc-usermodel-property-mapper",
-              "consentRequired": false,
-              "config": {
-                "user.attribute": "username",
-                "claim.name": "client_id",
-                "jsonType.label": "String",
-                "id.token.claim": "true",
-                "access.token.claim": "true",
-                "userinfo.token.claim": "false"
               }
             }
           ]

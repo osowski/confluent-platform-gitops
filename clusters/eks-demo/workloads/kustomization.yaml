@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - cfk-operator.yaml
   - cmf-operator.yaml
-  - oauth2-proxy-cmf.yaml
   - confluent-resources.yaml
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml

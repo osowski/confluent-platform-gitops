@@ -225,17 +225,11 @@ Add these entries to `/etc/hosts`:
 - **Password**: `admin123`
 
 **CMF UI (Flink environments, applications, artifacts):**
-- **URL**: https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local (browser SSO via Keycloak)
+- **URL**: https://cmf.flink-demo-rbac-mtls.confluentdemo.local or https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local (both route to the same backend; browser SSO via Keycloak)
 - **Username**: `admin@osow.ski` (redirected to Keycloak on first access)
 - **Password**: `admin123`
-- The browser UI is fronted by oauth2-proxy on the dedicated `cmf-ui.*` host. The direct
-  `cmf.*` host (below) stays for programmatic/CLI access with a bearer token — now served over
-  HTTPS — and is not intercepted by SSO. Artifact upload/management lives in this UI (Control
-  Center has no artifacts page).
-- **Use `cmf-ui.*` for the browser, not `cmf.*`.** `https://cmf.flink-demo-rbac-mtls.confluentdemo.local/`
-  still resolves and serves the CMF UI SPA, but **interactive login is broken there** — that host
-  has no SSO layer, so the UI cannot obtain a token and API calls return 401. Always use
-  `https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/` for the UI.
+- CMF's native SSO handles the browser login directly — no reverse proxy involved. Artifact
+  upload/management lives in this UI (Control Center has no artifacts page).
 
 **Keycloak Admin Console:**
 - **URL**: http://keycloak.flink-demo-rbac-mtls.confluentdemo.local:30080

@@ -1,4 +1,7 @@
 ---
+# cmf-ui.* is a URL-parity alias that routes straight to CMF (same backend as
+# cmf.*). CMF's own native SSO (cmf.ui.auth) handles browser login on either
+# host, so no separate reverse proxy is needed here.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -13,7 +16,8 @@ spec:
     - match: Host(`cmf-ui.flink-demo-rbac-mtls.confluentdemo.local`)
       kind: Rule
       services:
-        - name: oauth2-proxy-cmf
-          port: 4180
+        - name: cmf-service
+          port: 80
+          scheme: http
   tls:
     secretName: cmf-tls
