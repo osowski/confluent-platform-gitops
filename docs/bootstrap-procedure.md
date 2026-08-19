@@ -369,6 +369,30 @@ At the tagged commit, all child Application manifests also reference `v0.2.0`, s
 
 For the full version pinning workflow, see [Release Process](release-process.md).
 
+## Live-Testing an Unmerged Branch on a Cluster
+
+To validate an unmerged feature branch against a real cluster before merging its PR:
+
+1. **Push the feature branch first.** ArgoCD reads from the remote, not your local checkout.
+2. **Always use `./scripts/update-target-revision.sh <cluster> <branch> --yes`** — never hand-edit a `targetRevision` field. The script updates every Application manifest under `clusters/<cluster>/` uniformly and verifies the result; a manual edit is easy to get inconsistent across the ~25 files a cluster has, and misses new files (see the script's own new-file warning).
+3. **Commit and push that update to `main`.** This is the one established exception to "never commit to `main`" — targetRevision pinning for live testing is temporary and reverted before merge (step 6).
+4. **Re-apply `bootstrap.yaml` to the live cluster twice**, since its ArgoCD Application object was `kubectl apply`'d once at cluster creation and does not self-heal from git:
+   ```bash
+   kubectl apply -f clusters/<cluster>/bootstrap.yaml
+   kubectl apply -f clusters/<cluster>/bootstrap.yaml   # first apply can silently no-op; confirm the second reports "configured"
+   ```
+5. **Critical gotcha:** once `bootstrap.yaml` itself points at the feature branch, the `workloads`/`infrastructure` parent Applications start rendering their *child* Application manifest list **from that branch**, not from `main`. Any Application file the branch touches (or that `bootstrap` must read fresh from it, like a brand-new Application) needs the **same** `update-target-revision.sh <cluster> <branch> --yes` run again — this time from a checkout of the feature branch itself, committed and pushed there. Skipping this makes the `main`-branch retarget invisible: the feature branch's own un-retargeted copy (still `targetRevision: HEAD`) is what actually gets applied. Run `git diff main --stat` on the branch to see which Application files need this.
+6. **Let ArgoCD's automated sync do the work — do not fight it.** Every workload Application here has `syncPolicy.automated` set (even where `selfHeal: false`), and a `targetRevision` change is exactly the condition that triggers automated sync on its own. Do **not** `kubectl edit`/`kubectl patch` a live resource (ConfigMap, Deployment, etc.) to "test faster," and do not manually `kubectl patch application ... sync` to force a sync — manual drift gets silently reverted on the next reconciliation pass (typically within a few minutes), wasting time and producing confusing "my change disappeared" symptoms. Just poll status instead:
+   ```bash
+   kubectl get application <app> -n argocd -o jsonpath='sync={.status.sync.status} health={.status.health.status} rev={.spec.sources[1].targetRevision}{"\n"}'
+   ```
+7. **Revert everything to `HEAD` once validation is done** — both the `main` commit from step 3 and any feature-branch commits from step 5 — before merging the PR:
+   ```bash
+   ./scripts/update-target-revision.sh <cluster> HEAD --yes   # on main
+   ./scripts/update-target-revision.sh <cluster> HEAD --yes   # on the feature branch, if step 5 applied
+   ```
+   Then re-apply `bootstrap.yaml` live (twice) to point the cluster back at `main`.
+
 ## Upgrading Bootstrap
 
 To update the bootstrap configuration:
