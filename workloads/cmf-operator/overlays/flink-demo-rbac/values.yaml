@@ -122,11 +122,8 @@ cmf:
           # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
           confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
-  # UI login modes (spike for #356/#312). cmf.authentication is already
-  # OAuth-configured against Keycloak via the broker MDS above, so this
-  # tests whether flipping just these two flags is enough for the CMF UI
-  # to redirect through the same OIDC flow, without needing CMF's embedded
-  # MDS (cmf.mds.*) at all.
+  # UI login modes. cmf.authentication is already OAuth-configured against
+  # Keycloak via the broker MDS above, using the same OIDC flow.
   ui:
     auth:
       basicAuthEnabled: false

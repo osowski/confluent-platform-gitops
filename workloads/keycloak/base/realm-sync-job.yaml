@@ -158,7 +158,7 @@ spec:
                 # already-provisioned realm, this PUT is the only thing that reaches an
                 # existing client, so any field omitted here never propagates. Keep this
                 # list in sync with the controlcenter client's redirectUris in
-                # realm-configmap.yaml -- also used by CMF's native SSO (#356/#312),
+                # realm-configmap.yaml -- also used by CMF's native SSO,
                 # which authenticates through this same broker-MDS-backed client.
                 curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CONTROLCENTER_CLIENT_ID" \
                   -H "Authorization: Bearer $ADMIN_TOKEN" \
