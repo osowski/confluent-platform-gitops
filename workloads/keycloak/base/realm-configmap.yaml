@@ -262,7 +262,12 @@ data:
             "https://controlcenter.flink-demo-rbac.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback",
             "https://controlcenter.flink-demo-rbac-mtls.confluentdemo.local/api/metadata/security/1.0/oidc/authorization-code/callback",
             "https://cmf.flink-demo-rbac.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
-            "https://cmf.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback"
+            "https://cmf.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.flink-demo-rbac.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.flink-demo-rbac-mtls.confluentdemo.local/security/1.0/oidc/authorization-code/callback",
+            "https://controlcenter.eks-demo.platform.dspdemos.com/api/metadata/security/1.0/oidc/authorization-code/callback",
+            "https://cmf.eks-demo.platform.dspdemos.com/security/1.0/oidc/authorization-code/callback",
+            "https://cmf-ui.eks-demo.platform.dspdemos.com/security/1.0/oidc/authorization-code/callback"
           ],
           "webOrigins": ["*"],
           "secret": "controlcenter-secret",
