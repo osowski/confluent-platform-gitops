@@ -79,7 +79,7 @@ kubectl get applications -n argocd -w
 
 ### Manual Sync Applications
 
-The `confluent-resources` and `flink-resources` Applications require manual sync to ensure operators and namespaces are fully ready.
+The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applications require manual sync to ensure operators and namespaces are fully ready.
 
 **Wait for operators to be healthy:**
 
@@ -108,9 +108,16 @@ In the ArgoCD UI:
 2. Click **Sync** → **Synchronize**
 3. Wait for `Healthy` status (~2-3 minutes)
 
+**Sync colors-and-shapes:**
+
+In the ArgoCD UI:
+1. Click on `colors-and-shapes` Application
+2. Click **Sync** → **Synchronize**
+3. Wait for `Healthy` status (~3-5 minutes)
+
 ### Generate Data
 
-The `flink-resources` Application includes two producer Deployments that write Avro-encoded sensor data to the group input topics. They are deployed with `replicas: 0` by default and must be scaled up to start producing:
+The `colors-and-shapes` Application includes two producer Deployments that write Avro-encoded sensor data to the group input topics. They are deployed with `replicas: 0` by default and must be scaled up to start producing:
 
 ```bash
 # Start the shapes producer (writes to shapes-input topic in flink-shapes namespace)
@@ -168,7 +175,10 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 
 ### DNS Configuration
 
-Add these entries to `/etc/hosts`:
+Add these entries to `/etc/hosts`. If you're following this guide from a
+remote VM with a public IP rather than your own machine, run
+`./scripts/generate-hosts-entries.sh flink-demo-rbac-mtls` instead — it
+detects that IP for you and points these same hostnames at it.
 
 ```
 127.0.0.1  alertmanager.flink-demo-rbac-mtls.confluentdemo.local

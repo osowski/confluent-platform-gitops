@@ -410,11 +410,13 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 ### 19. Deploy Confluent and Flink Resources
 
-The `confluent-resources` and `colors-and-shapes` Applications are intentionally not configured for automatic sync. They depend on the Confluent and Flink operators being fully ready and the Keycloak realm being initialized before their resources can be applied successfully. Once the `workloads` Application shows as `Healthy`:
+The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applications are intentionally not configured for automatic sync. They depend on the Confluent and Flink operators being fully ready and the Keycloak realm being initialized before their resources can be applied successfully. Once the `workloads` Application shows as `Healthy`:
 
 1. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding.
 
-2. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+2. Click on the `flink-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+
+3. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
 
 ---
 

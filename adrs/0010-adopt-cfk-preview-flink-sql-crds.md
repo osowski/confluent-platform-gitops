@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-CMF's Flink SQL object model — secrets, secret mappings, catalogs, databases, compute pools and statements — had no declarative Kubernetes representation before CFK 3.3.0. This repository drove it through the CMF REST API from ArgoCD hook Jobs: two `sql-init` Jobs on `flink-resources-rbac` running seven `curl` steps each, plus two more on `cp-flink-sql-sandbox`. Roughly 1,400 lines of shell and JSON-in-ConfigMap.
+CMF's Flink SQL object model — secrets, secret mappings, catalogs, databases, compute pools and statements — had no declarative Kubernetes representation before CFK 3.3.0. This repository drove it through the CMF REST API from ArgoCD hook Jobs: two `sql-init` Jobs on `flink-resources-rbac` (now folded into `colors-and-shapes`) running seven `curl` steps each, plus two more on `cp-flink-sql-sandbox` (now folded into `flink-resources`). Roughly 1,400 lines of shell and JSON-in-ConfigMap.
 
 That approach had costs beyond its size:
 

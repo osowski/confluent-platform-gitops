@@ -72,7 +72,8 @@ Platform infrastructure components deployed before workloads.
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI access
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
-- **flink-resources** (wave 120) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration
+- **flink-resources** (wave 119 on RBAC clusters, 120 on flink-demo) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
+- **colors-and-shapes** (wave 120 on RBAC clusters, 121 on flink-demo) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 
 **Future components:**
 - **argocd** - ArgoCD self-management (currently manual install, future state target)
@@ -153,7 +154,8 @@ Bootstrap Application (sync-wave 0)
 │           ├── controlcenter-ingress (sync-wave 115)
 │           ├── flink-kubernetes-operator (sync-wave 116)
 │           ├── cmf-operator (sync-wave 118)
-│           ├── flink-resources (sync-wave 120)
+│           ├── flink-resources (sync-wave 119 on RBAC clusters, 120 on flink-demo)
+│           ├── colors-and-shapes (sync-wave 120 on RBAC clusters, 121 on flink-demo)
 │           ├── http-echo (sync-wave 105)
 │           └── (future workload applications)
 ```
@@ -315,7 +317,8 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 115 | controlcenter-ingress | Traefik IngressRoute for Confluent Control Center UI access |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
-| 120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration |
+| 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
+| 120/121 | colors-and-shapes | Two-tenant Flink demo (`shapes-env`, `colors-env`) with a native `FlinkApplication` (JAR) and Flink SQL (`FlinkStatement`) side by side; anonymous on flink-demo (wave 121), Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the three RBAC clusters (wave 120) |
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).
