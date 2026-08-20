@@ -285,13 +285,13 @@ Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 - **namespaces** (wave 100) - Namespace definitions
 - **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
-- **mds-keygen** (wave 107) - MDS token key generation job
+- **mds-keygen** (wave 106) - MDS token key generation job
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
+- **cmf-operator-secrets** (wave 117) - CMF operator secrets
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
-- **cmf-operator-secrets** (wave 119) - CMF operator secrets
 - **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — **manual sync** — see [Flink Resources README](../../workloads/flink-resources/README.md)
 - **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 
