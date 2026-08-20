@@ -14,7 +14,11 @@ brew install colima \
     yq
 ```
 
-2. Add the following entries to `/etc/hosts` (all pointing to `127.0.0.1`):
+2. Add the following entries to `/etc/hosts` (all pointing to `127.0.0.1`). If
+   you're following this guide from a remote VM with a public IP rather than
+   your own machine, run `./scripts/generate-hosts-entries.sh flink-demo`
+   instead — it detects that IP for you and points these same hostnames at
+   it:
 
 ```
 127.0.0.1  alertmanager.flink-demo.confluentdemo.local
@@ -27,7 +31,7 @@ brew install colima \
 127.0.0.1  prometheus.flink-demo.confluentdemo.local
 127.0.0.1  s3.flink-demo.confluentdemo.local
 127.0.0.1  s3-console.flink-demo.confluentdemo.local
-127.0.0.1  schemaregistry.flink-demo.confluentdemo.local
+127.0.0.1  schema-registry.flink-demo.confluentdemo.local
 127.0.0.1  vault.flink-demo.confluentdemo.local
 ```
 
@@ -44,7 +48,7 @@ brew install colima \
 > ::1  prometheus.flink-demo.confluentdemo.local
 > ::1  s3.flink-demo.confluentdemo.local
 > ::1  s3-console.flink-demo.confluentdemo.local
-> ::1  schemaregistry.flink-demo.confluentdemo.local
+> ::1  schema-registry.flink-demo.confluentdemo.local
 > ::1  vault.flink-demo.confluentdemo.local
 > ```
 

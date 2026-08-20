@@ -157,6 +157,7 @@ confluent-platform-gitops/
 ├── scripts/                        # Automation scripts
 │   ├── new-cluster.sh              # Create a new cluster GitOps structure from templates
 │   ├── clone-cluster.sh            # Clone an existing cluster's GitOps configuration
+│   ├── generate-hosts-entries.sh   # Print a /etc/hosts block for a cluster from its overlay manifests
 │   ├── prepare-release.sh          # Prepare changelog and version updates
 │   └── release.sh                  # Create and push git tags for releases
 ├── docs/                           # Documentation

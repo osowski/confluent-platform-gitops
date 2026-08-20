@@ -142,7 +142,10 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 
 ### DNS Configuration
 
-Add these entries to `/etc/hosts`:
+Add these entries to `/etc/hosts`. If you're following this guide from a
+remote VM with a public IP rather than your own machine, run
+`./scripts/generate-hosts-entries.sh flink-demo-rbac` instead — it detects
+that IP for you and points these same hostnames at it.
 
 ```
 127.0.0.1  alertmanager.flink-demo-rbac.confluentdemo.local
