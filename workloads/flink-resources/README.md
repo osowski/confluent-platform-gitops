@@ -35,7 +35,8 @@ no dedicated tenant group — only `cmf` (the CFK operator's own identity) and
 `admin@osow.ski`/`admin@dspdemos.com` hold a `ClusterAdmin` binding scoped to
 it (`cmf-clusteradmin-default`, `admin-clusteradmin-default` in each RBAC
 cluster's `confluent-resources` overlay, e.g.
-`workloads/confluent-resources/overlays/flink-demo-rbac/confluentrolebindings.yaml`).
+[`confluentrolebindings.yaml`](../confluent-resources/overlays/flink-demo-rbac/confluentrolebindings.yaml)
+on `flink-demo-rbac`).
 
 **Practical effect:** on `flink-demo-rbac`, `flink-demo-rbac-mtls`, and
 `eks-demo`, only the `admin` user (logged into CMF UI/API via SSO) can

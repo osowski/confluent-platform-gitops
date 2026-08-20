@@ -72,8 +72,8 @@ Platform infrastructure components deployed before workloads.
 - **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI access
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
-- **flink-resources** (wave 119 on RBAC clusters, 120 on flink-demo) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
-- **colors-and-shapes** (wave 120 on RBAC clusters, 121 on flink-demo) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
+- **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
+- **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 
 **Future components:**
 - **argocd** - ArgoCD self-management (currently manual install, future state target)
@@ -154,8 +154,8 @@ Bootstrap Application (sync-wave 0)
 │           ├── controlcenter-ingress (sync-wave 115)
 │           ├── flink-kubernetes-operator (sync-wave 116)
 │           ├── cmf-operator (sync-wave 118)
-│           ├── flink-resources (sync-wave 119 on RBAC clusters, 120 on flink-demo)
-│           ├── colors-and-shapes (sync-wave 120 on RBAC clusters, 121 on flink-demo)
+│           ├── flink-resources (sync-wave — see Sync Waves table)
+│           ├── colors-and-shapes (sync-wave — see Sync Waves table)
 │           ├── http-echo (sync-wave 105)
 │           └── (future workload applications)
 ```
@@ -433,6 +433,10 @@ The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for O
 - Traefik replaced by AWS Load Balancer Controller; Longhorn replaced by EBS CSI driver
 - Route53 + ACM provide real public DNS and TLS instead of self-signed certificates and `/etc/hosts` resolution
 - `workers-v2` managed node group (t3.2xlarge, min=4, max=6) spread across 3 availability zones
+
+### mTLS Variant (flink-demo-rbac-mtls cluster)
+
+`flink-demo-rbac-mtls` forks `flink-demo-rbac` to add mTLS on the Kafka↔KRaft controller and inter-broker replication paths — see the cluster's own [README](../clusters/flink-demo-rbac-mtls/README.md) for the PKI and listener configuration. **This is currently a work in progress**: service-account and client authentication (CMF, Control Center, Flink SQL statements, producers) still go through Keycloak OIDC/SSO exactly as on `flink-demo-rbac`; only the broker-internal paths have moved to mTLS so far. The same [Multi-Tenant RBAC Architecture](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) breakdown applies unchanged for everything client-facing.
 
 ## RBAC Boundaries
 

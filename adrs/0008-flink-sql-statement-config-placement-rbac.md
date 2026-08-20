@@ -43,7 +43,7 @@ Place each setting in the layer that actually owns it, and standardize the follo
 
 4. **RBAC → prefixed names + per-resource bindings.** Keep all SQL topics/consumer-groups/transactional-ids under the tenant prefix (`shapes-`/`colors-`) so the existing `sa-<group>-flink` PREFIXED `ResourceOwner` bindings authorize the statement's Kafka I/O, and grant each group `DeveloperManage` on its `FlinkCatalog` (CMF cluster-level resource) so group developers can view and use the catalog. Bindings are LITERAL-scoped per catalog to preserve tenant isolation.
 
-5. **Provisioning idempotency/self-heal.** The `sql-init` PostSync-hook Job upserts the compute pool (POST→PUT, non-fatal if a running statement blocks the update) and, for the statement, deletes a `FAILED` statement before recreating (statement SQL is immutable in CMF) and treats `409` as already-present.
+5. **Provisioning idempotency/self-heal.** The `sql-init` PostSync-hook Job upserts the compute pool (POST→PUT, non-fatal if a running statement blocks the update) and, for the statement, deletes a `FAILED` statement before recreating (statement SQL is immutable in CMF) and treats `409` as already-present. Superseded by [ADR-0010](0010-adopt-cfk-preview-flink-sql-crds.md): the `sql-init` Job this point describes is retired in favor of declarative CFK 3.3 Flink SQL CRDs, which give idempotency/self-heal for free through ArgoCD's own reconciliation instead of hand-rolled upsert logic.
 
 These rules are applied symmetrically to both the `shapes` and `colors` tenants.
 
