@@ -16,7 +16,7 @@ That approach had costs beyond its size:
 - **No upsert.** The CMF API has none, so every step carried a create-then-update fallback, with a `409` treated as success and `PUT` failures swallowed as warnings.
 - **A token refresh loop.** CMF 2.2's embedded Schema Registry client rejected `OAUTHBEARER` as a `bearer.auth.credentials.source`. The Jobs worked around this by minting a Keycloak access token at runtime and embedding it in each catalog as a `STATIC_TOKEN`. That token expires, which is the reason the Jobs had to re-run on every sync — the imperative machinery existed largely to service its own workaround.
 
-CFK 3.3.0 (chart `0.1718.10`) introduced six CRDs covering the whole model: `FlinkSecret`, `FlinkEnvironmentSecretMapping`, `FlinkKafkaCatalog`, `FlinkKafkaDatabase`, `FlinkComputePool` and `FlinkStatement`. Separately, CMF 2.3.1 added `OAUTHBEARER` support for Schema Registry catalog authentication with automatic token refresh, removing the reason the `STATIC_TOKEN` workaround existed. This repository runs CMF 2.4.0.
+CFK 3.3.0 (chart `0.1718.10`) introduced six CRDs covering the whole model: `FlinkSecret`, `FlinkEnvironmentSecretMapping`, `FlinkKafkaCatalog`, `FlinkKafkaDatabase`, `FlinkComputePool` and `FlinkStatement`. Separately, CMF 2.3.1 added `OAUTHBEARER` support for Schema Registry catalog authentication with automatic token refresh, removing the reason the `STATIC_TOKEN` workaround existed. This repository runs CMF 2.4.1.
 
 The complication: Confluent documents Flink SQL support in CFK 3.3.0 as a **preview feature**, with the explicit guidance *"Do not use preview features in production."* The CRDs are also gated behind two Helm flags (`enableCMFDay2Ops`, `enableFlinkSQL`), the second of which defaults to `false`.
 
@@ -47,7 +47,7 @@ Supporting decisions taken alongside it:
 - `FlinkKafkaCatalog.status.environmentsWithAccess` is unset on correctly configured catalogs and cannot be used as a health signal.
 - Renaming a `FlinkSecret` on a live cluster deadlocks against its own secret mapping.
 
-**Neutral — version floor.** This commits the repository to CFK 3.3.0+ and CMF 2.3.0+ (2.4.0 in practice), and to a `cp-flink-sql` image matching the CMF version. Downgrading below those floors is no longer possible without reverting the whole approach.
+**Neutral — version floor.** This commits the repository to CFK 3.3.0+ and CMF 2.3.0+ (2.4.1 in practice), and to a `cp-flink-sql` image matching the CMF version. Downgrading below those floors is no longer possible without reverting the whole approach.
 
 ## References
 

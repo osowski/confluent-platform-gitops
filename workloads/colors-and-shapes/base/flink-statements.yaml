@@ -27,7 +27,7 @@
 # topic (shared with the JAR FlinkApplications) and writing to the dedicated
 # *-sql-output topic. An explicit column list leaves the inferred sink's
 # leading raw `key` (BYTES) column NULL. SQL targets Flink 1.19
-# (cp-flink-sql:1.19-cp8).
+# (cp-flink-sql:1.19-cp10).
 
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkStatement
