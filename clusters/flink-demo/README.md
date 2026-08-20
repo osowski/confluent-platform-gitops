@@ -124,10 +124,10 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **trust-manager** (wave 30) - CA certificate distribution
 - **reflector** (wave 40) - Cross-namespace secret replication for minio-credentials
 - **vault** (wave 40) - HashiCorp Vault (dev mode)
-- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
 - **vault-config** (wave 50) - Vault transit engine configuration
+- **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
-- **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD, Vault, and Headlamp UIs
 - **minio** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 - **registry** (wave 85) - In-cluster image registry at pinned ClusterIP `10.96.0.50:5000`
