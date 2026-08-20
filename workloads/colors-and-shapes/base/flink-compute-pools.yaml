@@ -2,8 +2,11 @@
 # Flink SQL compute pools (CFK 3.3.0+, RFC 68)
 #
 # NOTE: clusterSpec.image must match the deployed CMF version. cp-flink-sql
-# 1.19-cp8 is the floor for CMF 2.3.x and later; earlier tags fail statement
-# plan loading with a `key.format requires ... confluent.key.fields` error.
+# 1.19-cp7 is the documented floor for CMF 2.3.x/2.4.x; earlier tags fail
+# statement plan loading with a `key.format requires ... confluent.key.fields`
+# error. Pinned to 1.19-cp10 (above the floor) because cp8 silently ignores
+# a FlinkApplication's --user-jar-uris — UDFs never load, with no error —
+# which cp10 fixes.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
@@ -17,7 +20,7 @@ spec:
   flinkEnvironment: shapes-env
   clusterSpec:
     flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp8
+    image: confluentinc/cp-flink-sql:1.19-cp10
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
@@ -80,7 +83,7 @@ spec:
   flinkEnvironment: colors-env
   clusterSpec:
     flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp8
+    image: confluentinc/cp-flink-sql:1.19-cp10
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"

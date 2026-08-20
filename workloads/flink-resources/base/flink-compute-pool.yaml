@@ -35,9 +35,11 @@
 # is valid only on SHARED pools and is rejected by a CEL rule on DEDICATED ones.
 #
 # NOTE: clusterSpec.image must match the deployed CMF version, or the JobManager
-# fails to load the statement plan. cp-flink-sql:1.19-cp8 is the floor for
-# CMF 2.3.x and later; earlier tags fail with a `key.format requires ...
-# confluent.key.fields` error.
+# fails to load the statement plan. cp-flink-sql:1.19-cp7 is the documented
+# floor for CMF 2.3.x/2.4.x; earlier tags fail with a `key.format requires ...
+# confluent.key.fields` error. Pinned to 1.19-cp10 (above the floor) because
+# cp8 silently ignores a FlinkApplication's --user-jar-uris — UDFs never
+# load, with no error — which cp10 fixes.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
 metadata:
@@ -51,7 +53,7 @@ spec:
 
   clusterSpec:
     flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp8
+    image: confluentinc/cp-flink-sql:1.19-cp10
 
     flinkConfiguration:
       pipeline.operator-chaining.enabled: "false"
