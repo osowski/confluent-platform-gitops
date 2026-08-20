@@ -149,8 +149,9 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **trust-manager** (wave 30) - CA certificate distribution
 - **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
+- **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
-- **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD and Headlamp UIs
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 - **minio** (wave 85) - S3-compatible object storage (namespace: storage)
 
@@ -163,7 +164,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 106) - MDS token keypair generation
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, MDS, etc.) — **manual sync**
-- **ingresses** (wave 110) - Traefik IngressRoutes for all services
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator-secrets** (wave 117) - CMF operator secret configuration

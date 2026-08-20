@@ -58,18 +58,16 @@ Platform infrastructure components deployed before workloads.
 - **cert-manager** (wave 20) - TLS certificate management
 - **trust-manager** (wave 30) - Automatic distribution of CA certificate trust bundles across namespaces
 - **vault** (wave 40) - HashiCorp Vault for secrets management and encryption services
-- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI access
 - **vault-config** (wave 50) - Post-deployment Job to configure transit encryption engine
 - **headlamp** (wave 50) - Kubernetes dashboard (chart `0.43.0`), namespace `headlamp`, cluster-admin SA; token-based login on all clusters
-- **headlamp-ingress** (wave 80) - Traefik IngressRoute + cert-manager Certificate for Headlamp UI access
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificate resources
-- **argocd-ingress** (wave 80) - Traefik IngressRoute for ArgoCD UI access
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes + cert-manager Certificates for ArgoCD, Vault, and Headlamp UI access
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks and configuration
 
 **Deployed workloads:**
 - **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator for managing Confluent Platform
 - **confluent-resources** (wave 110) - Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center)
-- **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI access
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
@@ -137,26 +135,24 @@ Bootstrap Application (sync-wave 0)
 │   │   └── Watches: clusters/<cluster>/infrastructure/
 │   │       ├── kube-prometheus-stack-crds (sync-wave 2)
 │   │       ├── traefik (sync-wave 10)
-│   │       ├── longhorn (sync-wave 15)
 │   │       ├── kube-prometheus-stack (sync-wave 20)
 │   │       ├── cert-manager (sync-wave 20)
 │   │       ├── trust-manager (sync-wave 30)
 │   │       ├── vault (sync-wave 40)
-│   │       ├── vault-ingress (sync-wave 45)
 │   │       ├── vault-config (sync-wave 50)
+│   │       ├── headlamp (sync-wave 50)
 │   │       ├── cert-manager-resources (sync-wave 75)
-│   │       ├── argocd-ingress (sync-wave 80)
+│   │       ├── infra-ingresses (sync-wave 80)
 │   │       └── argocd-config (sync-wave 85)
 │   └── workloads (Parent Application, sync-wave 100)
 │       └── Watches: clusters/<cluster>/workloads/
 │           ├── cfk-operator (sync-wave 105)
 │           ├── confluent-resources (sync-wave 110)
-│           ├── controlcenter-ingress (sync-wave 115)
+│           ├── workload-ingresses (sync-wave 110)
 │           ├── flink-kubernetes-operator (sync-wave 116)
 │           ├── cmf-operator (sync-wave 118)
 │           ├── flink-resources (sync-wave — see Sync Waves table)
 │           ├── colors-and-shapes (sync-wave — see Sync Waves table)
-│           ├── http-echo (sync-wave 105)
 │           └── (future workload applications)
 ```
 
@@ -297,24 +293,21 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 1 | infrastructure (parent) | Infrastructure App of Apps |
 | 2 | kube-prometheus-stack-crds | Prometheus Operator CRDs for early availability |
 | 10 | traefik | Ingress controller for external access |
-| 15 | longhorn | Distributed block storage for persistent volumes |
 | 20 | kube-prometheus-stack | Monitoring stack (Prometheus, Grafana, Alertmanager) |
 | 20 | cert-manager | TLS certificate management |
 | 30 | trust-manager | Automatic distribution of CA certificate trust bundles |
 | 40 | vault | HashiCorp Vault for secrets management and encryption |
-| 45 | vault-ingress | Traefik IngressRoute for Vault UI access |
 | 50 | vault-config | Post-deployment Job to configure transit encryption engine |
 | 50 | headlamp | Kubernetes dashboard (Helm chart 0.43.0), cluster-admin SA, namespace `headlamp` |
 | 75 | cert-manager-resources | Self-signed ClusterIssuer and certificate resources |
-| 80 | argocd-ingress | Traefik IngressRoute for ArgoCD UI access |
-| 80 | headlamp-ingress | Traefik IngressRoute + cert-manager Certificate for Headlamp UI |
+| 80 | infra-ingresses | Traefik IngressRoutes + cert-manager Certificates for ArgoCD, Vault, and Headlamp UI access |
 | 85 | argocd-config | ArgoCD ConfigMap patches for custom health checks |
 | 85 | registry | In-cluster OCI image registry at a pinned ClusterIP (kind clusters) |
 | 86 | registry-hosts | PostSync Job writing per-node containerd `hosts.toml` for the in-cluster registry |
 | 100 | workloads (parent) | Workloads App of Apps |
 | 105 | cfk-operator | Confluent for Kubernetes operator (CRDs and webhooks) |
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
-| 115 | controlcenter-ingress | Traefik IngressRoute for Confluent Control Center UI access |
+| 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
@@ -470,12 +463,12 @@ Examples:
 
 - Use lowercase hyphenated names
 - Match the directory name in `workloads/` or `infrastructure/`
-- Example: `http-echo`, `kube-prometheus-stack`
+- Example: `confluent-resources`, `kube-prometheus-stack`
 
 ### Namespace Names
 
 - Generally match the application name
-- Infrastructure components may use standard names (e.g., `longhorn-system`, `monitoring`)
+- Infrastructure components may use standard names (e.g., `monitoring`, `reflector-system`)
 
 ## Tool Choices
 
@@ -484,7 +477,7 @@ Examples:
 Used for:
 - Simple applications with minimal customization
 - Applications without upstream Helm charts
-- Example: http-echo
+- Example: `confluent-resources`, `flink-resources`
 
 **Pros**: Simple, no templating, GitOps-friendly
 **Cons**: Limited logic, verbose for complex apps
@@ -644,7 +637,7 @@ kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller
 - Audit trail for all changes
 
 **Current Access:**
-- ArgoCD UI accessible via argocd-ingress Application (Traefik IngressRoute)
+- ArgoCD UI accessible via the infra-ingresses Application (Traefik IngressRoute)
 - Hostname pattern: `argocd.<cluster>.<domain>` (e.g., argocd.flink-demo.confluentdemo.local)
 - TLS certificates managed by cert-manager
 

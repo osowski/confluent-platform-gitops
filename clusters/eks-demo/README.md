@@ -273,8 +273,9 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 - **trust-manager** (wave 30) - CA certificate distribution
 - **external-secrets** (wave 30) - External Secrets Operator for syncing secrets from external providers
 - **reflector** (wave 40) - Secret/ConfigMap replication across namespaces
+- **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuers for Let's Encrypt staging and production
-- **infra-ingresses** (wave 80) - Traefik IngressRoute for ArgoCD UI
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD and Headlamp UIs
 - **minio** (wave 85) - Object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 

@@ -120,16 +120,16 @@ confluent-platform-gitops/
 ├── infrastructure/                 # Platform infrastructure components
 │   ├── argocd/                     # Argo CD self-management (Helm)
 │   ├── argocd-config/              # Argo CD ConfigMap patches (custom health checks)
-│   ├── argocd-ingress/             # Traefik IngressRoute for Argo CD UI
 │   ├── cert-manager/               # TLS certificate management (Helm)
 │   ├── cert-manager-resources/     # ClusterIssuer and Certificate resources
+│   ├── headlamp/                   # Kubernetes dashboard (Helm)
+│   ├── ingresses/                  # Traefik IngressRoutes for ArgoCD, Vault, Headlamp UIs
 │   ├── kube-prometheus-stack/      # Monitoring stack (Helm)
 │   ├── kube-prometheus-stack-crds/ # Prometheus Operator CRDs (Helm)
 │   ├── traefik/                    # Ingress controller (Helm)
 │   ├── trust-manager/              # cert-manager trust distribution (Helm)
 │   ├── vault/                      # HashiCorp Vault secrets management (Helm)
-│   ├── vault-config/               # Vault transit engine configuration
-│   └── vault-ingress/              # Traefik IngressRoute for Vault UI
+│   └── vault-config/               # Vault transit engine configuration
 ├── workloads/                      # User-facing applications and services
 │   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
 │   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
@@ -210,16 +210,16 @@ confluent-platform-gitops/
 - **trust-manager** (wave 30) - cert-manager trust distribution for CA bundles
 - **external-secrets** (wave 30) - External Secrets Operator for syncing secrets from external providers
 - **vault** (wave 40) - HashiCorp Vault secrets management (dev mode)
-- **vault-ingress** (wave 45) - Traefik IngressRoute for Vault UI
 - **vault-config** (wave 50) - Vault transit engine configuration
+- **headlamp** (wave 50) - Kubernetes dashboard for cluster visibility
 - **cert-manager-resources** (wave 75) - Self-signed ClusterIssuer and certificates
-- **argocd-ingress** (wave 80) - Traefik IngressRoute for Argo CD UI
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD, Vault, and Headlamp UIs
 - **argocd-config** (wave 85) - Argo CD ConfigMap patches for custom health checks
 
 ### Workloads (Automated Sync)
 - **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator)
 - **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator
-- **controlcenter-ingress** (wave 115) - Traefik IngressRoute for Confluent Control Center UI
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for stream processing
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF)
