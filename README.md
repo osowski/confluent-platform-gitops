@@ -219,7 +219,7 @@ confluent-platform-gitops/
 ### Workloads (Automated Sync)
 - **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator)
 - **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator
-- **workload-ingresses** (wave 110) - Traefik IngressRoutes (CMF, Control Center, Schema Registry)
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for stream processing
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF)

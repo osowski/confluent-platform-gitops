@@ -139,7 +139,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 
 - **namespaces** (wave 100) - Namespace definitions (kafka, flink, operator)
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
-- **workload-ingresses** (wave 110) - Traefik IngressRoutes (CMF, Control Center, Schema Registry)
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards

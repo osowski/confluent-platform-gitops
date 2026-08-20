@@ -164,7 +164,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 106) - MDS token keypair generation
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, MDS, etc.) — **manual sync**
-- **workload-ingresses** (wave 110) - Traefik IngressRoutes for CMF, Control Center, Schema Registry, and MDS UIs
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator-secrets** (wave 117) - CMF operator secret configuration

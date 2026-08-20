@@ -67,7 +67,7 @@ Platform infrastructure components deployed before workloads.
 **Deployed workloads:**
 - **cfk-operator** (wave 105) - Confluent for Kubernetes (CFK) operator for managing Confluent Platform
 - **confluent-resources** (wave 110) - Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center)
-- **workload-ingresses** (wave 110) - Traefik IngressRoutes for CMF, Confluent Control Center, and Schema Registry UI access
+- **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
@@ -135,7 +135,6 @@ Bootstrap Application (sync-wave 0)
 │   │   └── Watches: clusters/<cluster>/infrastructure/
 │   │       ├── kube-prometheus-stack-crds (sync-wave 2)
 │   │       ├── traefik (sync-wave 10)
-│   │       ├── longhorn (sync-wave 15)
 │   │       ├── kube-prometheus-stack (sync-wave 20)
 │   │       ├── cert-manager (sync-wave 20)
 │   │       ├── trust-manager (sync-wave 30)
@@ -154,7 +153,6 @@ Bootstrap Application (sync-wave 0)
 │           ├── cmf-operator (sync-wave 118)
 │           ├── flink-resources (sync-wave — see Sync Waves table)
 │           ├── colors-and-shapes (sync-wave — see Sync Waves table)
-│           ├── http-echo (sync-wave 105)
 │           └── (future workload applications)
 ```
 
@@ -295,7 +293,6 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 1 | infrastructure (parent) | Infrastructure App of Apps |
 | 2 | kube-prometheus-stack-crds | Prometheus Operator CRDs for early availability |
 | 10 | traefik | Ingress controller for external access |
-| 15 | longhorn | Distributed block storage for persistent volumes |
 | 20 | kube-prometheus-stack | Monitoring stack (Prometheus, Grafana, Alertmanager) |
 | 20 | cert-manager | TLS certificate management |
 | 30 | trust-manager | Automatic distribution of CA certificate trust bundles |
@@ -310,7 +307,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 100 | workloads (parent) | Workloads App of Apps |
 | 105 | cfk-operator | Confluent for Kubernetes operator (CRDs and webhooks) |
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
-| 110 | workload-ingresses | Traefik IngressRoutes for CMF, Confluent Control Center, and Schema Registry UI access |
+| 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
@@ -466,12 +463,12 @@ Examples:
 
 - Use lowercase hyphenated names
 - Match the directory name in `workloads/` or `infrastructure/`
-- Example: `http-echo`, `kube-prometheus-stack`
+- Example: `confluent-resources`, `kube-prometheus-stack`
 
 ### Namespace Names
 
 - Generally match the application name
-- Infrastructure components may use standard names (e.g., `longhorn-system`, `monitoring`)
+- Infrastructure components may use standard names (e.g., `monitoring`, `reflector-system`)
 
 ## Tool Choices
 
@@ -480,7 +477,7 @@ Examples:
 Used for:
 - Simple applications with minimal customization
 - Applications without upstream Helm charts
-- Example: http-echo
+- Example: `confluent-resources`, `flink-resources`
 
 **Pros**: Simple, no templating, GitOps-friendly
 **Cons**: Limited logic, verbose for complex apps
