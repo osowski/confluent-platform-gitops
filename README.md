@@ -133,12 +133,17 @@ confluent-platform-gitops/
 ├── workloads/                      # User-facing applications and services
 │   ├── cfk-operator/               # Confluent for Kubernetes operator (Helm)
 │   ├── cmf-operator/               # Confluent Manager for Apache Flink (Helm)
+│   ├── colors-and-shapes/          # Two-tenant Flink SQL demo (Kustomize base + rbac-oauth Component)
 │   ├── confluent-resources/        # Confluent Platform resources (Kustomize)
-│   ├── controlcenter-ingress/      # Traefik IngressRoute for Control Center UI
+│   ├── flink-agents/               # Flink Agents workflow demo (Kustomize)
 │   ├── flink-kubernetes-operator/  # Flink Kubernetes Operator (Helm)
 │   ├── flink-resources/            # Flink integration resources (Kustomize)
+│   ├── ingresses/                  # Traefik IngressRoutes for workload UIs
+│   ├── keycloak/                   # Keycloak identity provider (RBAC clusters)
+│   ├── mds-keygen/                 # MDS token keypair generation (RBAC clusters)
 │   ├── namespaces/                 # Namespace definitions
-│   └── observability-resources/    # PodMonitors and Grafana dashboards
+│   ├── observability-resources/    # PodMonitors and Grafana dashboards
+│   └── ollama/                     # In-cluster Ollama LLM backend (flink-demo, disabled)
 ├── clusters/                       # Cluster-specific application instances
 │   └── flink-demo/
 │       ├── bootstrap.yaml          # Bootstrap Application (sync-wave 0)
@@ -148,7 +153,7 @@ confluent-platform-gitops/
 │       │   └── *.yaml              # Infrastructure Application manifests (12 apps)
 │       └── workloads/
 │           ├── kustomization.yaml  # Lists all workload apps
-│           └── *.yaml              # Workload Application manifests (9 apps)
+│           └── *.yaml              # Workload Application manifests (count varies per cluster)
 ├── scripts/                        # Automation scripts
 │   ├── new-cluster.sh              # Create a new cluster GitOps structure from templates
 │   ├── clone-cluster.sh            # Clone an existing cluster's GitOps configuration
@@ -191,6 +196,7 @@ confluent-platform-gitops/
 
 - **flink-demo** - Demo cluster for Confluent Platform for Apache Flink (flink-demo.confluentdemo.local)
 - **flink-demo-rbac** - Multi-tenant RBAC variant with Keycloak OAuth, MDS authorization, and group-based namespace isolation (flink-demo-rbac.confluentdemo.local)
+- **flink-demo-rbac-mtls** - RBAC variant of flink-demo-rbac, adding mTLS on the Kafka↔KRaft controller and inter-broker replication paths (flink-demo-rbac-mtls.confluentdemo.local). Service-account/client auth still goes through Keycloak OIDC — migrating that to mTLS as well is still work in progress.
 - **eks-demo** - EKS-based demo cluster on AWS, deployed under platform.dspdemos.com with private API endpoint and SSM tunnel access
 
 ## Current Applications
@@ -219,7 +225,8 @@ confluent-platform-gitops/
 
 ### Workloads (Manual Sync Required)
 - **confluent-resources** (wave 110) - Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, ksqlDB, Connect)
-- **flink-resources** (wave 120) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) exercises)
+- **flink-resources** (wave 119 on RBAC clusters, 120 on flink-demo) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) exercises), deployed on all four clusters
+- **colors-and-shapes** (wave 120 on RBAC clusters, 121 on flink-demo) - Two-tenant Flink SQL demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Component on the RBAC clusters
 
 > **Note**: Applications marked as "Manual Sync Required" do not have automated sync policies. These must be manually synced via Argo CD UI or CLI to allow review of configuration changes before deployment.
 

@@ -157,15 +157,17 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 ## Deploy Confluent and Flink Workloads
 
-The `confluent-resources` and `flink-resources` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy.
+The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy.
 
 13. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding.
 
 14. Click on the `flink-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
 
+15. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+
 ## Access Control Center
 
-15. Open Confluent Control Center in your browser:
+16. Open Confluent Control Center in your browser:
 
 - URL: [`https://controlcenter.flink-demo.confluentdemo.local`](https://controlcenter.flink-demo.confluentdemo.local)
 

@@ -142,6 +142,12 @@ In the ArgoCD UI:
 1. Click on `flink-resources` → **Sync** → **Synchronize**
 2. Wait for `Healthy` status (~2-3 minutes)
 
+**Sync colors-and-shapes** (after flink-resources is healthy):
+
+In the ArgoCD UI:
+1. Click on `colors-and-shapes` → **Sync** → **Synchronize**
+2. Wait for `Healthy` status (~3-5 minutes)
+
 ## Environment Access
 
 <!-- Content in this section intentionally duplicated between this README.md and `terraform/eks-demo/README.md` -->
@@ -187,8 +193,10 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 **Alertmanager:**
 - **URL**: https://alertmanager.eks-demo.platform.dspdemos.com
 
-**CMF API:**
-- **URL**: https://cmf.eks-demo.platform.dspdemos.com
+**CMF UI (Flink environments, applications, artifacts):**
+- **URL**: https://cmf.eks-demo.platform.dspdemos.com or https://cmf-ui.eks-demo.platform.dspdemos.com (both route to the same backend; browser SSO via Keycloak)
+- CMF's native SSO handles the browser login directly — no reverse proxy involved. Artifact
+  upload/management lives in this UI (Control Center has no artifacts page).
 
 **MinIO Console:**
 - **URL**: https://s3-console.eks-demo.platform.dspdemos.com
@@ -278,14 +286,14 @@ Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 - **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 107) - MDS token key generation job
-- **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.)
+- **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **cmf-operator-secrets** (wave 119) - CMF operator secrets
-- **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — see [Flink Resources README](../../workloads/flink-resources/README.md)
-- **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
+- **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — **manual sync** — see [Flink Resources README](../../workloads/flink-resources/README.md)
+- **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
 
 ## Cluster Specific Use Cases
 
