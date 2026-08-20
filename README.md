@@ -197,7 +197,7 @@ confluent-platform-gitops/
 
 - **flink-demo** - Demo cluster for Confluent Platform for Apache Flink (flink-demo.confluentdemo.local)
 - **flink-demo-rbac** - Multi-tenant RBAC variant with Keycloak OAuth, MDS authorization, and group-based namespace isolation (flink-demo-rbac.confluentdemo.local)
-- **flink-demo-rbac-mtls** - RBAC variant of flink-demo-rbac, adding mTLS on the Kafka↔KRaft controller and inter-broker replication paths (flink-demo-rbac-mtls.confluentdemo.local). Service-account/client auth still goes through Keycloak OIDC — migrating that to mTLS as well is still work in progress.
+- **flink-demo-rbac-mtls** - mTLS-based variant of `flink-demo-rbac`, instead of OIDC and SSO. **Currently a work in progress.**
 - **eks-demo** - EKS-based demo cluster on AWS, deployed under platform.dspdemos.com with private API endpoint and SSM tunnel access
 
 ## Current Applications
