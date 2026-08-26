@@ -244,8 +244,18 @@ confluent login --url http://mds.flink-demo-rbac.confluentdemo.local:80 --no-bro
 
 **CMF API:**
 
+> [!WARNING]
+> `http://cmf.flink-demo-rbac.confluentdemo.local` returns a bare 404 — Traefik has no
+> route for this host on the `web` entrypoint, so the request never reaches CMF.
+
 ```bash
-export CONFLUENT_CMF_URL=http://cmf.flink-demo-rbac.confluentdemo.local
+export CONFLUENT_CMF_URL=https://cmf.flink-demo-rbac.confluentdemo.local
+
+# Extract the CA cert cert-manager generated for cmf-tls
+kubectl get secret cmf-tls --namespace operator -o jsonpath='{.data.ca\.crt}' \
+  | base64 --decode > /tmp/cmf-ca.crt
+# Pass the CA explicitly since the CLI does not support `insecure-skip-verify` flags
+export CONFLUENT_CMF_CERTIFICATE_AUTHORITY_PATH=/tmp/cmf-ca.crt
 
 # List Flink environments
 confluent flink environment list
@@ -295,7 +305,7 @@ confluent login --url http://localhost:8090 --no-browser
 kubectl port-forward -n operator svc/cmf-service 8081:80
 
 # Use local URL
-export CONFLUENT_CMF_URL=http://localhost:8081/cmf
+export CONFLUENT_CMF_URL=http://localhost:8081
 confluent flink environment list
 ```
 
