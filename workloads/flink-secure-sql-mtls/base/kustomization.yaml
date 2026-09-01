@@ -9,6 +9,8 @@ resources:
   # Application (wave 121) - it is not part of this directory at all.
   - topics.yaml
   - schemas.yaml
+  - flink-environment.yaml
+  - flink-secrets.yaml
 
 labels:
 - includeSelectors: false
