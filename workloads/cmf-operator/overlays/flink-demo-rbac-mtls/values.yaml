@@ -135,6 +135,44 @@ mountedVolumes:
     - name: mds-token
       secret:
         secretName: mds-token
+    # ACCEPTED FOR THIS EXPERIMENT (2026-09-01, engineering-confirmed via
+    # #cp-flink Slack - see plan's "ACCEPTED FOR THIS EXPERIMENT" section):
+    # cmf-app's in-process statement compiler needs this same client cert
+    # to open a Kafka AdminClient against secure-sql-database. Not a
+    # long-term pattern - see that section for the candidate alternatives.
+    # secure-sql-mtls-client is Reflector-mirrored into this namespace
+    # from flink-secure-sql by Task 2.5's Certificate secretTemplate.
+    - name: secure-sql-mtls-source
+      secret:
+        secretName: secure-sql-mtls-client
+    - name: secure-sql-mtls-prepared
+      emptyDir: {}
   volumeMounts:
     - name: mds-token
       mountPath: /mount/mds
+    - name: secure-sql-mtls-prepared
+      mountPath: /etc/flink/secrets/kafka
+      readOnly: true
+
+# PEM-prep for the secure-sql mTLS cert - same command as Task 4's
+# FlinkComputePool init container, same image (no extra pull). Concatenates
+# tls.crt+tls.key into one PEM keystore file (Kubernetes Secrets can't
+# concatenate two keys into one mounted file; Kafka's PEM keystore format
+# needs cert+key in one file) and copies ca.crt to a PEM truststore file.
+initContainers:
+  - name: secure-sql-mtls-pem-prep
+    image: confluentinc/cp-flink-sql:1.19-cp10
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        cat /var/run/secrets/secure-sql-mtls/tls.crt /var/run/secrets/secure-sql-mtls/tls.key \
+          > /etc/flink/secrets/kafka/keystore.pem
+        cp /var/run/secrets/secure-sql-mtls/ca.crt /etc/flink/secrets/kafka/truststore.pem
+    volumeMounts:
+      - name: secure-sql-mtls-source
+        mountPath: /var/run/secrets/secure-sql-mtls
+        readOnly: true
+      - name: secure-sql-mtls-prepared
+        mountPath: /etc/flink/secrets/kafka

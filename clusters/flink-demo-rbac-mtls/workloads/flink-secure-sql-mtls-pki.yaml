@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-secure-sql-mtls-pki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "108" # After mds-keygen (106), before confluent-resources (110) and cmf-operator (118)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  source:
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: HEAD
+    path: workloads/flink-secure-sql-mtls-pki/overlays/flink-demo-rbac-mtls
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flink-secure-sql
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=false # flink-secure-sql namespace created by workloads/namespaces at wave 100
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

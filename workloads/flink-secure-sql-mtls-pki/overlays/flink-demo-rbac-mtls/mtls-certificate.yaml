@@ -1,0 +1,41 @@
+---
+# Kafka mTLS client identity for the secure-sql Flink SQL tenant. CN maps to
+# the secure-sql-mtls RBAC principal via the flink-sql-mtls listener's
+# principalMappingRules (see workloads/confluent-resources kafka-patch.yaml).
+#
+# This Secret (tls.crt/tls.key/ca.crt) is a distinct object from the
+# FlinkSecret in flink-secrets.yaml: this one holds the actual credential
+# material and is mounted directly into the FlinkComputePool pod template
+# (Task 4) AND, via Reflector, into cmf-operator's pod (Step 4 below); the
+# FlinkSecret only ever holds the resulting file paths.
+#
+# secretTemplate.annotations are Reflector directives (see
+# infrastructure/reflector.yaml) - they mirror the Secret this Certificate
+# manages into the operator namespace, matching the existing
+# cmf-mds-oauth-client/mds-token pattern elsewhere in this repo.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: secure-sql-mtls-client
+  namespace: flink-secure-sql
+spec:
+  commonName: secure-sql-mtls
+  secretName: secure-sql-mtls-client
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "operator"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+  duration: 2160h     # 90 days, matching kafka-broker-mtls/kraftcontroller-mtls
+  renewBefore: 720h   # 30 days
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  issuerRef:
+    name: rbac-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth
