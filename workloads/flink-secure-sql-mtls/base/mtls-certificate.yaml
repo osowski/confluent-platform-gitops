@@ -8,14 +8,6 @@
 # material and is mounted directly into the FlinkComputePool pod template
 # (Task 4) AND, via Reflector, into cmf-operator's pod (Task 2.5); the
 # FlinkSecret only ever holds the resulting file paths.
-#
-# secretTemplate.annotations below are Reflector directives (see
-# infrastructure/reflector.yaml) - they mirror the Secret this Certificate
-# manages into the operator namespace, matching the existing
-# cmf-mds-oauth-client/mds-token pattern elsewhere in this repo. Wired to
-# an early-syncing Application in Task 2.5, NOT included in this
-# directory's own base/kustomization.yaml (Step 5 below) - see Task 2.5
-# for why.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
