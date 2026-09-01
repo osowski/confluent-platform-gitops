@@ -15,6 +15,7 @@ resources:
   - cmf-operator.yaml
   - flink-resources.yaml
   - colors-and-shapes.yaml
+  - flink-secure-sql-mtls.yaml
 
 # Workload applications are deployed in sync wave order (100-120)
 # Remove any applications you don't need for your cluster

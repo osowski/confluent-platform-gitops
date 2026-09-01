@@ -13,6 +13,7 @@ resources:
   - flink-secrets.yaml
   - flink-catalog-database.yaml
   - flink-compute-pool.yaml
+  - flink-statement.yaml
 
 labels:
 - includeSelectors: false
