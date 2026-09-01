@@ -43,6 +43,22 @@ spec:
         tls:
           enabled: false
 
+      # ==============================================================================
+      # FLINK-SQL-MTLS LISTENER - cert-manager-issued client mTLS for Flink SQL's
+      # Kafka connection (secure-sql tenant, Epic #377). In-cluster only, no
+      # externalAccess.
+      # ==============================================================================
+      - name: flink-sql-mtls
+        port: 9073
+        tls:
+          enabled: true   # reuses spec.tls.secretRef (kafka-broker-mtls) as the server cert
+        authentication:
+          type: mtls
+          principalMappingRules:
+            - "RULE:.*CN[\\s]?=[\\s]?([a-zA-Z0-9.-]*)?.*/$1/"
+          mtls:
+            sslClientAuthentication: required
+
     # ==============================================================================
     # INTERNAL LISTENER - OAuth authentication for internal clients (SR, C3, CMF)
     # Client mTLS migration is tracked separately (#275, Epic #271).

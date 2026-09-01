@@ -802,3 +802,103 @@ spec:
       resourceType: TransactionalId
   kafkaRestClassRef:
     name: default
+---
+# ==============================================================================
+# SECURE-SQL TENANT RBAC - Flink SQL Kafka mTLS demonstrator (Epic #377)
+# ==============================================================================
+# secure-sql-mtls (Kafka mTLS client cert principal, CN=secure-sql-mtls) -
+# ResourceOwner on secure-sql-* topics. Also the identity cmf-operator
+# presents once Task 2.5's mount is in place - same principal, same cert.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: secure-sql-mtls-topics-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: secure-sql-mtls
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: secure-sql-
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# secure-sql-mtls - ResourceOwner on secure-sql-* consumer groups
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: secure-sql-mtls-consumergroups-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: secure-sql-mtls
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: secure-sql-
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# secure-sql-mtls - ResourceOwner on secure-sql-* transactional IDs
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: secure-sql-mtls-transactionalids-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: secure-sql-mtls
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: secure-sql-
+      resourceType: TransactionalId
+  kafkaRestClassRef:
+    name: default
+---
+# NOTE: no new Schema-Registry RBAC binding is added for secure-sql. The
+# Schema Registry catalog connection (Task 3) reuses the cmf identity,
+# which already holds cmf-subjects-owner (ResourceOwner, LITERAL *,
+# Subject) above in this file - a per-tenant sa-secure-sql-flink identity
+# was dropped because no Keycloak client for it is ever provisioned (see
+# Task 3 Step 2's note).
+---
+# CMF service account - ClusterAdmin role on secure-sql-env FlinkEnvironment
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: cmf-clusteradmin-secure-sql-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: cmf
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: secure-sql-env
+  kafkaRestClassRef:
+    name: default
+---
+# Admin user - ClusterAdmin role on secure-sql-env FlinkEnvironment
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: admin-clusteradmin-secure-sql-env
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: admin@osow.ski
+  role: ClusterAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+    flinkEnvironmentId: secure-sql-env
+  kafkaRestClassRef:
+    name: default
