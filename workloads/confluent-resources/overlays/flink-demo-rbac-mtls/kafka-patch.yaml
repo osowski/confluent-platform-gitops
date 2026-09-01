@@ -215,3 +215,11 @@ spec:
       # Internal listener OAuth groups claim extraction
       # Required for group-based RBAC authorization (e.g., FlinkApplications with service accounts in groups)
       - listener.name.internal.sasl.oauthbearer.groups.claim.name=groups
+
+      # flink-sql-mtls SSL principal mapping rule - CFK only auto-derives this
+      # for built-in listener types (controller/replication); custom listeners'
+      # authentication.mtls.principalMappingRules above is not applied to the
+      # broker, so without this override the listener falls back to the
+      # cluster-wide default (raw certificate DN as principal), which matches
+      # no RBAC binding (live-verified; see ADR-0011).
+      - listener.name.flink-sql-mtls.ssl.principal.mapping.rules=RULE:^CN=([a-zA-Z0-9.-]*).*$/$1/L,DEFAULT
