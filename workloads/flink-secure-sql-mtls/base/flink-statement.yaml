@@ -14,7 +14,8 @@ spec:
     sql.current-database: secure-sql-database
   statement: >-
     INSERT INTO `secure-sql-output`
-    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000',
+    'sink.transactional-id-prefix' = 'secure-sql-') */
     (`id`, `message`, `event_time`)
     SELECT `id`, `message`, `event_time`
     FROM `secure-sql-input`
