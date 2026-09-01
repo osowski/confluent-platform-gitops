@@ -6,6 +6,7 @@ resources:
   - keycloak.yaml
   - cfk-operator.yaml
   - mds-keygen.yaml
+  - flink-secure-sql-mtls-pki.yaml
   - confluent-resources.yaml
   - workload-ingresses.yaml
   - flink-kubernetes-operator.yaml
