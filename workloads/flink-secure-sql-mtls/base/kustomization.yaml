@@ -11,6 +11,8 @@ resources:
   - schemas.yaml
   - flink-environment.yaml
   - flink-secrets.yaml
+  - flink-catalog-database.yaml
+  - flink-compute-pool.yaml
 
 labels:
 - includeSelectors: false

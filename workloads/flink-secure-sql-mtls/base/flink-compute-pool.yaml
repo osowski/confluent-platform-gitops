@@ -1,0 +1,106 @@
+---
+# secure-sql Flink SQL compute pool (CFK 3.3.0+, RFC 68). See shapes-pool/
+# colors-pool for the image-floor rationale (cp-flink-sql 1.19-cp10).
+#
+# podTemplate mounts the cert-manager-issued secure-sql-mtls-client Secret
+# read-only, then a lightweight init container (reusing this same image —
+# no extra image pull) concatenates tls.crt+tls.key into a single PEM
+# keystore file and copies ca.crt to a PEM truststore file, into a shared
+# emptyDir. Kubernetes Secrets cannot concatenate two keys into one mounted
+# file, and Kafka's PEM keystore format needs the cert chain and private
+# key in one file - hence the init container. No openssl/keytool needed;
+# see design spec Decision 2 for the PKCS12 fallback if this proves not to
+# work against the shipped Kafka client. cmf-operator's own init container
+# (Task 2.5) duplicates this exact command against the same cert, mirrored
+# into a different namespace - see that task for why.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkComputePool
+metadata:
+  name: secure-sql-pool
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+spec:
+  type: DEDICATED
+  flinkEnvironment: secure-sql-env
+  clusterSpec:
+    flinkVersion: v1_19
+    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkConfiguration:
+      taskmanager.numberOfTaskSlots: "2"
+      metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+      metrics.reporter.prom.port: "9249-9250"
+      pipeline.operator-chaining.enabled: "false"
+      execution.checkpointing.interval: "10s"
+      state.checkpoints.dir: "s3://warehouse/checkpoints/secure-sql/"
+      state.savepoints.dir: "s3://warehouse/savepoints/secure-sql/"
+      s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      s3.path.style.access: "true"
+      s3.connection.ssl.enabled: "false"
+      state.backend: "filesystem"
+      state.checkpoints.timeout: "600000"
+      execution.checkpointing.min-pause: "5000"
+      execution.checkpointing.max-concurrent-checkpoints: "1"
+      high-availability.type: "kubernetes"
+      high-availability.storageDir: "s3://warehouse/ha/secure-sql/"
+      state.checkpoints.num-retained: "10"
+    podTemplate:
+      spec:
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        initContainers:
+          - name: kafka-mtls-pem-prep
+            image: confluentinc/cp-flink-sql:1.19-cp10
+            command:
+              - sh
+              - -c
+              - |
+                set -e
+                cat /var/run/secrets/kafka-mtls/tls.crt /var/run/secrets/kafka-mtls/tls.key \
+                  > /etc/flink/secrets/kafka/keystore.pem
+                cp /var/run/secrets/kafka-mtls/ca.crt /etc/flink/secrets/kafka/truststore.pem
+            securityContext:
+              runAsUser: 9999
+            volumeMounts:
+              - name: kafka-mtls-source
+                mountPath: /var/run/secrets/kafka-mtls
+                readOnly: true
+              - name: kafka-mtls-prepared
+                mountPath: /etc/flink/secrets/kafka
+        containers:
+          - name: flink-main-container
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              runAsUser: 9999
+            env:
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: root-user
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: root-password
+            volumeMounts:
+              - name: kafka-mtls-prepared
+                mountPath: /etc/flink/secrets/kafka
+                readOnly: true
+        volumes:
+          - name: kafka-mtls-source
+            secret:
+              secretName: secure-sql-mtls-client
+          - name: kafka-mtls-prepared
+            emptyDir: {}
+    taskManager:
+      resource:
+        cpu: 1.0
+        memory: "1700m"
+    jobManager:
+      resource:
+        cpu: 1
+        memory: "1700m"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
