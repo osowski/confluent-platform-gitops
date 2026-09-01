@@ -1,0 +1,41 @@
+---
+# Flink SQL catalog and database for the secure-sql tenant (CFK 3.3.0+, RFC 68)
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: secure-sql-catalog
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  flinkEnvironment: secure-sql-env
+  srInstance:
+    connectionSecretId: sr-conn-secret-id-secure-sql
+    connectionConfig:
+      schema.registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: secure-sql-database
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  flinkEnvironment: secure-sql-env
+  catalogRef:
+    name: secure-sql-catalog
+  connectionSecretRef:
+    name: kafka-conn-secret-id-secure-sql
+  kafkaCluster:
+    connectionConfig:
+      # flink-sql-mtls listener (Task 1), not the OAuth internal listener (9071)
+      bootstrap.servers: "kafka.kafka.svc.cluster.local:9073"
+  ddlEnvironments:
+    - secure-sql-env
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
