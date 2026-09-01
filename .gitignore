@@ -31,6 +31,10 @@ test-output/
 # Helm charts
 charts/*.tgz
 
+# Generated output from scripts/prefetch-kind-images.sh
+scripts/images.txt
+scripts/failed-images.txt
+
 # IDE AI assistant files
 .claude/
 .cursor/
