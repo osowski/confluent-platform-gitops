@@ -826,6 +826,26 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# secure-sql-mtls - ResourceOwner on _confluent_sr_catalog, the SR-catalog
+# mechanism's shared internal bookkeeping topic (auto-created on first use,
+# outside the secure-sql- prefix - live-verified; see ADR-0011)
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: secure-sql-mtls-sr-catalog-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: secure-sql-mtls
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _confluent_sr_catalog
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
 # secure-sql-mtls - ResourceOwner on secure-sql-* consumer groups
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -855,9 +875,15 @@ spec:
     type: user
     name: secure-sql-mtls
   role: ResourceOwner
+  # LITERAL * (not PREFIXED secure-sql-): Confluent's managed Kafka sink
+  # connector generates transactional.id from the Flink job ID (a random
+  # UUID), not the sink/table name - sink.transactional-id-prefix has no
+  # effect on it. A prefix pattern can't match an unpredictable per-job ID,
+  # so this one resource type is intentionally unscoped for this tenant.
+  # Live-verified; see ADR-0011.
   resourcePatterns:
-    - patternType: PREFIXED
-      name: secure-sql-
+    - patternType: LITERAL
+      name: "*"
       resourceType: TransactionalId
   kafkaRestClassRef:
     name: default

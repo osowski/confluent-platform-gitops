@@ -33,7 +33,7 @@ spec:
   kafkaCluster:
     connectionConfig:
       # flink-sql-mtls listener (Task 1), not the OAuth internal listener (9071)
-      bootstrap.servers: "kafka.kafka.svc.cluster.local:9073"
+      bootstrap.servers: "kafka.kafka.svc.cluster.local:9095"
   ddlEnvironments:
     - secure-sql-env
   cmfRestClassRef:

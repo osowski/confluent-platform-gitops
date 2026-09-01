@@ -10,5 +10,6 @@ namespaceList:
   - flink
   - flink-shapes
   - flink-colors
+  - flink-secure-sql
   - kafka
   - operator

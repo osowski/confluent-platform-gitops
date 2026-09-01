@@ -6,6 +6,7 @@ watchNamespaces:
   - flink
   - flink-shapes
   - flink-colors
+  - flink-secure-sql
 
 # Additional pod labels for flink-demo-rbac-mtls cluster
 operatorPod:

@@ -31,6 +31,9 @@ spec:
   privateKey:
     algorithm: RSA
     size: 2048
+    encoding: PKCS8 # cert-manager defaults to PKCS1 (BEGIN RSA PRIVATE KEY); Kafka's
+                    # KIP-651 PEM keystore loader requires PKCS8 (BEGIN PRIVATE KEY) -
+                    # PKCS1 fails with "algid parse error, not a sequence" (live-verified)
   issuerRef:
     name: rbac-mtls-ca-issuer
     kind: ClusterIssuer
