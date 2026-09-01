@@ -1,0 +1,26 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: secure-sql-enrich
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: secure-sql-env
+  computePoolName: secure-sql-pool
+  properties:
+    sql.current-catalog: secure-sql-catalog
+    sql.current-database: secure-sql-database
+  statement: >-
+    INSERT INTO `secure-sql-output`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`id`, `message`, `event_time`)
+    SELECT `id`, `message`, `event_time`
+    FROM `secure-sql-input`
+    /*+ OPTIONS('properties.group.id' = 'secure-sql-enrich') */;
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
