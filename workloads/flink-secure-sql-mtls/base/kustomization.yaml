@@ -3,13 +3,10 @@ kind: Kustomization
 
 resources:
   # flink-secure-sql namespace is owned by workloads/namespaces (wave 100)
-  # - not declared here.
-  #
-  # mtls-certificate.yaml lives in this directory but is wired in through
-  # ../pki-overlays/flink-demo-rbac-mtls (Task 2.5), not here - it must
-  # sync in its own, much earlier Application (wave 108) so cmf-operator
-  # (wave 118) can consume it. Listing it in both places would make two
-  # Applications fight over ownership of the same resource.
+  # - not declared here. The secure-sql-mtls-client Certificate lives in
+  # its own workloads/flink-secure-sql-mtls-pki/ Application directory
+  # (Task 2.5), synced far earlier (wave 108) than this tenant's own
+  # Application (wave 121) - it is not part of this directory at all.
   - topics.yaml
   - schemas.yaml
 
