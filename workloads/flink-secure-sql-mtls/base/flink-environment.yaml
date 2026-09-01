@@ -1,0 +1,26 @@
+---
+# FlinkEnvironment for the secure-sql Kafka-mTLS demo tenant
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkEnvironment
+metadata:
+  name: secure-sql-env
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  kubernetesNamespace: flink-secure-sql
+
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+
+  flinkApplicationDefaults:
+    spec:
+      flinkConfiguration:
+        taskmanager.numberOfTaskSlots: "2"
+        metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+        metrics.reporter.prom.port: "9249-9250"
+        rest.profiling.enabled: "true"
+
+        # Schema Registry configuration for CMF table auto-discovery
+        table.sql-catalog.confluent.schema-registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
