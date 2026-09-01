@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secure-sql-input-value-avro-schema
+  namespace: flink-secure-sql
+data:
+  schema: |
+    {
+    "type": "record",
+    "name": "SecureSqlEvent",
+    "namespace": "com.example.avro",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string",
+        "doc": "Unique identifier for the event"
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "doc": "Event payload"
+      },
+      {
+        "name": "event_time",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        },
+        "doc": "Timestamp of the event in milliseconds since the epoch"
+      }
+    ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secure-sql-output-value-avro-schema
+  namespace: flink-secure-sql
+data:
+  schema: |
+    {
+    "type": "record",
+    "name": "SecureSqlEvent",
+    "namespace": "com.example.avro",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string",
+        "doc": "Unique identifier for the event"
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "doc": "Event payload"
+      },
+      {
+        "name": "event_time",
+        "type": {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        },
+        "doc": "Timestamp of the event in milliseconds since the epoch"
+      }
+    ]
+    }
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: secure-sql-input-value
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: secure-sql-input-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: secure-sql-output-value
+  namespace: flink-secure-sql
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: secure-sql-output-value-avro-schema
+    format: avro
+  compatibilityLevel: BACKWARD
