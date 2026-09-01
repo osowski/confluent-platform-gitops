@@ -81,16 +81,27 @@ whole thing is safe to re-run or resume.
 
 ### What it does
 
-1. **Discover** — builds the image list from two live sources so it never goes stale:
+1. **Discover** — builds the image list from several live sources so it never goes stale:
    - Every image already running in the live cluster (`kubectl get pods -A`).
-   - `kubectl kustomize` renders of the ArgoCD-managed workload apps that are declared
-     for the cluster but not yet synced (as of 2026-09-01: `confluent-resources`,
-     `flink-resources`, `colors-and-shapes`), so images aren't missed just because
-     ArgoCD hasn't created the pods yet.
-   - Optionally (`--with-prometheus-stack`), a `helm template` render of
-     `kube-prometheus-stack`, since that app is a remote Helm chart not covered by the
-     kustomize renders above. Off by default — it needs its own chart download and is
-     marked "not auto-sync" in this repo.
+   - `kubectl kustomize` renders of the ArgoCD-managed apps that are declared for the
+     cluster but not yet synced and are sourced from a kustomize path in this repo (as
+     of 2026-09-01: `confluent-resources`, `flink-resources`, `colors-and-shapes`,
+     `minio`), so images aren't missed just because ArgoCD hasn't created the pods yet.
+   - ArgoCD's own bootstrap manifest, fetched directly from
+     `raw.githubusercontent.com/argoproj/argo-cd`. This repo installs ArgoCD itself via
+     a raw `kubectl apply` of that upstream manifest rather than a kustomize overlay
+     (see the bootstrap docs), so it's invisible to the kustomize-render source above and
+     only shows up in the live-pods source once ArgoCD is already running — meaning a
+     from-scratch cluster (ArgoCD not installed yet) would otherwise miss these images
+     entirely. Pinned to the version already running live when one is detected, else
+     falls back to the `stable` ref the repo's bootstrap docs use.
+   - `helm template` renders of the infra apps that are wired up via a remote Helm chart
+     rather than a kustomize path (as of 2026-09-01: `cert-manager`, `trust-manager`,
+     `traefik`, `headlamp`, `metrics-server`, `reflector`) — same blind spot as the
+     ArgoCD bootstrap manifest, just for Helm-sourced infra instead of ArgoCD's own
+     install. `kube-prometheus-stack` is the one exception: it's gated behind
+     `--with-prometheus-stack` and off by default, since it's marked "not auto-sync
+     while under development" in this repo and needs its own (larger) chart download.
    - The kind node's own image (resolved by local digest, not tag).
 2. **Pull** — `docker pull` for each image not already cached locally, with 3 retries
    and backoff per image so a flaky connection doesn't kill the whole run. Images that
@@ -129,7 +140,7 @@ Typical trip workflow — pull while you have decent wifi, load later with none:
 | `--pull-only` | Discover + pull; skip sideload. |
 | `--load-only` | Sideload only, using the existing `images.txt`; skip discovery and pull. |
 | `--skip-discover` | Reuse the existing `images.txt` instead of re-discovering. |
-| `--with-prometheus-stack` | Also attempt a `helm template` render of `kube-prometheus-stack` during discovery. Requires `helm` and network. |
+| `--with-prometheus-stack` | Also render `kube-prometheus-stack` (the one Helm-chart infra app that's off by default) during discovery. Requires `helm` and network. |
 | `--cluster NAME` | kind cluster name (default: `flink-demo-rbac-mtls`). |
 | `--repo PATH` | Path to the confluent-platform-gitops checkout to render manifests from (default: this repo's location on the author's machine — pass `--repo` explicitly if running from elsewhere). |
 
@@ -144,7 +155,9 @@ Written next to the script wherever it's invoked from:
 ### Requirements
 
 `docker`, `kind`, `kubectl` (with `kustomize` support built in), `yq` (v4, mikefarah),
-`jq`. `helm` is only needed for `--with-prometheus-stack`.
+`jq`, `curl`, `helm`. `helm` and `curl` are soft dependencies — if either is missing,
+the script warns and just skips the sources that need it (the Helm-chart infra apps,
+or the ArgoCD bootstrap manifest, respectively) instead of failing.
 
 ### Known gotchas this script works around
 

@@ -8,16 +8,28 @@
 # already cached locally, failures don't abort the run, and the whole thing is
 # safe to re-run/resume.
 #
-# Image discovery has two sources, both queried live so the list never goes stale:
+# Image discovery has several sources, all queried live so the list never goes stale:
 #   1. Every image already running in the live cluster (kubectl get pods -A).
 #   2. `kubectl kustomize` renders of the ArgoCD-managed apps that are declared for
 #      this cluster but not yet synced (confluent-resources, flink-resources,
 #      colors-and-shapes as of 2026-09-01) — so images aren't missed just because
 #      ArgoCD hasn't created the pods yet.
-#   3. (optional, --with-prometheus-stack) a `helm template` render of the
-#      kube-prometheus-stack app, since that one's a remote Helm chart that isn't
-#      wired into #2. Off by default: it's marked "NOT auto-sync while under
-#      development" in the repo and needs its own (small) chart download.
+#   3. ArgoCD's own bootstrap manifest — the repo's bootstrap procedure installs
+#      ArgoCD itself via a raw upstream manifest, not a kustomize overlay in this
+#      repo (e.g. `kubectl apply -n argocd --server-side --force-conflicts -f
+#      https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml`),
+#      so it's invisible to source #2 and only shows up in source #1 once ArgoCD is
+#      already running. Fetched directly so a from-scratch cluster (ArgoCD not yet
+#      installed) still gets these images pre-pulled. Pinned to match the version
+#      already running live when detected, else falls back to the `stable` ref the
+#      repo's docs use.
+#   4. `helm template` renders of the infra apps that are wired up via a remote Helm
+#      chart rather than a kustomize path (cert-manager, trust-manager, traefik,
+#      headlamp, metrics-server, reflector as of 2026-09-01) — same blind spot as #3,
+#      just for Helm-sourced infra instead of ArgoCD's own install. kube-prometheus-stack
+#      is the one exception: it's gated behind --with-prometheus-stack and off by
+#      default, since it's marked "NOT auto-sync while under development" in the repo
+#      and needs its own (larger) chart download.
 #
 # Usage:
 #   ./prefetch-kind-images.sh [--images-only|--pull-only|--load-only] \
@@ -92,6 +104,7 @@ if [[ "$DO_DISCOVER" -eq 1 ]]; then
     "workloads/confluent-resources/overlays/${CLUSTER}"
     "workloads/flink-resources/overlays/${CLUSTER}"
     "workloads/colors-and-shapes/overlays/${CLUSTER}"
+    "infrastructure/minio/overlays/${CLUSTER}"
   )
   : > "$RENDER_DIR/from-kustomize.txt"
   for p in "${RENDER_PATHS[@]}"; do
@@ -116,36 +129,83 @@ if [[ "$DO_DISCOVER" -eq 1 ]]; then
   fi
   log "  kustomize renders: $(wc -l < "$RENDER_DIR/from-kustomize.txt" | tr -d ' ') image refs"
 
-  # --- Source 3 (optional): helm render of kube-prometheus-stack ---
-  : > "$RENDER_DIR/from-helm.txt"
-  if [[ "$WITH_PROM_STACK" -eq 1 ]]; then
-    if command -v helm >/dev/null 2>&1; then
-      log "  rendering kube-prometheus-stack via helm (needs network for the chart)..."
-      if helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>"$RENDER_DIR/helm.err" \
-        && helm repo update prometheus-community >/dev/null 2>>"$RENDER_DIR/helm.err"; then
-        VALUE_ARGS=()
-        for vf in "$REPO/infrastructure/kube-prometheus-stack/base/values.yaml" \
-                  "$REPO/infrastructure/kube-prometheus-stack/overlays/${CLUSTER}/values.yaml"; do
-          [[ -f "$vf" ]] && VALUE_ARGS+=(-f "$vf")
-        done
-        if helm template kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-            --version 81.6.1 "${VALUE_ARGS[@]}" > "$RENDER_DIR/prom-render.yaml" 2>"$RENDER_DIR/helm-template.err"; then
-          yq eval-all -o=json '[.. | select(tag=="!!map") | select(has("image")) | .image]' "$RENDER_DIR/prom-render.yaml" \
-            | jq -r 'flatten | .[] | if type=="object" then (.[]) else . end | select(type=="string")' \
-            | sort -u > "$RENDER_DIR/from-helm.txt"
-          log "  kube-prometheus-stack: $(wc -l < "$RENDER_DIR/from-helm.txt" | tr -d ' ') image refs"
-        else
-          log "  WARNING: helm template failed for kube-prometheus-stack — $(cat "$RENDER_DIR/helm-template.err")"
-        fi
-      else
-        log "  WARNING: couldn't add/update the prometheus-community helm repo (no network?) — $(cat "$RENDER_DIR/helm.err")"
-      fi
-    else
-      log "  WARNING: --with-prometheus-stack requested but helm isn't installed; skipping"
+  # --- Source 3: ArgoCD's own bootstrap manifest (installed via raw kubectl apply, not kustomize) ---
+  : > "$RENDER_DIR/from-argocd-install.txt"
+  if command -v curl >/dev/null 2>&1; then
+    ARGOCD_REF="stable"
+    if [[ -s "$LIVE_JSON" ]]; then
+      live_tag="$(jq -r '[.items[].spec.containers[]?.image, .items[].spec.initContainers[]?.image]
+        | .[] | select(startswith("quay.io/argoproj/argocd:"))' "$LIVE_JSON" 2>/dev/null | head -1 | sed 's#.*:##')"
+      [[ -n "$live_tag" ]] && ARGOCD_REF="refs/tags/${live_tag}"
     fi
+    ARGOCD_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_REF}/manifests/install.yaml"
+    log "  fetching ArgoCD bootstrap manifest ($ARGOCD_REF)..."
+    if curl -fsSL "$ARGOCD_URL" -o "$RENDER_DIR/argocd-install.yaml" 2>"$RENDER_DIR/argocd-curl.err"; then
+      yq eval-all -o=json '[.. | select(tag=="!!map") | select(has("image")) | .image]' "$RENDER_DIR/argocd-install.yaml" \
+        | jq -r 'flatten | .[] | if type=="object" then (.[]) else . end | select(type=="string")' \
+        | sort -u > "$RENDER_DIR/from-argocd-install.txt"
+      log "  ArgoCD bootstrap manifest: $(wc -l < "$RENDER_DIR/from-argocd-install.txt" | tr -d ' ') image refs"
+    else
+      log "  WARNING: couldn't fetch $ARGOCD_URL (no network?) — $(cat "$RENDER_DIR/argocd-curl.err")"
+    fi
+  else
+    log "  WARNING: curl not installed; skipping ArgoCD bootstrap manifest source"
   fi
 
-  # --- Source 4: the kind node image itself (useful if you ever need to recreate the cluster) ---
+  # --- Source 4: helm template renders of infra apps sourced from a remote Helm chart ---
+  # These apps are wired into clusters/$CLUSTER/infrastructure/*.yaml via a Helm chart
+  # source (repoURL+chart), not a kustomize path, so they're invisible to Source #2 and
+  # only show up in Source #1 once ArgoCD has actually synced them.
+  # Format per entry: name|repoURL|chart|version|comma,separated,relative,valuefiles|optional(1/0)
+  # As of 2026-09-01 this mirrors clusters/$CLUSTER/infrastructure/*.yaml — update to match
+  # if infra apps are added/removed/re-versioned.
+  HELM_APPS=(
+    "cert-manager|oci://quay.io/jetstack/charts/cert-manager|cert-manager|v1.19.2|infrastructure/cert-manager/base/values.yaml,infrastructure/cert-manager/overlays/${CLUSTER}/values.yaml|0"
+    "trust-manager|oci://quay.io/jetstack/charts/trust-manager|trust-manager|v0.20.3|infrastructure/trust-manager/base/values.yaml,infrastructure/trust-manager/overlays/${CLUSTER}/values.yaml|0"
+    "traefik|oci://ghcr.io/traefik/helm/traefik|traefik|38.0.2|infrastructure/traefik/base/values.yaml,infrastructure/traefik/overlays/${CLUSTER}/values.yaml|0"
+    "headlamp|https://kubernetes-sigs.github.io/headlamp/|headlamp|0.43.0|infrastructure/headlamp/base/values.yaml,infrastructure/headlamp/overlays/${CLUSTER}/values.yaml|0"
+    "metrics-server|https://kubernetes-sigs.github.io/metrics-server/|metrics-server|3.12.2|infrastructure/metrics-server/base/values.yaml,infrastructure/metrics-server/overlays/${CLUSTER}/values.yaml|0"
+    "reflector|https://emberstack.github.io/helm-charts|reflector|10.0.21|infrastructure/reflector/base/values.yaml|0"
+    "kube-prometheus-stack|https://prometheus-community.github.io/helm-charts|kube-prometheus-stack|81.6.1|infrastructure/kube-prometheus-stack/base/values.yaml,infrastructure/kube-prometheus-stack/overlays/${CLUSTER}/values.yaml|1"
+  )
+  : > "$RENDER_DIR/from-helm.txt"
+  if command -v helm >/dev/null 2>&1; then
+    for entry in "${HELM_APPS[@]}"; do
+      IFS='|' read -r hname hrepo hchart hver hvfiles hoptional <<< "$entry"
+      [[ "$hoptional" -eq 1 && "$WITH_PROM_STACK" -eq 0 ]] && continue
+      log "  rendering $hname via helm..."
+      VALUE_ARGS=()
+      OLDIFS="$IFS"
+      IFS=','
+      for vf in $hvfiles; do
+        [[ -f "$REPO/$vf" ]] && VALUE_ARGS+=(-f "$REPO/$vf")
+      done
+      IFS="$OLDIFS"
+      if [[ "$hrepo" == oci://* ]]; then
+        # OCI repoURLs are already the full chart reference (unlike classic HTTP helm
+        # repos), so don't append the chart name again.
+        chart_ref="$hrepo"
+      else
+        helm repo add "$hname" "$hrepo" >/dev/null 2>"$RENDER_DIR/helm-$hname.err"
+        helm repo update "$hname" >/dev/null 2>>"$RENDER_DIR/helm-$hname.err"
+        chart_ref="${hname}/${hchart}"
+      fi
+      if helm template "$hname" "$chart_ref" --version "$hver" "${VALUE_ARGS[@]}" \
+          > "$RENDER_DIR/helm-$hname.yaml" 2>"$RENDER_DIR/helm-$hname-template.err"; then
+        yq eval-all -o=json '[.. | select(tag=="!!map") | select(has("image")) | .image]' "$RENDER_DIR/helm-$hname.yaml" \
+          | jq -r 'flatten | .[] | if type=="object" then (.[]) else . end | select(type=="string")' \
+          >> "$RENDER_DIR/from-helm.txt"
+      else
+        log "  WARNING: helm template failed for $hname (no network?) — $(tail -3 "$RENDER_DIR/helm-$hname-template.err")"
+      fi
+    done
+    sort -u -o "$RENDER_DIR/from-helm.txt" "$RENDER_DIR/from-helm.txt"
+  else
+    log "  WARNING: helm not installed; skipping helm-chart infra apps (cert-manager, traefik, etc.)"
+  fi
+  log "  helm-chart infra apps: $(wc -l < "$RENDER_DIR/from-helm.txt" | tr -d ' ') image refs"
+
+  # --- Source 5: the kind node image itself (useful if you ever need to recreate the cluster) ---
   # kind's node images are usually cached locally by digest only (no local tag), so resolve
   # to the digest reference — otherwise the "already cached" check below misses it and
   # `docker pull` re-downloads a >1GB image that's already sitting on disk.
@@ -159,7 +219,7 @@ if [[ "$DO_DISCOVER" -eq 1 ]]; then
 
   # --- Merge, normalize, dedupe ---
   {
-    cat "$RENDER_DIR/from-live.txt" "$RENDER_DIR/from-kustomize.txt" "$RENDER_DIR/from-helm.txt"
+    cat "$RENDER_DIR/from-live.txt" "$RENDER_DIR/from-kustomize.txt" "$RENDER_DIR/from-argocd-install.txt" "$RENDER_DIR/from-helm.txt"
     [[ -n "$NODE_IMAGE" ]] && echo "$NODE_IMAGE"
   } | sed 's#^docker\.io/##' | sort -u > "$IMAGES_FILE"
 
