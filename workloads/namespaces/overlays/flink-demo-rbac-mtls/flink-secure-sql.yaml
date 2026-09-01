@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flink-secure-sql
+  labels:
+    app.kubernetes.io/name: flink-secure-sql
+    app.kubernetes.io/component: platform
+    group: secure-sql

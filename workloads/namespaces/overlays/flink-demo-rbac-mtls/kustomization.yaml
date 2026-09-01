@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - flink-secure-sql.yaml
 
 # Label the kafka namespace as a participant in the mTLS trust mesh so the
 # trust-manager Bundle (rbac-mtls-ca-bundle) distributes the CA ConfigMap here.
