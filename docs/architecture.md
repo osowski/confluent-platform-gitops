@@ -431,6 +431,8 @@ The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for O
 
 `flink-demo-rbac-mtls` forks `flink-demo-rbac` to add mTLS on the Kafka↔KRaft controller and inter-broker replication paths — see the cluster's own [README](../clusters/flink-demo-rbac-mtls/README.md) for the PKI and listener configuration. **This is currently a work in progress**: service-account and client authentication (CMF, Control Center, Flink SQL statements, producers) still go through Keycloak OIDC/SSO exactly as on `flink-demo-rbac`; only the broker-internal paths have moved to mTLS so far. The same [Multi-Tenant RBAC Architecture](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) breakdown applies unchanged for everything client-facing.
 
+All PKI on this cluster, including the `secure-sql` mTLS tenant delivered under Epic #377, shares a single CA (`rbac-mtls-ca-issuer`). It does not exercise the customer-reported scenario of a Flink client and a Kafka endpoint whose certificates are signed by **independent, mutually-untrusted CAs** — see [ADR-0012](../adrs/0012-cross-ca-truststore-exchange-flink-kafka.md) for a spike reproducing and documenting that gap.
+
 ## RBAC Boundaries
 
 ### Infrastructure Project
