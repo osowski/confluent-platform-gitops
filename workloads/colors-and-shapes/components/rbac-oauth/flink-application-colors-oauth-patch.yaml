@@ -40,6 +40,12 @@ spec:
                   name: colors-flink-oauth
                   key: client-secret
   flinkConfiguration:
+    # This JAR uses the plain (unshaded) kafka-clients and Schema Registry
+    # client libraries directly, unlike the CFK-managed Flink SQL statements
+    # sharing this namespace's compute pool - so its OAUTHBEARER
+    # token-endpoint allow-list needs the unshaded system property, not the
+    # shaded one ADR-0008 documents for the compute pool. See ADR-0013.
+    env.java.opts.all: "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
     kafka.bootstrap.servers: kafka.kafka.svc.cluster.local:9071
     kafka.security.protocol: SASL_PLAINTEXT
     kafka.sasl.mechanism: OAUTHBEARER

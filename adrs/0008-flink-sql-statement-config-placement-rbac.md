@@ -69,3 +69,4 @@ These rules are applied symmetrically to both the `shapes` and `colors` tenants.
 - [#158](https://github.com/osowski/confluent-platform-gitops/issues/158)
 - `workloads/colors-and-shapes/` (base manifests, `rbac-oauth` component, and README)
 - [ADR-0002](0002-cfk-component-sync-wave-ordering.md) — sync-wave ordering for CFK/CMF resources
+- [ADR-0013](0013-schema-registry-oauth-allowed-urls-unshaded.md) — this compute pool's shaded allow-list property only covers the SQL-statement path; the `colors`/`shapes` JAR `FlinkApplication`s need their own, unshaded property set independently
