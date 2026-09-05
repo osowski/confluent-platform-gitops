@@ -7,9 +7,6 @@ resources:
 components:
   - ../../components/rbac-oauth
 
-patches:
-  - path: producer-image-patch.yaml
-
 labels:
 - includeSelectors: false
   includeTemplates: true
