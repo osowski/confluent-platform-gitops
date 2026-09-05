@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: fix-400/schema-registry-oauth-allowed-urls
     path: workloads/mds-keygen/overlays/eks-demo
   destination:
     server: https://kubernetes.default.svc

@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/aws-load-balancer-controller/base/values.yaml
           - $values/infrastructure/aws-load-balancer-controller/overlays/eks-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: fix-400/schema-registry-oauth-allowed-urls
       ref: values
   destination:
     server: https://kubernetes.default.svc
