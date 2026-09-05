@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/aws-ebs-csi-driver/base/values.yaml
           - $values/infrastructure/aws-ebs-csi-driver/overlays/eks-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: fix-400/schema-registry-oauth-allowed-urls
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc

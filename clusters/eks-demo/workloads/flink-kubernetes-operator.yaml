@@ -19,7 +19,7 @@ spec:
           - $values/workloads/flink-kubernetes-operator/overlays/eks-demo/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: fix-400/schema-registry-oauth-allowed-urls
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
