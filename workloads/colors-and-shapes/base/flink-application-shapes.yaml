@@ -24,7 +24,7 @@ spec:
   # The JAR reads and writes Avro via Schema Registry; a JSON-only build makes the
   # job emit an error record per event without ever leaving RUNNING (see issue #341).
   # Tag is the flink-sandbox commit the JAR was built from.
-  image: quay.io/osowski/flink-kafka-demo:2.1.1-a21a6a1
+  image: quay.io/osowski/flink-kafka-demo:v1.1.0-202609042223
 
   # ServiceAccount for Kubernetes RBAC
   serviceAccount: flink
@@ -49,7 +49,7 @@ spec:
         - name: flink-main-container
           env:
             - name: ENABLE_BUILT_IN_PLUGINS
-              value: "flink-s3-fs-hadoop-2.1.1-cp1.jar"
+              value: "flink-s3-fs-hadoop-2.2.0-cp2.jar"
             # Kafka topic configuration for application
             - name: KAFKA_TOPIC
               value: shapes-input

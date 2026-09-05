@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/kafka-producer:v0.2.0-avro
+          image: quay.io/osowski/kafka-producer:v1.1.0-202609042223
           imagePullPolicy: Always
           env:
             # Kafka connection (internal listener)
@@ -74,7 +74,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: quay.io/osowski/kafka-producer:v0.2.0-avro
+          image: quay.io/osowski/kafka-producer:v1.1.0-202609042223
           imagePullPolicy: Always
           env:
             # Kafka connection (internal listener)
