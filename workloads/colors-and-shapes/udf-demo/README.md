@@ -105,16 +105,23 @@ SHOW USER FUNCTIONS;
 ## 4. Apply the UDF to colors-input
 
 Start a **second** statement, same environment and compute pool, but this
-time set **catalog `colors-catalog`**, **database `colors-database`** (the
-Kafka catalog the `colors-input`/`colors-sql-output` topics live under —
-functions registered in the environment catalog are callable from here the
-same way a built-in function is). Run:
+time set **catalog `colors-catalog`**, **database `colors-database`** — the
+Kafka catalog the `colors-input`/`colors-sql-output` topics live under, so
+they can be referenced unqualified (this is the pattern real usage
+follows: statements run in the catalog/database where the data lives).
+Call the function back via its fully-qualified environment-catalog path,
+`` `_env_colors-env`.`default`.`to_upper` `` — an unqualified `to_upper()`
+here fails validation (`No match found for function signature
+to_upper(<CHARACTER>)`) because function resolution is scoped to the
+current catalog, and `to_upper` lives in `_env_colors-env`, not
+`colors-catalog`. Run:
 
 ```sql
 INSERT INTO `colors-sql-output`
+/*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
 (`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`)
-SELECT `timestamp`, to_upper(`type`) AS `type`, `location`, `value`,
-  to_upper(`status`) AS `status`, `id`,
+SELECT `timestamp`, `_env_colors-env`.`default`.`to_upper`(`type`) AS `type`, `location`, `value`,
+  `_env_colors-env`.`default`.`to_upper`(`status`) AS `status`, `id`,
   CAST(NULL AS STRING) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original`
 FROM `colors-input`
 /*+ OPTIONS('properties.group.id' = 'colors-udf-demo') */;
@@ -126,6 +133,12 @@ Notes:
   and is required for the same reason as the existing `colors-sql-enrich`
   statement (see [colors-and-shapes README](../README.md)): an implicit
   `INSERT INTO` leaves the sink's leading raw `key` (BYTES) column NULL.
+- The `kafka.producer.transaction.timeout.ms` sink hint is required, not
+  optional: without it the job compiles and starts, then fails at runtime
+  once the sink producer inits, with `InitProducerIdResponse; The
+  transaction timeout is larger than the maximum value allowed by the
+  broker`. `colors-sql-enrich`/`shapes-sql-enrich` already carry this same
+  hint for the same reason.
 - `encoded`/`error`/`original` are set to `NULL` here — this statement
   doesn't populate them; that's `colors-sql-enrich`'s job. Both statements
   run independently against the same `colors-input` source and the same
