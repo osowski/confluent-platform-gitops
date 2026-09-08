@@ -49,3 +49,6 @@ terraform/**/*.tfstate.backup
 terraform/**/*.tfstate.lock.info
 terraform/**/.terraform.lock.hcl
 terraform/**/terraform.tfvars
+
+# Maven build output
+target/
