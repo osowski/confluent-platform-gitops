@@ -166,8 +166,6 @@ remote VM with a public IP rather than your own machine, run
 IP for you and points these same hostnames at it.
 
 ```
-
-```
 127.0.0.1  alertmanager.flink-demo.confluentdemo.local
 127.0.0.1  argocd.flink-demo.confluentdemo.local
 127.0.0.1  cmf.flink-demo.confluentdemo.local
@@ -230,11 +228,30 @@ IP for you and points these same hostnames at it.
 - **Warning**: Dev mode - data is not persisted across restarts
 
 **CMF API:**
-- **URL**: http://cmf.flink-demo.confluentdemo.local
 - **Documentation**: [CMF REST API](https://docs.confluent.io/platform/current/flink/index.html)
 - `cmf-ui.flink-demo.confluentdemo.local` is a direct alias to the same CMF UI/API — no login,
   since flink-demo has no authentication layer. Provided for host-naming parity with clusters
   that front CMF with SSO.
+
+> [!WARNING]
+> `http://cmf.flink-demo.confluentdemo.local` returns a bare 404 — Traefik has no
+> route for this host on the `web` entrypoint, so the request never reaches CMF.
+
+```bash
+export CONFLUENT_CMF_URL=https://cmf.flink-demo.confluentdemo.local
+
+# Extract the CA cert cert-manager generated for cmf-tls
+kubectl get secret cmf-tls --namespace operator -o jsonpath='{.data.ca\.crt}' \
+  | base64 --decode > /tmp/cmf-ca.crt
+# Pass the CA explicitly since the CLI does not support `insecure-skip-verify` flags
+export CONFLUENT_CMF_CERTIFICATE_AUTHORITY_PATH=/tmp/cmf-ca.crt
+
+# List Flink environments
+confluent flink environment list
+
+# List applications
+confluent flink application list --environment default
+```
 
 **MinIO:**
 - **API URL**: http://s3.flink-demo.confluentdemo.local
