@@ -231,6 +231,10 @@ confluent-platform-gitops/
 
 > **Note**: Applications marked as "Manual Sync Required" do not have automated sync policies. These must be manually synced via Argo CD UI or CLI to allow review of configuration changes before deployment.
 
+## Demo Scenarios
+
+- **Colors UDF Demo** - Walkthrough of [CMF user-defined functions](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/user-defined-functions.html), applying a `TOUPPER`-style UDF to the `colors` tenant's `colors-input` data on `flink-demo`. See [workloads/colors-and-shapes/udf-demo/README.md](workloads/colors-and-shapes/udf-demo/README.md).
+
 ## Security
 
 - Secrets are managed externally (not committed to this repository)

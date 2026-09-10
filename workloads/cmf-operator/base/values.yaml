@@ -55,3 +55,9 @@ cmf:
       fs.s3a.secret.key: "${AWS_SECRET_ACCESS_KEY}"
       fs.s3a.path.style.access: "true"
       fs.s3a.connection.ssl.enabled: "false"
+
+  sql:
+    examples-catalog:
+      enabled: true
+    environmentCatalog:
+      enabled: true

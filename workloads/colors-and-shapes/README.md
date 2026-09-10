@@ -131,6 +131,14 @@ SQL pipeline (→ `*-sql-output`), demonstrating JAR/SQL parity. It does
 > topic, purge the topic (delete and re-create the `KafkaTopic` CR) before
 > scaling a producer back up.
 
+## Demo Scenarios
+
+- **UDF Demo (colors only)** — walkthrough of CMF user-defined functions,
+  applying a `TOUPPER`-style UDF to `colors-input`'s `type`/`status`
+  columns and writing the result into the existing `colors-sql-output`
+  topic. Ad hoc via the CMF UI, not GitOps-managed. See
+  [udf-demo/README.md](udf-demo/README.md).
+
 ## Prerequisites
 
 The following must be deployed before this application:
