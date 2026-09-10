@@ -20,8 +20,8 @@ Already satisfied on `flink-demo` — no infrastructure changes needed:
 - **Artifact management** is enabled cluster-wide
   (`workloads/cmf-operator/base/values.yaml`, `cmf.artifacts.enabled: true`,
   backed by the in-cluster MinIO).
-- **Environment catalog** is enabled on this cluster
-  (`workloads/cmf-operator/overlays/flink-demo/values.yaml`,
+- **Environment catalog** is enabled by default on every cluster
+  (`workloads/cmf-operator/base/values.yaml`,
   `cmf.sql.environmentCatalog.enabled: true`).
 - The `colors-and-shapes` Application is synced and healthy, so
   `colors-env`, `colors-pool`, `colors-catalog`/`colors-database`, and the
@@ -45,42 +45,24 @@ example from the docs, unmodified.
 ## 2. Upload the JAR as a CMF artifact
 
 Artifacts are scoped to a CMF environment; `colors-env` is the environment
-backing the `colors` tenant.
+backing the `colors` tenant. Upload through the CMF UI rather than the
+REST API:
 
-```bash
-export CONFLUENT_CMF_URL=https://cmf.flink-demo.confluentdemo.local
+1. Open the CMF UI at `https://cmf-ui.flink-demo.confluentdemo.local`.
+2. Select environment **`colors-env`**, then open its **Artifacts** view.
+3. Click **Upload** (or **Create**), set the artifact name to **`udfs.jar`**
+   (must match exactly — the `.jar` extension is required for anything a
+   SQL statement references as a UDF), and select `target/udfs.jar` from
+   this directory as the file.
+4. Submit. A successful upload shows the artifact at version 1.
 
-# Extract the CA cert cert-manager generated for cmf-tls (same as the
-# flink-demo README's CMF CLI section)
-kubectl get secret cmf-tls --namespace operator -o jsonpath='{.data.ca\.crt}' \
-  | base64 --decode > /tmp/cmf-ca.crt
+Uploading again under the same name fails — an artifact name is unique
+within its environment. If you rebuild the jar and want a new version, use
+the artifact's own update/upload-new-version action in the UI instead of
+creating a new artifact.
 
-cat > /tmp/artifact.json <<'EOF'
-{
-  "apiVersion": "cmf.confluent.io/v1",
-  "kind": "Artifact",
-  "metadata": { "name": "udfs.jar" },
-  "spec": {}
-}
-EOF
-
-curl --cacert /tmp/cmf-ca.crt -X POST \
-  "$CONFLUENT_CMF_URL/cmf/api/v1/environments/colors-env/artifacts" \
-  -F 'artifact=@/tmp/artifact.json;type=application/json' \
-  -F 'file=@target/udfs.jar'
-```
-
-A successful upload returns HTTP 201 with `status.version: 1`. Re-running
-the same `POST` after this point fails with 409 — use the `PUT` form
-against `.../artifacts/udfs.jar` instead if you rebuild the jar and want to
-upload a new version.
-
-Verify it landed:
-
-```bash
-curl --cacert /tmp/cmf-ca.crt \
-  "$CONFLUENT_CMF_URL/cmf/api/v1/environments/colors-env/artifacts/udfs.jar"
-```
+Confirm it landed by opening the artifact's detail view in the same
+Artifacts list — it should show `status.phase: READY` at version 1.
 
 ## 3. Register the function
 
