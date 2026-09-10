@@ -1,0 +1,50 @@
+---
+# ArgoCD PostSync hook: loads workloads/openldap/base/seed-ldif-configmap.yaml
+# into the running directory. Idempotent — `ldapadd -c` continues past
+# "already exists" errors on re-sync, mirroring
+# workloads/mds-keygen/overlays/*/mds-keygen-job.yaml's idempotency style.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openldap-seed
+  namespace: openldap
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: seed
+        image: osixia/openldap:1.5.0
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          until ldapwhoami -x -H ldap://openldap:389 >/dev/null 2>&1; do
+            echo "Waiting for openldap..."
+            sleep 3
+          done
+          for f in /ldif/*.ldif; do
+            echo "Applying $f"
+            ldapadd -c -x -H ldap://openldap:389 \
+              -D "cn=admin,dc=confluentdemo,dc=local" \
+              -w "$LDAP_ADMIN_PASSWORD" \
+              -f "$f" || true
+          done
+        env:
+        - name: LDAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openldap-admin
+              key: LDAP_ADMIN_PASSWORD
+        volumeMounts:
+        - name: seed
+          mountPath: /ldif
+      volumes:
+      - name: seed
+        configMap:
+          name: openldap-seed

@@ -1,0 +1,85 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap
+  namespace: openldap
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openldap
+  template:
+    metadata:
+      labels:
+        app: openldap
+    spec:
+      containers:
+      - name: openldap
+        image: osixia/openldap:1.5.0
+        env:
+        - name: LDAP_ORGANISATION
+          value: "Confluent Demo"
+        - name: LDAP_DOMAIN
+          value: confluentdemo.local
+        - name: LDAP_BASE_DN
+          value: dc=confluentdemo,dc=local
+        - name: LDAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openldap-admin
+              key: LDAP_ADMIN_PASSWORD
+        - name: LDAP_TLS
+          value: "false"
+        ports:
+        - name: ldap
+          containerPort: 389
+        readinessProbe:
+          tcpSocket:
+            port: 389
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: 389
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/ldap
+        - name: config
+          mountPath: /etc/ldap/slapd.d
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: config
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+  namespace: openldap
+  labels:
+    app: openldap
+spec:
+  selector:
+    app: openldap
+  ports:
+  - name: ldap
+    port: 389
+    targetPort: 389
+  type: ClusterIP
