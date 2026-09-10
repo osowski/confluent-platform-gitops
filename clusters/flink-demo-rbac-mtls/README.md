@@ -27,6 +27,7 @@ This variant layers cert-manager-automated TLS + mutual TLS on top of the existi
 |---|---|---|
 | KRaft controller listener (quorum) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
 | Kafka `REPLICATION` listener (inter-broker, 9072) | TLS + mTLS, client certs **required** | cert CN=kafka → `User:kafka` superuser |
+| Kafka `flink-sql-mtls` listener (`secure-sql` Flink SQL tenant, 9095) | TLS + mTLS, client certs **required** | cert CN=secure-sql-mtls → `User:secure-sql-mtls` (scoped, see [ADR-0011](../../adrs/0011-flink-sql-kafka-mtls-cert-manager.md)) |
 | Kafka `INTERNAL` listener (SR/C3/CMF clients, 9071) | OAuth over plaintext | Keycloak service accounts |
 | Kafka external NodePort (31000) | OAuth over plaintext | Keycloak service accounts |
 | Schema Registry API | HTTP in-cluster (TLS at Traefik edge) | OAuth |
@@ -163,6 +164,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **keycloak** (wave 102) - Keycloak identity provider for SSO/OAuth
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 106) - MDS token keypair generation
+- **flink-secure-sql-mtls-pki** (wave 108) - `secure-sql` tenant's mTLS client `Certificate`, synced early (and auto-sync, unlike the tenant's main Application below) so its Secret exists — Reflector-mirrored into `operator` — before `cmf-operator`'s own release; see [flink-secure-sql-mtls README](../../workloads/flink-secure-sql-mtls/README.md) and [ADR-0011](../../adrs/0011-flink-sql-kafka-mtls-cert-manager.md)
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, MDS, etc.) — **manual sync**
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
@@ -171,6 +173,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — **manual sync** — see [Flink Resources README](../../workloads/flink-resources/README.md)
 - **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
+- **flink-secure-sql-mtls** (wave 121) - `secure-sql` tenant's Flink SQL statement, catalog/database/compute-pool chain, and credentials — **manual sync** — see [flink-secure-sql-mtls README](../../workloads/flink-secure-sql-mtls/README.md). Split across two Applications (this one plus `flink-secure-sql-mtls-pki` above); see that README for why.
 
 ## Environment Access
 
