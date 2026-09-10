@@ -55,3 +55,11 @@ cmf:
       fs.s3a.secret.key: "${AWS_SECRET_ACCESS_KEY}"
       fs.s3a.path.style.access: "true"
       fs.s3a.connection.ssl.enabled: "false"
+
+  sql:
+    # Environment catalog (CMF 2.4.0+) — enabled by default on all clusters,
+    # riding on the artifact management enabled above. See
+    # workloads/colors-and-shapes/udf-demo/README.md for a walkthrough that
+    # depends on it (user-defined functions).
+    environmentCatalog:
+      enabled: true
