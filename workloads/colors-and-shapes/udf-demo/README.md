@@ -61,9 +61,6 @@ within its environment. If you rebuild the jar and want a new version, use
 the artifact's own update/upload-new-version action in the UI instead of
 creating a new artifact.
 
-Confirm it landed by opening the artifact's detail view in the same
-Artifacts list — it should show `status.phase: READY` at version 1.
-
 ## 3. Register the function
 
 Open the CMF UI at `https://cmf-ui.flink-demo.confluentdemo.local`, start a
@@ -92,11 +89,15 @@ Kafka catalog the `colors-input`/`colors-sql-output` topics live under, so
 they can be referenced unqualified (this is the pattern real usage
 follows: statements run in the catalog/database where the data lives).
 Call the function back via its fully-qualified environment-catalog path,
-`` `_env_colors-env`.`default`.`to_upper` `` — an unqualified `to_upper()`
-here fails validation (`No match found for function signature
-to_upper(<CHARACTER>)`) because function resolution is scoped to the
-current catalog, and `to_upper` lives in `_env_colors-env`, not
-`colors-catalog`. Run:
+`` `_env_colors-env`.`default`.`to_upper` ``.
+
+> [!WARNING]
+> An unqualified `to_upper()` here fails validation (`No match found for
+> function signature to_upper(<CHARACTER>)`) because function resolution
+> is scoped to the current catalog, and `to_upper` lives in
+> `_env_colors-env`, not `colors-catalog`.
+
+Run:
 
 ```sql
 INSERT INTO `colors-sql-output`
