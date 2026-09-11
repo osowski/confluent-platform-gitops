@@ -181,7 +181,7 @@ Confirm messages are flowing in Control Center (**Topics** → `colors-input` �
 
 ## Run a Flink SQL Statement
 
-22. Submit your own ad hoc statement against the `colors` tenant: in the CMF UI (inside `colors-env`), open the **Statements** tab and start a new statement (labeled something like **+ New Statement** — exact wording may vary by CMF version) against compute pool `colors-pool`, catalog `colors-catalog`, database `colors-database`, and run a simple read to confirm the setup:
+22. Submit your own ad hoc statement against the `colors` tenant: in the CMF UI (inside `colors-env`), open the **Statements** tab and start a new statement via **Add statement** _(exact wording may vary by CMF version)_ against compute pool `colors-pool`, catalog `colors-catalog`, database `colors-database`, and run a simple read to confirm the setup:
 
 ```sql
 SELECT * FROM `colors-input` LIMIT 10;
