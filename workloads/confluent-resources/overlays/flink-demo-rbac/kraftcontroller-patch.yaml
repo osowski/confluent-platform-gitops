@@ -3,12 +3,13 @@
 # ==============================================================================
 # This patch consolidates all KRaft controller configuration including:
 # - Resource limits for local demo environment
-# - OAuth authentication for controller quorum communication
-# - JVM configuration for OAuth SASL mechanism
+# - SASL/PLAIN with LDAP direct bind for controller quorum communication
+# - identityProvider.ldap for the controller's own LDAP search/bind identity
 # NOTE: Authorization intentionally omitted to avoid circular dependency with Kafka MDS.
 #       Controllers are an internal control plane — principals connecting to them (kafka brokers)
 #       are already super users. Fine-grained RBAC adds no practical security benefit here.
-# TODO: Issue #72 - Switch from OAuth to mTLS authentication when TLS is implemented
+#       Because authorization.type: rbac is not set here, identityProvider (below) is the
+#       live LDAP config path for this CR, not services.mds.provider (co-authenticate-kafka.rst:278-280).
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: KRaftController
@@ -29,27 +30,35 @@ spec:
         memory: 1Gi
 
   # ==============================================================================
-  # CONTROLLER LISTENER - OAuth authentication for quorum communication
+  # CONTROLLER LISTENER - SASL/PLAIN with LDAP direct bind for quorum communication
   # ==============================================================================
   listeners:
     controller:
       authentication:
-        type: oauth
+        type: ldap
         jaasConfig:
-          secretRef: kraft-oauth-client
-        oauthSettings:
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-          subClaimName: client_id
+          secretRef: kafka-controller-interbroker
 
   # ==============================================================================
-  # JVM CONFIGURATION - OAuth SASL mechanism
+  # IDENTITY PROVIDER - LDAP search/bind identity for this controller
   # ==============================================================================
-  configOverrides:
-    jvm:
-      # OAuth login callback handler
-      - "-Dorg.apache.kafka.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
-      - "-Dsasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
-      # OAuth allowed URLs (internal HTTP and external HTTPS Keycloak endpoints)
-      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/certs,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/token"
+  identityProvider:
+    type: ldap
+    ldap:
+      address: ldap://openldap.openldap.svc.cluster.local:389
+      authentication:
+        type: simple
+        simple:
+          secretRef: mds-ldap-credential
+      tls:
+        enabled: false
+      configurations:
+        groupNameAttribute: cn
+        groupObjectClass: groupOfNames
+        groupMemberAttribute: member
+        groupMemberAttributePattern: uid=(.*),ou=users,dc=confluentdemo,dc=local
+        groupSearchBase: ou=groups,dc=confluentdemo,dc=local
+        userNameAttribute: uid
+        userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
+        userObjectClass: inetOrgPerson
+        userSearchBase: ou=users,dc=confluentdemo,dc=local
