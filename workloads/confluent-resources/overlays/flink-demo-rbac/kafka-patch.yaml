@@ -125,3 +125,14 @@ spec:
         bearer:
           secretRef: kafka-mds-bearer-client
 
+  # ==============================================================================
+  # CONFIGURATION OVERRIDES - Inter-broker SASL mechanism selector
+  # ==============================================================================
+  # CFK's provider.ldap + bearer-listener auto-configuration generates the
+  # REPLICATION inter-broker listener as OAUTHBEARER-only but omits the
+  # broker-level mechanism selector, so Kafka defaults it to GSSAPI and
+  # fails startup validation. This overrides that default explicitly.
+  configOverrides:
+    server:
+      - sasl.mechanism.inter.broker.protocol=OAUTHBEARER
+
