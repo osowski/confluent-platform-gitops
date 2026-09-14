@@ -62,3 +62,15 @@ spec:
         userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
         userObjectClass: inetOrgPerson
         userSearchBase: dc=confluentdemo,dc=local
+
+  # ==============================================================================
+  # CONFIGURATION OVERRIDES - LDAP search scope for cross-OU lookups
+  # ==============================================================================
+  # Confluent's LDAP client defaults ldap.user.search.scope to ONELEVEL (1),
+  # but userSearchBase above is the tree root (dc=confluentdemo,dc=local) so
+  # service principals under ou=services can be found alongside ou=users
+  # entries — that requires a SUBTREE (2) search, which has no first-class
+  # CRD field and must be set as a raw property override.
+  configOverrides:
+    server:
+      - ldap.user.search.scope=2
