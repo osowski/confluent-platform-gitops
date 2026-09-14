@@ -61,4 +61,4 @@ spec:
         userNameAttribute: uid
         userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
         userObjectClass: inetOrgPerson
-        userSearchBase: ou=users,dc=confluentdemo,dc=local
+        userSearchBase: dc=confluentdemo,dc=local
