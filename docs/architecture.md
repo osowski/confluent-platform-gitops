@@ -367,6 +367,10 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - Token lifespan: 604800 seconds (7 days)
 - Control Center authenticates via OIDC SSO; users see only their authorized FlinkEnvironments
 - **In-progress spike** ([Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)): a local OpenLDAP directory (`workloads/openldap/`, wave 101) is deployed with a demo tree mirroring this Keycloak realm's users/groups/service-principals, ahead of switching MDS's user store from Keycloak to LDAP. Deployed but not yet consumed — Keycloak remains the active auth path until the later tasks in that Epic land.
+   As of #410, the Kafka CR's MDS provider and the KRaft controller quorum's
+   own authentication are LDAP-backed; Control Center SSO, CMF, and the
+   colors/shapes Flink SQL tenants still authenticate via Keycloak until
+   #411-#414 land.
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
 - Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources

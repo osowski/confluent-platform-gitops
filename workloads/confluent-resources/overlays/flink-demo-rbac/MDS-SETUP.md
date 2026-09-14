@@ -23,6 +23,12 @@ The flink-demo-rbac cluster is configured with full RBAC authorization using:
    - ServiceAccounts and RoleBindings
    - See: `workloads/colors-and-shapes/components/rbac-oauth/`
 
+3. OpenLDAP directory deployed and seeded (see `workloads/openldap/README.md`,
+   [#409](https://github.com/osowski/confluent-platform-gitops/issues/409)) —
+   provides `services.mds.provider.ldap`'s user/group source as of
+   [#410](https://github.com/osowski/confluent-platform-gitops/issues/410).
+   Keycloak is still used by Control Center SSO and CMF until #412/#414 land.
+
 ## Initial Setup
 
 ### 1. MDS Token Keypair Generation (Automated)
@@ -66,22 +72,28 @@ kubectl create secret generic mds-token \
 rm mds-tokenkeypair.txt mds-publickey.txt
 ```
 
-### 2. Verify OAuth Client Secrets
+### 2. Verify OAuth and LDAP Client Secrets
 
-The following secrets should exist with credentials matching Keycloak:
+The following secrets should exist:
 
 ```bash
-# Check Kafka OAuth client
+# Check Kafka OAuth client (still used by CMF/Control Center until #412/#414)
 kubectl get secret kafka-oauth-client -n kafka -o yaml
 
-# Check KRaft OAuth client
+# Check KRaft OAuth client (superseded by kafka-controller-interbroker — see below)
 kubectl get secret kraft-oauth-client -n kafka -o yaml
 
-# Check CMF MDS OAuth client
-kubectl get secret cmf-mds-oauth-client -n operator -o yaml
-```
+# Check the LDAP bind credential MDS and the KRaft controller's identityProvider use
+# (created in workloads/openldap/base/mds-bind-secret.yaml, #409; mirrored into
+# this namespace by Reflector)
+kubectl get secret mds-ldap-credential -n kafka -o yaml
 
-These are created by `oauth-client-secrets.yaml` with values from the Keycloak realm.
+# Check the KRaft controller's inter-broker LDAP bind credential
+kubectl get secret kafka-controller-interbroker -n kafka -o yaml
+
+# Check Kafka's MDS bearer client credential
+kubectl get secret kafka-mds-bearer-client -n kafka -o yaml
+```
 
 ### 3. Deploy Resources
 
