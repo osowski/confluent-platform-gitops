@@ -72,6 +72,7 @@ Platform infrastructure components deployed before workloads.
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
+- **openldap** (wave 101, `flink-demo-rbac` only) - Local OpenLDAP directory (`workloads/openldap/`) seeding the demo user/group/service-principal tree for [Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)'s LDAP-backed CP-MDS RBAC spike; not yet wired to MDS as an authentication source — see [Multi-Tenant RBAC Architecture](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) below and the [workload README](../workloads/openldap/README.md)
 
 **Future components:**
 - **argocd** - ArgoCD self-management (currently manual install, future state target)
@@ -305,6 +306,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 85 | registry | In-cluster OCI image registry at a pinned ClusterIP (kind clusters) |
 | 86 | registry-hosts | PostSync Job writing per-node containerd `hosts.toml` for the in-cluster registry |
 | 100 | workloads (parent) | Workloads App of Apps |
+| 101 | openldap | Local OpenLDAP directory (`flink-demo-rbac` only) — seeds the LDAP-backed CP-MDS RBAC spike ([Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)); ahead of `cfk-operator` so MDS can reach it once wired up |
 | 105 | cfk-operator | Confluent for Kubernetes operator (CRDs and webhooks) |
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
 | 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
@@ -364,6 +366,7 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - 11 demo users across 3 groups: shapes (5 users), colors (5 users), admin (1 user)
 - Token lifespan: 604800 seconds (7 days)
 - Control Center authenticates via OIDC SSO; users see only their authorized FlinkEnvironments
+- **In-progress spike** ([Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)): a local OpenLDAP directory (`workloads/openldap/`, wave 101) is deployed with a demo tree mirroring this Keycloak realm's users/groups/service-principals, ahead of switching MDS's user store from Keycloak to LDAP. Deployed but not yet consumed — Keycloak remains the active auth path until the later tasks in that Epic land.
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
 - Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources
