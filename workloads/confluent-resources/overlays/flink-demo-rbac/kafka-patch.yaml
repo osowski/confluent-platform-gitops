@@ -70,6 +70,7 @@ spec:
       - User:admin@osow.ski
       - User:cmf
       - User:kafka
+      - User:erp
 
   # ==============================================================================
   # MDS (METADATA SERVICE) - RBAC and SSO/OIDC configuration

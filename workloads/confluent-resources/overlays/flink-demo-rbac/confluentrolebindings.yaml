@@ -18,6 +18,25 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# KafkaRestClass's own erp identity - SystemAdmin role on CMF cluster
+# The CFK operator authenticates as erp (KafkaRestClass's identity) for
+# EVERY ConfluentRolebinding reconciliation call, not just erp-scoped ones
+# - it needs its own permission grant to manage role bindings scoped to CMF.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: erp-cmf-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: erp
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
 # Control Center service account - SystemAdmin role on CMF cluster for Flink UI access
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
