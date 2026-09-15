@@ -88,11 +88,25 @@ spec:
   # ==============================================================================
   services:
     mds:
+      # MDS REST listener TLS (#412) — enables the mTLS leg for CMF while
+      # provider.ldap (below) continues serving erp/sr/c3's existing
+      # bearer-token flows from #411. See Task 6 for the live-verified
+      # confirmation of exactly how these two coexist on the one listener.
+      tls:
+        enabled: true
+        secretRef: mds-server-mtls
+
       # Token key pair for signing MDS authentication tokens
       tokenKeyPair:
         secretRef: mds-token
 
-      # Provider configuration - LDAP for service account authentication
+      # Provider configuration - LDAP (#410, unchanged) plus mTLS (#412,
+      # new) as a second, simultaneous identity provider. This dual
+      # provider.ldap + provider.mtls combo is schema-confirmed
+      # (no oneOf/CEL restriction on services.mds.provider's sibling
+      # fields) and documented (docs-operator/co-rbac.rst:179-180,
+      # "To use mTLS and LDAP as the identity providers, set
+      # provider.mtls and provider.ldap.").
       provider:
         ldap:
           address: ldap://openldap.openldap.svc.cluster.local:389
@@ -112,6 +126,14 @@ spec:
             userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
             userObjectClass: inetOrgPerson
             userSearchBase: dc=confluentdemo,dc=local
+        mtls:
+          # CN=cmf -> User:cmf (existing superuser identity, no new RBAC
+          # bindings needed). Same rule syntax already live-verified in
+          # flink-demo-rbac-mtls/kafka-patch.yaml:225 for an analogous
+          # CN-extraction case.
+          principalMappingRules:
+            - "RULE:^CN=([a-zA-Z0-9.-]*).*$/$1/L,DEFAULT"
+          sslClientAuthentication: required
 
       # Impersonation settings for RBAC
       impersonation:
