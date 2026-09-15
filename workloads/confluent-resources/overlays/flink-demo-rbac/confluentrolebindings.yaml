@@ -354,6 +354,28 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# Schema Registry's own sr identity - ResourceOwner on the Confluent
+# license-validation topic. Same reasoning as the other sr-* bindings
+# above - SR's internal license fetcher needs this topic to validate its
+# commercial license; previously implicit via the shared kafka superuser
+# identity.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-license-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _confluent-license
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
 # ==============================================================================
 # KAFKA TOPIC RBAC - Group-based topic access control
 # ==============================================================================
