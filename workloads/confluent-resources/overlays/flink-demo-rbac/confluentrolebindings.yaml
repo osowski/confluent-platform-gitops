@@ -313,10 +313,9 @@ spec:
 #   - colors-database-owner (KafkaDatabase - invalid resource type)
 ---
 # Schema Registry's own sr identity - ResourceOwner on its internal schema
-# storage topic. Previously covered implicitly by the shared `kafka`
-# superuser identity Schema Registry used to authenticate as; now that it
-# authenticates as its own LDAP principal (sr, #411), it needs this
-# explicit grant to create/access its own topic.
+# storage topic. sr authenticates as a dedicated LDAP principal (#411),
+# which is not a Kafka superuser, so it needs this explicit grant to
+# create/access its own topic.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -336,7 +335,7 @@ spec:
 ---
 # Schema Registry's own sr identity - ResourceOwner on its internal
 # leader-election consumer group. Same reasoning as sr-schemas-topic-owner
-# above - previously implicit via the shared kafka superuser identity.
+# above - sr is not a Kafka superuser, so it needs this explicit grant.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -357,8 +356,7 @@ spec:
 # Schema Registry's own sr identity - ResourceOwner on the Confluent
 # license-validation topic. Same reasoning as the other sr-* bindings
 # above - SR's internal license fetcher needs this topic to validate its
-# commercial license; previously implicit via the shared kafka superuser
-# identity.
+# commercial license, and sr is not a Kafka superuser.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -378,9 +376,8 @@ spec:
 ---
 # Schema Registry's own sr identity - ResourceOwner on Confluent Server's
 # internal command/coordination topic. Same reasoning as the other sr-*
-# bindings above - previously implicit via the shared kafka superuser
-# identity; the broker authorizer log showed a live Describe denial on
-# this exact resource for User:sr.
+# bindings above - sr is not a Kafka superuser; the broker authorizer log
+# showed a live Describe denial on this exact resource for User:sr.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:

@@ -33,11 +33,16 @@ spec:
     type: rbac
 
   # ==============================================================================
-  # DEPENDENCIES - Kafka (SASL/PLAIN+LDAP) and MDS (bearer) authentication
+  # DEPENDENCIES - Kafka and MDS authentication
   # ==============================================================================
   dependencies:
-    # Kafka connection with SASL/PLAIN, presenting the `sr` LDAP principal
-    # (Kafka's internal listener validates this against LDAP as of #410)
+    # Kafka connection config, presenting the `sr` LDAP principal via
+    # SASL/PLAIN. Retained to satisfy CFK's CR-schema validation only — at
+    # runtime this connection actually rides the MDS bearer identity
+    # (dependencies.mds below) over OAUTHBEARER on the auto-managed token
+    # listener (port 9073), confirmed via the rendered
+    # schemaregistry-shared-config ConfigMap (#411). This PLAIN credential
+    # is validated-but-unused.
     kafka:
       bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:

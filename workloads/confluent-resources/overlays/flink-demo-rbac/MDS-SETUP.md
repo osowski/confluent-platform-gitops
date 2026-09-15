@@ -80,7 +80,8 @@ rm mds-tokenkeypair.txt mds-publickey.txt
 The following secrets should exist:
 
 ```bash
-# Check Kafka OAuth client (still used by CMF until #412/#414)
+# Check Kafka OAuth client (orphaned as of #411 — no longer referenced by
+# any secretRef in this overlay; retained pending cleanup, see #412)
 kubectl get secret kafka-oauth-client -n kafka -o yaml
 
 # Check KRaft OAuth client (superseded by kafka-controller-interbroker — see below)

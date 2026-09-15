@@ -55,7 +55,13 @@ spec:
     connect: null
     ksqldb: null
 
-    # Kafka connection with SASL/PLAIN, presenting the `c3` LDAP principal
+    # Kafka connection config, presenting the `c3` LDAP principal via
+    # SASL/PLAIN. Retained to satisfy CFK's CR-schema validation only — at
+    # runtime this connection actually rides the MDS bearer identity
+    # (dependencies.mds below) over OAUTHBEARER on the auto-managed token
+    # listener (port 9073), confirmed via the rendered
+    # schemaregistry-shared-config ConfigMap for the equivalent SR case
+    # (#411). This PLAIN credential is validated-but-unused.
     kafka:
       bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:

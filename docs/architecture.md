@@ -372,8 +372,11 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
    colors/shapes Flink SQL tenants still authenticate via Keycloak until
    #412-#414 land. As of #411, KafkaRestClass, Schema Registry, and Control
    Center authenticate as their own LDAP principals (`erp`/`sr`/`c3`) via
-   bearer/plain/basic auth; Control Center's browser SSO and CMF remain
-   Keycloak-backed pending #412/#414.
+   MDS bearer tokens (also the credential actually used for SR/C3's Kafka
+   connection at runtime, despite a schema-required but unused PLAIN
+   config — see the ConfluentRolebinding/patch comments) and, for
+   Control Center's own Schema Registry client, HTTP Basic; Control
+   Center's browser SSO and CMF remain Keycloak-backed pending #412/#414.
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
 - Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources

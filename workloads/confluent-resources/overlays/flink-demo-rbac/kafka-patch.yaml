@@ -64,6 +64,17 @@ spec:
   # ==============================================================================
   # AUTHORIZATION - RBAC with super users
   # ==============================================================================
+  # `erp` (KafkaRestClass's identity, #411) is a static superuser rather
+  # than a scoped ConfluentRolebinding like `sr`/`c3`: the CFK operator
+  # authenticates as erp for every ConfluentRolebinding reconciliation
+  # call, so erp's own privilege can't come from a rolebinding without a
+  # bootstrap chicken-and-egg (it would need privilege to create the
+  # binding that grants it privilege). Mirrors the existing `cmf` pattern,
+  # which is also both a superuser AND has its own cmf-systemadmin
+  # ConfluentRolebinding (see confluentrolebindings.yaml) — Kafka-cluster
+  # superuser status doesn't extend to the separate CMF authorization
+  # scope, which is why erp-cmf-systemadmin is still required alongside
+  # this superuser entry.
   authorization:
     type: rbac
     superUsers:

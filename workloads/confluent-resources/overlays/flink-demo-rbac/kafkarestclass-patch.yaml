@@ -10,7 +10,7 @@
 #
 # Authenticates as the dedicated `erp` LDAP service principal (seeded by
 # workloads/openldap/base/seed-ldif-configmap.yaml, #409) via MDS bearer
-# token, replacing the prior Keycloak OAuth client.
+# token.
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
