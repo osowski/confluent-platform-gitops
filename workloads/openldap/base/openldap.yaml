@@ -42,6 +42,8 @@ spec:
               key: LDAP_ADMIN_PASSWORD
         - name: LDAP_TLS
           value: "false"
+        - name: LDAP_REMOVE_CONFIG_AFTER_SETUP
+          value: "false"
         ports:
         - name: ldap
           containerPort: 389
