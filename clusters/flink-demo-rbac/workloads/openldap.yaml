@@ -1,10 +1,11 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: namespaces
+  name: openldap
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "100"
+    argocd.argoproj.io/sync-wave: "101"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -12,11 +13,19 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: feature-409/openldap-workload
-    path: workloads/namespaces/base
+    path: workloads/openldap/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: openldap
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
