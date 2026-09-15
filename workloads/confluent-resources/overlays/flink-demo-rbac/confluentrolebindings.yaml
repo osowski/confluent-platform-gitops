@@ -312,6 +312,28 @@ spec:
 #   - colors-catalog-owner (KafkaCatalog - invalid resource type)
 #   - colors-database-owner (KafkaDatabase - invalid resource type)
 ---
+# Schema Registry's own sr identity - ResourceOwner on its internal schema
+# storage topic. Previously covered implicitly by the shared `kafka`
+# superuser identity Schema Registry used to authenticate as; now that it
+# authenticates as its own LDAP principal (sr, #411), it needs this
+# explicit grant to create/access its own topic.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-schemas-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _schemas_schemaregistry_kafka
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
 # ==============================================================================
 # KAFKA TOPIC RBAC - Group-based topic access control
 # ==============================================================================
