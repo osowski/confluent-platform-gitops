@@ -376,6 +376,28 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# Schema Registry's own sr identity - ResourceOwner on Confluent Server's
+# internal command/coordination topic. Same reasoning as the other sr-*
+# bindings above - previously implicit via the shared kafka superuser
+# identity; the broker authorizer log showed a live Describe denial on
+# this exact resource for User:sr.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-command-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _confluent-command
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
 # ==============================================================================
 # KAFKA TOPIC RBAC - Group-based topic access control
 # ==============================================================================
