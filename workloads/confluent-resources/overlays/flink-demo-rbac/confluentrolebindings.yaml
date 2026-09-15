@@ -334,6 +334,26 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# Schema Registry's own sr identity - ResourceOwner on its internal
+# leader-election consumer group. Same reasoning as sr-schemas-topic-owner
+# above - previously implicit via the shared kafka superuser identity.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-consumergroup-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: id_schemaregistry_kafka
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
 # ==============================================================================
 # KAFKA TOPIC RBAC - Group-based topic access control
 # ==============================================================================
