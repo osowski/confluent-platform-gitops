@@ -135,4 +135,5 @@ spec:
   configOverrides:
     server:
       - sasl.mechanism.inter.broker.protocol=OAUTHBEARER
+      - ldap.user.search.scope=2
 
