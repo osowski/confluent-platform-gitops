@@ -3,7 +3,9 @@
 # ==============================================================================
 # This patch consolidates all Schema Registry configuration including:
 # - Resource limits for local demo environment
-# - OAuth authentication to Kafka and MDS
+# - LDAP-backed authentication to Kafka (plain) and MDS (bearer), as the
+#   dedicated `sr` LDAP service principal (seeded by
+#   workloads/openldap/base/seed-ldif-configmap.yaml, #409)
 # - RBAC authorization
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
@@ -31,31 +33,25 @@ spec:
     type: rbac
 
   # ==============================================================================
-  # DEPENDENCIES - Kafka and MDS with OAuth authentication
+  # DEPENDENCIES - Kafka (SASL/PLAIN+LDAP) and MDS (bearer) authentication
   # ==============================================================================
   dependencies:
-    # Kafka connection with OAuth authentication
+    # Kafka connection with SASL/PLAIN, presenting the `sr` LDAP principal
+    # (Kafka's internal listener validates this against LDAP as of #410)
     kafka:
       bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:
-        type: oauth
+        type: plain
         jaasConfig:
-          secretRef: kafka-oauth-client
-        oauthSettings:
-          subClaimName: client_id
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          secretRef: sr-kafka-plain
 
-    # MDS connection with OAuth authentication
+    # MDS connection with bearer-token authentication (LDAP-backed as of
+    # #410 — MDS validates the `sr` username/password against LDAP directly)
     mds:
       endpoint: http://kafka.kafka.svc.cluster.local:8090
       tokenKeyPair:
         secretRef: mds-token
       authentication:
-        type: oauth
-        oauth:
-          secretRef: kafka-oauth-client
-          configuration:
-            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-            expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-            subClaimName: client_id
+        type: bearer
+        bearer:
+          secretRef: sr-mds-bearer
