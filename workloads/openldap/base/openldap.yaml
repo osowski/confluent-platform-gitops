@@ -16,6 +16,15 @@ spec:
       labels:
         app: openldap
     spec:
+      initContainers:
+      - name: copy-acl-bootstrap
+        image: busybox:1.36
+        command: ["sh", "-c", "cp /config-src/*.ldif /config-dest/"]
+        volumeMounts:
+        - name: acl-bootstrap-src
+          mountPath: /config-src
+        - name: acl-bootstrap
+          mountPath: /config-dest
       containers:
       - name: openldap
         image: osixia/openldap:1.5.0
@@ -70,6 +79,8 @@ spec:
       - name: config
         emptyDir: {}
       - name: acl-bootstrap
+        emptyDir: {}
+      - name: acl-bootstrap-src
         configMap:
           name: openldap-acl-bootstrap
 ---
