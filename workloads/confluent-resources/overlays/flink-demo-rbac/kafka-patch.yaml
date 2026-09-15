@@ -5,7 +5,6 @@
 # - External NodePort listener configuration
 # - Resource limits for local demo environment
 # - MDS/RBAC configuration with LDAP provider
-# - SSO/OIDC configuration for browser-based authentication (Control Center)
 # - Broker-to-KRaft controller SASL/PLAIN with LDAP direct bind
 # - Internal listener SASL/PLAIN with LDAP direct bind (self-referential
 #   metadata-store client reading _confluent-metadata-auth)
@@ -108,7 +107,7 @@ spec:
           - User:kafka
           - User:krp                        # Kafka REST Proxy principal
           - User:cmf                        # CMF service principal for user authorization
-          - User:admin@osow.ski             # Admin user from Keycloak
+          - User:admin@osow.ski             # Admin user from LDAP
         protectedUsers:
           - User:mds
           - User:superadmin
