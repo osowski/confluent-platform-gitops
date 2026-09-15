@@ -26,7 +26,10 @@ The flink-demo-rbac cluster is configured with full RBAC authorization using:
 3. OpenLDAP directory deployed and seeded (see `workloads/openldap/README.md`,
    [#409](https://github.com/osowski/confluent-platform-gitops/issues/409)) —
    provides `services.mds.provider.ldap`'s user/group source as of
-   [#410](https://github.com/osowski/confluent-platform-gitops/issues/410).
+   [#410](https://github.com/osowski/confluent-platform-gitops/issues/410),
+   and the `erp`/`sr`/`c3` service-account credentials KafkaRestClass, Schema
+   Registry, and Control Center authenticate with as of
+   [#411](https://github.com/osowski/confluent-platform-gitops/issues/411).
    Keycloak is still used by Control Center SSO and CMF until #412/#414 land.
 
 ## Initial Setup
@@ -77,7 +80,7 @@ rm mds-tokenkeypair.txt mds-publickey.txt
 The following secrets should exist:
 
 ```bash
-# Check Kafka OAuth client (still used by CMF/Control Center until #412/#414)
+# Check Kafka OAuth client (still used by CMF until #412/#414)
 kubectl get secret kafka-oauth-client -n kafka -o yaml
 
 # Check KRaft OAuth client (superseded by kafka-controller-interbroker — see below)
@@ -93,6 +96,10 @@ kubectl get secret kafka-controller-interbroker -n kafka -o yaml
 
 # Check Kafka's MDS bearer client credential
 kubectl get secret kafka-mds-bearer-client -n kafka -o yaml
+
+# Check KafkaRestClass/SchemaRegistry/ControlCenter's LDAP-backed credentials
+# (erp/sr/c3 — created in mds-bearer-client-secrets.yaml, #411)
+kubectl get secret erp-mds-bearer sr-mds-bearer sr-kafka-plain c3-mds-bearer c3-kafka-plain c3-schemaregistry-basic -n kafka
 ```
 
 ### 3. Deploy Resources
