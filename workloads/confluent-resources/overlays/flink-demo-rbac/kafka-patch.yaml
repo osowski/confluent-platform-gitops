@@ -4,10 +4,11 @@
 # This patch consolidates all Kafka broker configuration including:
 # - External NodePort listener configuration
 # - Resource limits for local demo environment
-# - MDS/RBAC configuration with OAuth provider (Keycloak)
+# - MDS/RBAC configuration with LDAP provider
 # - SSO/OIDC configuration for browser-based authentication (Control Center)
-# - Broker-to-KRaft controller OAuth authentication
-# - Internal listener OAuth authentication
+# - Broker-to-KRaft controller SASL/PLAIN with LDAP direct bind
+# - Internal listener SASL/PLAIN with LDAP direct bind (self-referential
+#   metadata-store client reading _confluent-metadata-auth)
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -35,11 +36,19 @@ spec:
           enabled: false
 
     # ==============================================================================
-    # INTERNAL LISTENER - Bearer token authentication for inter-broker communication
+    # INTERNAL LISTENER - SASL/PLAIN with LDAP direct bind for inter-broker
+    # communication. This listener (port 9071) is what the broker's own
+    # self-referential RBAC metadata-store client (KafkaReader, reading
+    # _confluent-metadata-auth) actually uses — matches the KRaft controller
+    # listener's authentication shape below, not CFK's auto-added token
+    # listener (port 9073, used by other CP components; see
+    # dependencies.kafkaRest below).
     # ==============================================================================
     internal:
       authentication:
-        type: bearer
+        type: ldap
+        jaasConfig:
+          secretRef: kafka-controller-interbroker
 
   # ==============================================================================
   # RESOURCE LIMITS - Tuned for 24GB total cluster memory
@@ -126,14 +135,14 @@ spec:
           secretRef: kafka-mds-bearer-client
 
   # ==============================================================================
-  # CONFIGURATION OVERRIDES - Inter-broker SASL mechanism selector
+  # CONFIGURATION OVERRIDES - LDAP search scope for cross-OU lookups
   # ==============================================================================
-  # CFK's provider.ldap + bearer-listener auto-configuration generates the
-  # REPLICATION inter-broker listener as OAUTHBEARER-only but omits the
-  # broker-level mechanism selector, so Kafka defaults it to GSSAPI and
-  # fails startup validation. This overrides that default explicitly.
+  # Confluent's LDAP client defaults ldap.user.search.scope to ONELEVEL (1),
+  # but userSearchBase above is the tree root (dc=confluentdemo,dc=local) so
+  # service principals under ou=services can be found alongside ou=users
+  # entries — that requires a SUBTREE (2) search, which has no first-class
+  # CRD field and must be set as a raw property override.
   configOverrides:
     server:
-      - sasl.mechanism.inter.broker.protocol=OAUTHBEARER
       - ldap.user.search.scope=2
 
