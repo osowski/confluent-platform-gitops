@@ -1,0 +1,39 @@
+---
+# Root CA for CMF's mTLS leg to MDS (#412). Mirrors the flink-demo-rbac-mtls
+# cluster's rbac-mtls-ca/rbac-mtls-ca-issuer pattern (see ADR-0011) — this
+# cluster otherwise only has selfsigned-cluster-issuer (leaf-only, no CA),
+# and MDS's truststore needs a real signing CA rather than a single
+# hardcoded leaf cert, in case more mTLS-to-MDS clients are added later.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-mds-mtls-ca
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  isCA: true
+  commonName: cmf-mds-mtls-ca
+  secretName: cmf-mds-mtls-ca
+  duration: 87600h    # 10 years
+  renewBefore: 720h   # 30 days
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# CA-type ClusterIssuer that signs both the MDS server cert (Task 2) and
+# CMF's client cert (Task 3) from the root CA above. Cluster-scoped: no
+# secret syncing needed across namespaces.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cmf-mds-mtls-ca-issuer
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  ca:
+    secretName: cmf-mds-mtls-ca
