@@ -8,6 +8,7 @@ resources:
   - ../../base
   - oauth-client-secrets.yaml
   - ldap-client-secrets.yaml
+  - mds-bearer-client-secrets.yaml
   - oidc-client-credentials-secret.yaml  # OIDC client credentials for Control Center SSO
   - controlcenter-oauth-client-secret.yaml  # OAuth client credentials for Control Center service account
   - confluentrolebindings.yaml
