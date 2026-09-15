@@ -377,6 +377,12 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
    config — see the ConfluentRolebinding/patch comments) and, for
    Control Center's own Schema Registry client, HTTP Basic; Control
    Center's browser SSO and CMF remain Keycloak-backed pending #412/#414.
+   As of #412, CMF's own authorization leg to MDS (asking "is this
+   principal allowed to do X") authenticates via mTLS (a new
+   cert-manager-issued client certificate, CN=cmf, mapped to the existing
+   User:cmf superuser identity) rather than Keycloak OAuth — CMF's own
+   end-user login/SSO and its CMFRestClass leg remain Keycloak-backed
+   pending #418.
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
 - Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources
