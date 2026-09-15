@@ -93,26 +93,30 @@ cmf:
       confluent.metadata.oauthbearer.login.client.id: cmf
       confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
+  # Kafka-specific OAuth configuration
+  kafka:
+    # OAuth bearer allowed URLs - Required for OAuth authentication
+    # Must include full token endpoint URL paths, not just realm base URLs
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/token,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/certs
+
 # Authorization configuration - connect to MDS for RBAC
   authorization:
     mdsRestConfig:
-      # MDS endpoint on Kafka broker (internal cluster DNS). Left as
-      # http:// here per Task 6's live-verification finding on whether
-      # enabling services.mds.tls (Task 2) forces this to https:// for
-      # every MDS client, not just CMF — adjust during Task 6 if so, and
-      # ONLY after the stop-and-ask in Global Constraints has been
-      # resolved, since flipping this affects erp/sr/c3 (#411) too.
+      # MDS endpoint on Kafka broker (internal cluster DNS)
       endpoint: http://kafka.kafka.svc.cluster.local:8090
-      # mTLS authentication for CMF to talk to MDS (#412) - CMF's chart has
-      # no bearer/LDAP option for this leg, see Epic #408's supportability
-      # decision.
+      # OAuth authentication for CMF to talk to MDS
       authentication:
-        type: mtls
+        type: oauth
         config:
-          confluent.metadata.ssl.keystore.location: /mount/cmf-mtls/keystore.jks
-          confluent.metadata.ssl.keystore.password: cmf-mtls-keystore-secret
-          confluent.metadata.ssl.truststore.location: /mount/cmf-mtls/truststore.jks
-          confluent.metadata.ssl.truststore.password: cmf-mtls-keystore-secret
+          # OAuth bearer credentials provider
+          confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
+          # Token endpoint to obtain tokens
+          confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          # Client ID for CMF service principal
+          confluent.metadata.oauthbearer.login.client.id: cmf
+          # Client secret - hard-coded for demo (production should use external-secrets or vault)
+          # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
+          confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
   # UI login modes. cmf.authentication is already OAuth-configured against
   # Keycloak via the broker MDS above, using the same OIDC flow.
@@ -121,18 +125,12 @@ cmf:
       basicAuthEnabled: false
       ssoEnabled: true
 
-# Mount MDS token secret for public key validation of MDS-signed SSO tokens,
-# and CMF's mTLS client certificate/keystore for its MDS authorization leg (#412).
+# Mount MDS token secret for public key validation of MDS-signed SSO tokens
 mountedVolumes:
   volumes:
     - name: mds-token
       secret:
         secretName: mds-token
-    - name: cmf-mds-mtls-client
-      secret:
-        secretName: cmf-mds-mtls-client
   volumeMounts:
     - name: mds-token
       mountPath: /mount/mds
-    - name: cmf-mds-mtls-client
-      mountPath: /mount/cmf-mtls
