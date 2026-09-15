@@ -27,7 +27,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: SystemAdmin
   clustersScopeByIds:
     cmfId: CMF-id
@@ -43,7 +43,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
@@ -504,7 +504,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: kafka
+    name: sr
   role: ResourceOwner
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka
@@ -540,7 +540,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: ResourceOwner
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka

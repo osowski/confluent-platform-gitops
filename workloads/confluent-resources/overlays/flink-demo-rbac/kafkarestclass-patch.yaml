@@ -1,12 +1,16 @@
 # ==============================================================================
 # KafkaRestClass Configuration for flink-demo-rbac Cluster
 # ==============================================================================
-# This patch adds OAuth authentication to KafkaRestClass, which is required
-# when the Kafka cluster has authentication enabled.
+# This patch adds bearer-token authentication to KafkaRestClass, which is
+# required when the Kafka cluster has authentication enabled.
 #
 # KafkaRestClass is used by:
 # - ConfluentRoleBindings for RBAC
 # - MDS for role management
+#
+# Authenticates as the dedicated `erp` LDAP service principal (seeded by
+# workloads/openldap/base/seed-ldif-configmap.yaml, #409) via MDS bearer
+# token, replacing the prior Keycloak OAuth client.
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestClass
@@ -16,8 +20,6 @@ metadata:
 spec:
   kafkaRest:
     authentication:
-      type: oauth
-      oauth:
-        secretRef: kafka-oauth-client
-        configuration:
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      type: bearer
+      bearer:
+        secretRef: erp-mds-bearer
