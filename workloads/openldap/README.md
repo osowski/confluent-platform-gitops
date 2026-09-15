@@ -52,6 +52,26 @@ re-sync) and matches this repo's existing pattern for seeding auxiliary
 state — see `workloads/mds-keygen/overlays/*/mds-keygen-job.yaml` and
 `workloads/keycloak/base/realm-sync-job.yaml`.
 
+## Default ACL override
+
+`osixia/openldap:1.5.0`'s own default ACL on `olcDatabase={1}mdb,cn=config`
+restricts every non-admin principal to reading only its own entry (`by self
+read ... by * none`). That breaks LDAP search for any bind/search account —
+including the `mds` credential seeded above — that needs to look up *other*
+entries, which is the entire point of CFK's `services.mds.provider.ldap` /
+`identityProvider.ldap` bind-then-search flow (wired up in Task #410).
+
+`acl-bootstrap-configmap.yaml` overrides that one rule via a custom bootstrap
+LDIF (`osixia/openldap`'s supported mechanism: any `.ldif` dropped in
+`/container/service/slapd/assets/config/bootstrap/ldif/custom` is applied on
+container start) mounted into the Deployment. Because both `/var/lib/ldap`
+and `/etc/ldap/slapd.d` are `emptyDir` (see Cleanup below), this bootstrap
+runs on every pod start, not just a one-time first boot, so the override is
+always reapplied. The replacement grants subtree-wide read to any bound
+principal under `dc=confluentdemo,dc=local` — sufficient for CFK's bind-then-
+search flow, not a hardened production ACL policy, matching this workload's
+existing demo-only security posture below.
+
 ## Security notes (demo-only)
 
 - All passwords in `seed-ldif-configmap.yaml` and the two Secrets in this

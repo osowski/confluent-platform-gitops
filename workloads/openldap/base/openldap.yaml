@@ -62,11 +62,16 @@ spec:
           mountPath: /var/lib/ldap
         - name: config
           mountPath: /etc/ldap/slapd.d
+        - name: acl-bootstrap
+          mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
       volumes:
       - name: data
         emptyDir: {}
       - name: config
         emptyDir: {}
+      - name: acl-bootstrap
+        configMap:
+          name: openldap-acl-bootstrap
 ---
 apiVersion: v1
 kind: Service

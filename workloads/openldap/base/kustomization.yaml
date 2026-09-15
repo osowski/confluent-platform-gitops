@@ -8,5 +8,6 @@ resources:
   - admin-secret.yaml
   - mds-bind-secret.yaml
   - seed-ldif-configmap.yaml
+  - acl-bootstrap-configmap.yaml
   - openldap.yaml
   - seed-job.yaml
