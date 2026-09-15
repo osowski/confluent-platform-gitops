@@ -93,6 +93,12 @@ cmf:
       confluent.metadata.oauthbearer.login.client.id: cmf
       confluent.metadata.oauthbearer.login.client.secret: cmf-secret
 
+  # Kafka-specific OAuth configuration
+  kafka:
+    # OAuth bearer allowed URLs - Required for OAuth authentication
+    # Must include full token endpoint URL paths, not just realm base URLs
+    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/token,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/certs
+
 # Authorization configuration - connect to MDS for RBAC
   authorization:
     mdsRestConfig:
