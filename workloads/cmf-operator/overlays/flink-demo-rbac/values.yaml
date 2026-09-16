@@ -115,7 +115,24 @@ cmf:
     # before wiring either into the embedded MDS's own JwtAuthenticator.
     jwks-endpoint-url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
     expected-issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-    super-users: "User:admin"
+    # User:cfk-operator (#423) - CFK's mTLS client certificate CN
+    # (cfk-cmf-client-cert, Task 1) maps to principal "cfk-operator" via
+    # auth.ssl.principal.mapping.rules above. Granted full superuser here,
+    # same coarse grant as User:admin, rather than a scoped role binding -
+    # a deliberate simplification for this issue (CFK needs broad access
+    # to manage FlinkEnvironment/FlinkApplication/etc. across the
+    # `flink` namespace's CMF resources; the embedded MDS's role-binding
+    # surface for a service-account-style principal wasn't scoped out as
+    # part of #423). A properly scoped binding is a reasonable follow-up
+    # issue if per-resource RBAC for CFK's own principal becomes a
+    # requirement. Multi-value syntax (semicolon-separated, "User:x;User:y")
+    # confirmed against the chart schema (values.schema.json's
+    # definitions.mdsBlock.properties.super-users is a plain string with no
+    # separator documented in-schema) and cross-checked against the
+    # standard Kafka/MDS super.users convention used elsewhere in this repo
+    # and Confluent's own docs (docs-platform/security/security_tutorial.rst,
+    # rbac/delta_configs/server.properties.delta).
+    super-users: "User:admin;User:cfk-operator"
     extra-configs:
       ldap.java.naming.provider.url: ldap://openldap.openldap.svc.cluster.local:389
       ldap.java.naming.security.principal: uid=mds,ou=services,dc=confluentdemo,dc=local
