@@ -64,7 +64,7 @@ cmf:
     authentication-method: BEARER
     token-key-path: /mnt/secrets/mds/tokenKeypair.pem
     public-key-path: /mnt/secrets/mds/tokenPublicKey.pem
-    user-store: LDAP
+    user-store: LDAP_WITH_OAUTH
     callback-handler-class: io.confluent.security.auth.provider.ldap.LdapAuthenticateCallbackHandler
     sasl-mechanism: PLAIN
     super-users: "User:admin"
@@ -82,13 +82,33 @@ cmf:
       ldap.group.name.attribute: cn
       ldap.group.member.attribute: member
       ldap.group.member.attribute.pattern: uid=(.*),ou=users,dc=confluentdemo,dc=local
+      # OIDC/SSO secondary user store (LDAP_WITH_OAUTH, #418/#419) - reuses
+      # the existing "cmf" Keycloak client (wildcard redirect URI, already
+      # provisioned in workloads/keycloak/). Confirmed rendering correctly
+      # into the embedded MDS's OidcConfig on the prior attempt - the part
+      # that was missing lived in cmf.authentication.config below, not here.
+      confluent.metadata.server.sso.mode: oidc
+      confluent.oidc.idp.client.id: cmf
+      confluent.oidc.idp.client.secret: cmf-secret
+      confluent.oidc.idp.issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
+      confluent.oidc.idp.jwks.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+      confluent.oidc.idp.authorize.base.endpoint.uri: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
+      confluent.oidc.idp.token.base.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      confluent.oidc.idp.device.authorization.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/auth/device
 
-  # Validate MDS-issued JWTs locally using the embedded MDS's own public
-  # key. "type: oauth" here means "validate a bearer JWT via public key" -
-  # not "go through an external IdP" - per the doc's own LDAP example.
+  # Validate bearer JWTs from EITHER source - the embedded MDS's own
+  # public key (LDAP logins) or Keycloak's JWKS (OIDC/SSO logins and
+  # CMFRestClass's existing Keycloak-OAuth client-credentials tokens),
+  # per the doc's worked OIDC(OAuth) example (embedded-mds.rst) - these
+  # oauthbearer.* keys go here, not in cmf.mds.extra-configs (#419's
+  # earlier attempt put them in the wrong block; confirmed via jar
+  # inspection that extra-configs doesn't route them to this validator).
   authentication:
     type: oauth
     config:
+      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+      oauthbearer.expected.issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
+      oauthbearer.sub.claim.name: sub
       public.key.path: /mnt/secrets/mds/tokenPublicKey.pem
       confluent.metadata.bootstrap.server.urls: http://localhost:8090
 
@@ -104,12 +124,12 @@ cmf:
   authorization:
     authority: cmf
 
-  # LDAP credentials via the CMF UI's Basic login form. No SSO/OIDC yet
-  # (LDAP_WITH_OAUTH is a separate, later task).
+  # LDAP credentials via the CMF UI's Basic login form, plus Keycloak SSO
+  # via OIDC (LDAP_WITH_OAUTH, #418/#419) - both login paths are available.
   ui:
     auth:
       basicAuthEnabled: true
-      ssoEnabled: false
+      ssoEnabled: true
 
 # Mount CMF's own embedded-MDS key pair (#418) - distinct from the Kafka
 # broker's mds-token secret, which this overlay does not reference (CMF
