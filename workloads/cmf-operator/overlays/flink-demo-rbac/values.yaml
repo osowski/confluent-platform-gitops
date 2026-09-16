@@ -67,6 +67,8 @@ cmf:
     user-store: LDAP_WITH_OAUTH
     callback-handler-class: io.confluent.security.auth.provider.ldap.LdapAuthenticateCallbackHandler
     sasl-mechanism: PLAIN
+    # Required whenever OIDC SSO is active (LDAP_WITH_OAUTH here) - the embedded MDS's own startup validates this against confluent.oidc.idp.issuer
+    expected-issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
     super-users: "User:admin"
     extra-configs:
       ldap.java.naming.provider.url: ldap://openldap.openldap.svc.cluster.local:389
