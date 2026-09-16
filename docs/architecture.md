@@ -70,7 +70,7 @@ Platform infrastructure components deployed before workloads.
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
-- **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
+- **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters. On `flink-demo-rbac`, `CMFRestClass` currently cannot authenticate to CMF's embedded MDS in any tried configuration — see [CMF Embedded MDS milestone](./milestone-cmf-embedded-mds-ldap-with-oauth.md)
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 - **openldap** (wave 101, `flink-demo-rbac` only) - Local OpenLDAP directory (`workloads/openldap/`) seeding the demo user/group/service-principal tree for [Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)'s LDAP-backed CP-MDS RBAC spike; not yet wired to MDS as an authentication source — see [Multi-Tenant RBAC Architecture](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) below and the [workload README](../workloads/openldap/README.md)
 
