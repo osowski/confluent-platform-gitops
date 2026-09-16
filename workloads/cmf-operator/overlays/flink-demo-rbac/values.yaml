@@ -197,10 +197,35 @@ cmf:
   # confluent.metadata.bootstrap.server.urls are unchanged from the prior
   # oauth config - they configure the embedded MDS connection, not the
   # client-authentication mechanism itself.
+  #
+  # ssl.client.authentication: REQUESTED (#423, live-verification fix) -
+  # cmf.ssl.client-auth: want (above) only controls the Tomcat/Spring Boot
+  # TLS socket's willingness to ask for a client cert. CMF's own
+  # application-level authenticator (a jetty8-era AuthenticationHandler
+  # from the shared security-plugins library, bridged into Spring via
+  # SecurityInterceptor - see cp-flink-cmf's SecurityInterceptor.java) has
+  # its own, separate "ssl.client.authentication" property and defaults to
+  # NONE, which skips client-cert principal extraction entirely regardless
+  # of the TLS-layer setting (confirmed live: CMF logged "Skipping
+  # impersonation identity validation as client auth is not set" and every
+  # CFK request got an identical 401 whether or not it presented a cert).
+  # REQUESTED (not REQUIRED) is the documented value for exactly this
+  # dual-auth migration shape - see docs-platform's
+  # security/authorization/rbac/migrate-ldap-to-mtls.rst - REQUIRED would
+  # force every request, including LDAP/browser sessions, to present a
+  # client certificate.
+  #
+  # auth.ssl.principal.mapping.rules: a bare-CN subject (this cert has no
+  # OU/O components - Task 1 only set commonName) does not match the
+  # comma-requiring first rule, so it fell through to DEFAULT, which uses
+  # the raw DN string ("CN=cfk-operator") as the principal verbatim - never
+  # matching the "User:cfk-operator" RBAC grant. Added a second rule for a
+  # bare CN with nothing after it, ahead of DEFAULT.
   authentication:
     type: mtls
     config:
-      auth.ssl.principal.mapping.rules: "RULE:^CN=(.*?),.*$/$1/,DEFAULT"
+      auth.ssl.principal.mapping.rules: "RULE:^CN=(.*?),.*$/$1/,RULE:^CN=([^,]+)$/$1/,DEFAULT"
+      ssl.client.authentication: REQUESTED
       public.key.path: /mnt/secrets/mds/tokenPublicKey.pem
       confluent.metadata.bootstrap.server.urls: http://localhost:8090
 
