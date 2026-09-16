@@ -366,13 +366,10 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
 - 11 demo users across 3 groups: shapes (5 users), colors (5 users), admin (1 user)
 - Token lifespan: 604800 seconds (7 days)
 - Control Center authenticates via OIDC SSO; users see only their authorized FlinkEnvironments
-- **In-progress spike** ([Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)): a local OpenLDAP directory (`workloads/openldap/`, wave 101) is deployed with a demo tree mirroring this Keycloak realm's users/groups/service-principals, ahead of switching MDS's user store from Keycloak to LDAP. Deployed but not yet consumed — Keycloak remains the active auth path until the later tasks in that Epic land.
-   As of #410, the Kafka CR's MDS provider and the KRaft controller quorum's
-   own authentication are LDAP-backed; Control Center SSO, CMF, and the
-   colors/shapes Flink SQL tenants still authenticate via Keycloak until
-   #412-#414 land. As of #411, KafkaRestClass, Schema Registry, and Control
-   Center authenticate as their own LDAP principals (`erp`/`sr`/`c3`) via
-   MDS bearer tokens (also the credential actually used for SR/C3's Kafka
+- **In-progress spike** ([Epic #408](https://github.com/osowski/confluent-platform-gitops/issues/408)): a local OpenLDAP directory (`workloads/openldap/`, wave 101) is deployed with a demo tree mirroring this Keycloak realm's users/groups/service-principals, ahead of switching MDS's user store from Keycloak to LDAP. LDAP now backs Kafka/CP resources (#410/#411) and CMF (#418); Keycloak remains the active auth path for Control Center's browser SSO and the colors/shapes Flink SQL tenants, pending their migration in #413-#414.
+   As of #411, KafkaRestClass, Schema Registry, and Control Center
+   authenticate as their own LDAP principals (`erp`/`sr`/`c3`) via MDS
+   bearer tokens (also the credential actually used for SR/C3's Kafka
    connection at runtime, despite a schema-required but unused PLAIN
    config — see the ConfluentRolebinding/patch comments) and, for
    Control Center's own Schema Registry client, HTTP Basic. As of #418,

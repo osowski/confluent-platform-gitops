@@ -45,10 +45,12 @@ resources vs. CMF/Flink resources) sharing one LDAP directory as their
 common identity source, but with no shared state or coupling between the
 two MDS instances.
 
-`LDAP_WITH_OAUTH` (adding OIDC SSO alongside LDAP) is a secondary,
-additive goal on the same configuration, not a separate architecture -
-implemented as a follow-on task once the primary LDAP path is
-live-verified.
+`LDAP_WITH_OAUTH` (adding OIDC SSO alongside LDAP) was attempted as a
+secondary, additive goal on the same configuration, but hit an
+undocumented internal issuer-wiring requirement inside the embedded MDS's
+own `RbacApiApplication`/`JwtAuthenticator` startup path that two fix
+attempts didn't resolve. Reverted to keep the live cluster on the working
+primary-goal state; deferred to #419.
 
 ## Consequences
 

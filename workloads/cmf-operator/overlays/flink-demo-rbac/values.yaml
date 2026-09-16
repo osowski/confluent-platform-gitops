@@ -112,8 +112,8 @@ cmf:
       ssoEnabled: false
 
 # Mount CMF's own embedded-MDS key pair (#418) - distinct from the Kafka
-# broker's mds-token secret, which is no longer referenced anywhere in
-# this file now that mdsRestConfig is gone.
+# broker's mds-token secret, which this overlay does not reference (CMF
+# validates its own embedded MDS's locally-issued JWTs, not the broker's).
 mountedVolumes:
   volumes:
     - name: cmf-embedded-mds-keypair
