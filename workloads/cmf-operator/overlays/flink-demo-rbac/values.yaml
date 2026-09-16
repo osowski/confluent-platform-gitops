@@ -67,6 +67,15 @@ cmf:
     user-store: LDAP_WITH_OAUTH
     callback-handler-class: io.confluent.security.auth.provider.ldap.LdapAuthenticateCallbackHandler
     sasl-mechanism: PLAIN
+    # Dedicated top-level fields (embedded-mds.rst's OIDC(OAuth) worked
+    # example sets these exact two at this exact level) - the doc's own
+    # auto-detection table ties jwks-endpoint-url + callback-handler-class
+    # to LDAP_WITH_OAUTH specifically. Neither was ever set here in the
+    # first two attempts (#419) - expected-issuer alone had no effect,
+    # which is consistent with the chart gating on jwks-endpoint-url
+    # before wiring either into the embedded MDS's own JwtAuthenticator.
+    jwks-endpoint-url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+    expected-issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
     super-users: "User:admin"
     extra-configs:
       ldap.java.naming.provider.url: ldap://openldap.openldap.svc.cluster.local:389
@@ -96,19 +105,15 @@ cmf:
       confluent.oidc.idp.token.base.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
       confluent.oidc.idp.device.authorization.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/auth/device
 
-  # Validate bearer JWTs from EITHER source - the embedded MDS's own
-  # public key (LDAP logins) or Keycloak's JWKS (OIDC/SSO logins and
-  # CMFRestClass's existing Keycloak-OAuth client-credentials tokens),
-  # per the doc's worked OIDC(OAuth) example (embedded-mds.rst) - these
-  # oauthbearer.* keys go here, not in cmf.mds.extra-configs (#419's
-  # earlier attempt put them in the wrong block; confirmed via jar
-  # inspection that extra-configs doesn't route them to this validator).
+  # Validate MDS-issued JWTs locally using the embedded MDS's own public
+  # key. "type: oauth" here means "validate a bearer JWT via public key" -
+  # not "go through an external IdP" - per the doc's own LDAP example.
+  # (The prior attempt's oauthbearer.* additions here were unproven and
+  # didn't fix the crash - reverted to isolate this test to the single
+  # cmf.mds.jwks-endpoint-url/expected-issuer variable above.)
   authentication:
     type: oauth
     config:
-      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-      oauthbearer.expected.issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-      oauthbearer.sub.claim.name: sub
       public.key.path: /mnt/secrets/mds/tokenPublicKey.pem
       confluent.metadata.bootstrap.server.urls: http://localhost:8090
 
