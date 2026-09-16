@@ -14,6 +14,45 @@ env:
   - name: LOGGING_LEVEL_IO_CONFLUENT_COMMON_SECURITY
     value: DEBUG
 
+# extraEnv is a list, and Helm's multi -f value-file merge REPLACES list
+# values wholesale rather than concatenating them (verified empirically) -
+# so this overlay must repeat base/values.yaml's AWS_ACCESS_KEY_ID/
+# AWS_SECRET_ACCESS_KEY entries alongside its own additions, or the base
+# entries silently disappear and MinIO artifact storage breaks.
+#
+# CMF_SSL_KEYSTORE_PASSWORD/CMF_SSL_TRUSTSTORE_PASSWORD back the
+# ${ENV_VAR} placeholders used in cmf.ssl below (#423) - this is the
+# documented mechanism (docs-cp-flink/installation/helm.rst,
+# "Inject secrets with environment variables"): CMF resolves ${ENV_VAR}
+# placeholders anywhere in its config at startup. A secretKeyRef nested
+# directly under cmf.ssl.key-store-password (as in the original task
+# brief) does NOT work - confluent-manager-for-apache-flink's
+# templates/configmap.yaml passes the entire cmf.ssl block through
+# `toYaml` verbatim with no Helm-side resolution, so any such value
+# would land in the rendered CMF config file as a literal, unresolved
+# YAML object.
+extraEnv:
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: minio-credentials
+        key: root-user
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-credentials
+        key: root-password
+  - name: CMF_SSL_KEYSTORE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: cfk-cmf-jks-passwords
+        key: keystore-password
+  - name: CMF_SSL_TRUSTSTORE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: cfk-cmf-jks-passwords
+        key: truststore-password
+
 # Encryption of CMF Secrets - required by the FlinkSecret CRD, which syncs
 # Kubernetes Secrets into CMF's metadata database. CMF uses AES-GCM.
 #
@@ -105,15 +144,46 @@ cmf:
       confluent.oidc.idp.token.base.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
       confluent.oidc.idp.device.authorization.endpoint.uri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/auth/device
 
+  # Server SSL/TLS (#423) - configures HTTPS for incoming client connections
+  # to CMF itself (Spring Boot server.ssl.* properties, per
+  # docs-cp-flink/installation/authentication.rst's "Understanding SSL
+  # configuration in CMF"). Independent of cmf.mds.* (the embedded MDS's
+  # own listener) and of confluent.metadata.ssl.* (CMF-to-MDS, which does
+  # not apply here since authorization.authority: cmf talks to the
+  # embedded MDS over loopback).
+  #
+  # Field names (keystore/keystore-password vs. trust-store/
+  # trust-store-password) are exactly as documented - not a typo, just an
+  # inconsistency in CMF's own property names, confirmed against two
+  # independent doc examples (authentication.rst, embedded-mds.rst).
+  #
+  # client-auth: want (not need) is deliberate - LDAP-only sessions (the
+  # CMF UI, Keycloak SSO) present no client certificate and must keep
+  # working; only CFK's CMFRestClass is expected to authenticate via mTLS.
+  ssl:
+    keystore: /mnt/secrets/tls/keystore.jks
+    keystore-password: ${CMF_SSL_KEYSTORE_PASSWORD}
+    trust-store: /mnt/secrets/tls/truststore.jks
+    trust-store-password: ${CMF_SSL_TRUSTSTORE_PASSWORD}
+    client-auth: want
+
   # Validate MDS-issued JWTs locally using the embedded MDS's own public
   # key. "type: oauth" here means "validate a bearer JWT via public key" -
   # not "go through an external IdP" - per the doc's own LDAP example.
   # (The prior attempt's oauthbearer.* additions here were unproven and
   # didn't fix the crash - reverted to isolate this test to the single
   # cmf.mds.jwks-endpoint-url/expected-issuer variable above.)
+  #
+  # type: mtls (#423) - identifies the client principal from the client
+  # certificate presented during the mTLS handshake (CFK's CMFRestClass,
+  # Task 3) instead of validating a bearer JWT. public.key.path and
+  # confluent.metadata.bootstrap.server.urls are unchanged from the prior
+  # oauth config - they configure the embedded MDS connection, not the
+  # client-authentication mechanism itself.
   authentication:
-    type: oauth
+    type: mtls
     config:
+      auth.ssl.principal.mapping.rules: "RULE:^CN=(.*?),.*$/$1/,DEFAULT"
       public.key.path: /mnt/secrets/mds/tokenPublicKey.pem
       confluent.metadata.bootstrap.server.urls: http://localhost:8090
 
@@ -139,11 +209,19 @@ cmf:
 # Mount CMF's own embedded-MDS key pair (#418) - distinct from the Kafka
 # broker's mds-token secret, which this overlay does not reference (CMF
 # validates its own embedded MDS's locally-issued JWTs, not the broker's).
+#
+# cmf-server-tls (#423) - the keystore/truststore produced by Task 1's
+# cert-manager Certificate, backing the cmf.ssl block above.
 mountedVolumes:
   volumes:
     - name: cmf-embedded-mds-keypair
       secret:
         secretName: cmf-embedded-mds-keypair
+    - name: cmf-server-tls
+      secret:
+        secretName: cmf-server-tls
   volumeMounts:
     - name: cmf-embedded-mds-keypair
       mountPath: /mnt/secrets/mds
+    - name: cmf-server-tls
+      mountPath: /mnt/secrets/tls
