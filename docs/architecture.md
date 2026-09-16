@@ -375,8 +375,11 @@ The `flink-demo-rbac` cluster implements a three-layer authorization model for g
    MDS bearer tokens (also the credential actually used for SR/C3's Kafka
    connection at runtime, despite a schema-required but unused PLAIN
    config — see the ConfluentRolebinding/patch comments) and, for
-   Control Center's own Schema Registry client, HTTP Basic; Control
-   Center's browser SSO and CMF remain Keycloak-backed pending #412/#414.
+   Control Center's own Schema Registry client, HTTP Basic. As of #418,
+   CMF authenticates and authorizes users via its own embedded MDS
+   (`cmf.mds.enabled: true`, LDAP user store) against the same OpenLDAP
+   directory — entirely independent of Kafka's broker-hosted MDS above.
+   Control Center's browser SSO remains Keycloak-backed pending #414.
 
 **Layer 3 — MDS Authorization (ConfluentRoleBindings):**
 - Metadata Service (MDS) enforces fine-grained RBAC on Confluent Platform resources
