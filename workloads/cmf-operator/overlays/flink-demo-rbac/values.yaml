@@ -31,9 +31,8 @@ encryption:
     kubernetesSecretName: cmf-encryption-key
     kubernetesSecretProperty: key
 
-# OAuth authentication configuration for CMF REST API
-# Validates bearer tokens from Keycloak for incoming client requests
-# IMPORTANT: CMF validates MDS-signed tokens using the MDS public key
+# CMF configuration - authentication, authorization, and login all run
+# through CMF's own embedded MDS (#418), backed by the OpenLDAP directory.
 cmf:
   # Enable stack traces in error responses for debugging authorization issues
   stackTraceLogging: true
@@ -53,84 +52,73 @@ cmf:
       port: 5432
       options: ""
 
+  # Embedded MDS (#418) - CMF runs its own MDS instance, entirely
+  # independent of the Kafka broker's own MDS (#410/#411). Authenticates
+  # directly against the existing OpenLDAP directory using the same
+  # read-only bind identity (uid=mds) Kafka's broker MDS already uses -
+  # not a Kafka RBAC principal, just a directory-search credential, so
+  # reusing it (rather than seeding a new one) is safe and simplest.
+  mds:
+    enabled: true
+    port: 8090
+    authentication-method: BEARER
+    token-key-path: /mnt/secrets/mds/tokenKeypair.pem
+    public-key-path: /mnt/secrets/mds/tokenPublicKey.pem
+    user-store: LDAP
+    callback-handler-class: io.confluent.security.auth.provider.ldap.LdapAuthenticateCallbackHandler
+    sasl-mechanism: PLAIN
+    super-users: "User:admin"
+    extra-configs:
+      ldap.java.naming.provider.url: ldap://openldap.openldap.svc.cluster.local:389
+      ldap.java.naming.security.principal: uid=mds,ou=services,dc=confluentdemo,dc=local
+      ldap.java.naming.security.credentials: mds-bind-password
+      ldap.java.naming.security.authentication: simple
+      ldap.user.search.base: ou=users,dc=confluentdemo,dc=local
+      ldap.user.name.attribute: uid
+      ldap.user.object.class: inetOrgPerson
+      ldap.search.mode: GROUPS
+      ldap.group.search.base: ou=groups,dc=confluentdemo,dc=local
+      ldap.group.object.class: groupOfNames
+      ldap.group.name.attribute: cn
+      ldap.group.member.attribute: member
+      ldap.group.member.attribute.pattern: uid=(.*),ou=users,dc=confluentdemo,dc=local
+
+  # Validate MDS-issued JWTs locally using the embedded MDS's own public
+  # key. "type: oauth" here means "validate a bearer JWT via public key" -
+  # not "go through an external IdP" - per the doc's own LDAP example.
   authentication:
     type: oauth
     config:
-      # JWKS endpoint for token validation (internal cluster DNS)
-      oauthbearer.jwks.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+      public.key.path: /mnt/secrets/mds/tokenPublicKey.pem
+      confluent.metadata.bootstrap.server.urls: http://localhost:8090
 
-      # Token issuer name for MDS-signed tokens
-      token.issuer: Confluent
-
-      # Expected issuer must match the external URL that clients use
-      # This is what appears in the token's "iss" claim
-      # Must match KC_HOSTNAME setting in Keycloak deployment
-      oauthbearer.expected.issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-
-      # Principal claim - use client_id as the user identifier
-      # This works for both service accounts (client_id from service account) and
-      # user accounts (client_id is set by the controlcenter client via protocol mapper)
-      oauthbearer.sub.claim.name: client_id
-
-      # Groups claim - extract group membership from tokens
-      oauthbearer.groups.claim.name: groups
-
-      # MDS public key path for validating MDS-signed SSO tokens from Control Center
-      # Control Center uses SSO tokens signed by MDS, not direct OAuth tokens
-      public.key.path: /mount/mds/mdsPublicKey.pem
-
-      # MDS metadata server URLs for token validation
-      confluent.metadata.bootstrap.server.urls: http://kafka.kafka.svc.cluster.local:8090
-
-      # OAuth credentials provider for CMF to authenticate to MDS
-      confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
-
-      # Token endpoint for CMF to obtain its own tokens (internal cluster DNS)
-      # Used when CMF needs to authenticate as a service principal
-      confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-
-      # CMF client credentials for authenticating to MDS
-      confluent.metadata.oauthbearer.login.client.id: cmf
-      confluent.metadata.oauthbearer.login.client.secret: cmf-secret
-
-  # Kafka-specific OAuth configuration
+  # Required unconditionally by CMF's chart validator regardless of
+  # whether an external OAuth IdP is involved (confirmed empirically
+  # during #412's live verification - IllegalStateException otherwise).
   kafka:
-    # OAuth bearer allowed URLs - Required for OAuth authentication
-    # Must include full token endpoint URL paths, not just realm base URLs
-    oauthbearerAllowedUrls: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/token,http://keycloak.flink-demo-rbac.confluentdemo.local:30080/realms/confluent/protocol/openid-connect/certs
+    oauthbearerAllowedUrls: "http://localhost:8090"
 
-# Authorization configuration - connect to MDS for RBAC
+  # Authorize Flink/CMF resources through the embedded MDS (mutually
+  # exclusive with mdsRestConfig, which must not appear anywhere in this
+  # file - authority=cmf is incompatible with mdsRestConfig).
   authorization:
-    mdsRestConfig:
-      # MDS endpoint on Kafka broker (internal cluster DNS)
-      endpoint: http://kafka.kafka.svc.cluster.local:8090
-      # OAuth authentication for CMF to talk to MDS
-      authentication:
-        type: oauth
-        config:
-          # OAuth bearer credentials provider
-          confluent.metadata.http.auth.credentials.provider: OAUTHBEARER
-          # Token endpoint to obtain tokens
-          confluent.metadata.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          # Client ID for CMF service principal
-          confluent.metadata.oauthbearer.login.client.id: cmf
-          # Client secret - hard-coded for demo (production should use external-secrets or vault)
-          # NOTE: CMF Helm chart v2.2.0 does not support extraEnv field for custom environment variables
-          confluent.metadata.oauthbearer.login.client.secret: cmf-secret
+    authority: cmf
 
-  # UI login modes. cmf.authentication is already OAuth-configured against
-  # Keycloak via the broker MDS above, using the same OIDC flow.
+  # LDAP credentials via the CMF UI's Basic login form. No SSO/OIDC yet
+  # (LDAP_WITH_OAUTH is a separate, later task).
   ui:
     auth:
-      basicAuthEnabled: false
-      ssoEnabled: true
+      basicAuthEnabled: true
+      ssoEnabled: false
 
-# Mount MDS token secret for public key validation of MDS-signed SSO tokens
+# Mount CMF's own embedded-MDS key pair (#418) - distinct from the Kafka
+# broker's mds-token secret, which is no longer referenced anywhere in
+# this file now that mdsRestConfig is gone.
 mountedVolumes:
   volumes:
-    - name: mds-token
+    - name: cmf-embedded-mds-keypair
       secret:
-        secretName: mds-token
+        secretName: cmf-embedded-mds-keypair
   volumeMounts:
-    - name: mds-token
-      mountPath: /mount/mds
+    - name: cmf-embedded-mds-keypair
+      mountPath: /mnt/secrets/mds
