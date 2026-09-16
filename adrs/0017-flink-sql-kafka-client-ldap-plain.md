@@ -22,8 +22,9 @@ to have surfaced the auth failure live.
 ## Decision
 
 Switch `shapes-cmf-kafka-credentials` and `colors-cmf-kafka-credentials` to `sasl.mechanism: PLAIN`
-with the LDAP service principal `uid=cmf,ou=services,dc=confluentdemo,dc=local` (password
-`cmf-secret`), keeping the existing shared-`cmf`-identity design. This principal was seeded
+via `org.apache.kafka.common.security.plain.PlainLoginModule`, with the LDAP service principal
+`uid=cmf,ou=services,dc=confluentdemo,dc=local` (password `cmf-secret`), keeping the existing
+shared-`cmf`-identity design. This principal was seeded
 by #409 (the OpenLDAP directory task) and already holds Kafka superuser permissions from
 #410's `kafka-patch.yaml`. Did not implement true MDS-issued-bearer-token/OAUTHBEARER validation
 on this listener — that path is deferred to #420, which requires broker-listener and external
