@@ -61,6 +61,13 @@ data:
     sn: c3
     userPassword: c3-secret
 
+    dn: uid=cmf,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: cmf
+    cn: cmf
+    sn: cmf
+    userPassword: cmf-secret
+
   03-demo-users.ldif: |
     dn: uid=admin,ou=users,dc=confluentdemo,dc=local
     objectClass: inetOrgPerson
