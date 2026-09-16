@@ -1,0 +1,32 @@
+---
+# CFK's client identity for authenticating to CMF's CMFRestClass endpoint.
+# CN becomes the CMF principal via auth.ssl.principal.mapping.rules
+# (RULE:^CN=(.*?),.*$/$1/,DEFAULT maps this to principal "cfk-operator").
+#
+# Output format left as cert-manager's native tls.crt/tls.key/ca.crt (PEM).
+# See task-1-report.md for why the brief's proposed PEM-rename PostSync Job
+# (tls.crt/tls.key/ca.crt -> server.pem/server-key.pem/ca.pem) was NOT added
+# in this task: kubectl explain cmfrestclass.spec.cmfRest.tls --recursive
+# shows a `jksPassword.secretRef` (required) field alongside `secretRef`,
+# which is evidence CMFRestClass's tls.secretRef may expect a JKS keystore
+# rather than PEM files under any key-naming convention. That question is
+# left for Task 3's live verification rather than guessed here.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cfk-cmf-client-tls
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  secretName: cfk-cmf-client-tls
+  commonName: cfk-operator
+  duration: 8760h
+  renewBefore: 360h
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  issuerRef:
+    name: cfk-cmf-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
