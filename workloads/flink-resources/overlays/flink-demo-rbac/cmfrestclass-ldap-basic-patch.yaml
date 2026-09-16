@@ -1,0 +1,17 @@
+# Overrides the shared oauth component's CMFRestClass Keycloak config
+# (components/oauth/cmfrestclass-oauth-patch.yaml) for this cluster only.
+# CMF's own authorization backend here is the embedded MDS (#418), which
+# validates LDAP-backed Basic Auth, not Keycloak-issued OAuth tokens (#422)
+# — applied after the oauth component so this patch wins the merge.
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    authentication:
+      type: basic
+      basic:
+        secretRef: cmf-rest-class-basic
+      oauth: null

@@ -3,9 +3,13 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - cmf-rest-class-basic-secret.yaml
 
 components:
   - ../../components/oauth
+
+patches:
+  - path: cmfrestclass-ldap-basic-patch.yaml
 
 labels:
 - includeSelectors: false
