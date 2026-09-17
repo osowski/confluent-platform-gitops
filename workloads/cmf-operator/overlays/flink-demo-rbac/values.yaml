@@ -116,7 +116,7 @@ cmf:
     jwks-endpoint-url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
     expected-issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
     # User:cfk-operator (#423) - CFK's mTLS client certificate CN
-    # (cfk-cmf-client-cert, Task 1) maps to principal "cfk-operator" via
+    # (cfk-cmf-client-tls, Task 1) maps to principal "cfk-operator" via
     # auth.ssl.principal.mapping.rules above. Granted full superuser here,
     # same coarse grant as User:admin, rather than a scoped role binding -
     # a deliberate simplification for this issue (CFK needs broad access
