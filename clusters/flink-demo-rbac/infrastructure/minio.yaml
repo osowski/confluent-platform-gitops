@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-426/flink-sql-kafka-creds
+    targetRevision: feature-409/openldap-workload
     path: infrastructure/minio/overlays/flink-demo-rbac
   destination:
     server: https://kubernetes.default.svc
