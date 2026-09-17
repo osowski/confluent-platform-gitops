@@ -48,3 +48,38 @@ the deferred work: #420 (broker-listener OAUTHBEARER support + Schema Registry b
 and #421 (the raw JAR-based FlinkApplication jobs' independent OAUTHBEARER Kafka config against
 the same port-9071 listener, tracked separately since it is a different workload from Flink SQL
 statements and out of #413's scope).
+
+## Update (#426, 2026-09-17): Schema Registry leg resolved, without #420's broker changes
+
+The Schema Registry gap flagged above as deferred to #420 has been resolved — for colors/shapes'
+Flink SQL Kafka client Secrets (`shapes-cmf-sr-credentials`/`colors-cmf-sr-credentials`) and the
+`default` environment's equivalents (which had never received *any* part of this ADR's fix —
+`default-cmf-kafka-credentials` was still full OAUTHBEARER, not just its SR leg).
+
+**Turns out #420's premise was wrong: no broker-listener changes were needed.** Schema Registry
+has run with `spec.authorization.type: rbac` (MDS-backed, since #411) all along, and MDS-backed
+RBAC on Schema Registry validates **HTTP Basic** credentials the same way it validates bearer
+tokens — confirmed live via `curl -u cmf:cmf-secret http://schemaregistry.../subjects` → `200`.
+Switching `bearer.auth.*` (Keycloak OAuth) to `basic.auth.credentials.source: USER_INFO` /
+`basic.auth.user.info: cmf:cmf-secret` (mirroring this ADR's Kafka-side `cmf`/`cmf-secret`
+identity) was sufficient — both in the CMF credential-chain Secrets and in each affected
+FlinkEnvironment's `flinkConfiguration` (the running job's own runtime Schema Registry client
+config, a separate surface from CMF's own catalog-validation client). #420's broker-listener
+OAUTHBEARER-support half remains a legitimate, still-undone enhancement if MDS-issued bearer
+tokens are ever specifically required, but it is no longer a blocker for anything.
+
+**Root cause was a trust mismatch, not a missing feature**, the same class of bug as #422:
+Keycloak-issued tokens are cryptographically foreign to MDS's signing key, so any
+schema-touching operation failed with a generic "Catalog could not be created" — confirmed
+live by reproducing all three legs directly (LDAP bind, broker SASL/PLAIN auth, and Schema
+Registry HTTP Basic auth) as the `cmf` principal, all three succeeding independently of Flink.
+
+**Still open, confirmed but explicitly out of #426's scope:** with credentials fixed, both
+`colors-sql-enrich` and `shapes-sql-enrich` now reach real SQL compilation (`Unknown target
+column 'timestamp'`) instead of failing at catalog creation — proving this leg is fully fixed.
+That compilation failure traces to #421's raw JAR producer jobs (`colors`/`shapes`
+`FlinkApplication`s) never having successfully run even once (same stale-Keycloak-credential
+pattern, on both their Kafka *and* Schema Registry legs) to register a schema for the topics
+`colors-sql-enrich`/`shapes-sql-enrich` read from — Schema Registry has zero subjects
+registered. Fixing #421 is now confirmed to be the actual remaining blocker to a Flink SQL
+statement running end-to-end, not a merely-adjacent issue.
