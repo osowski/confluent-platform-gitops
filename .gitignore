@@ -36,7 +36,10 @@ scripts/images.txt
 scripts/failed-images.txt
 
 # IDE AI assistant files
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/cp-flink-validation/
 .cursor/
 
 # Local-only working documents (design specs, brainstorming outputs)
