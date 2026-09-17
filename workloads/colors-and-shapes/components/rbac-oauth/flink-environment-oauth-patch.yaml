@@ -7,11 +7,10 @@ spec:
   flinkApplicationDefaults:
     spec:
       flinkConfiguration:
-        # Schema Registry OAuth bearer authentication
-        table.sql-catalog.confluent.schema-registry.bearer.auth.credentials.source: "OAUTHBEARER"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.token.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.client.id: "sa-shapes-flink"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.client.secret: "sa-shapes-flink-secret"
+        # Schema Registry Basic auth (#426) — see flink-secrets.yaml's
+        # shapes-cmf-sr-credentials comment for why this isn't OAuth bearer.
+        table.sql-catalog.confluent.schema-registry.basic.auth.credentials.source: "USER_INFO"
+        table.sql-catalog.confluent.schema-registry.basic.auth.user.info: "cmf:cmf-secret"
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkEnvironment
@@ -22,8 +21,7 @@ spec:
   flinkApplicationDefaults:
     spec:
       flinkConfiguration:
-        # Schema Registry OAuth bearer authentication
-        table.sql-catalog.confluent.schema-registry.bearer.auth.credentials.source: "OAUTHBEARER"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.token.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.client.id: "sa-colors-flink"
-        table.sql-catalog.confluent.schema-registry.bearer.auth.client.secret: "sa-colors-flink-secret"
+        # Schema Registry Basic auth (#426) — see flink-secrets.yaml's
+        # colors-cmf-sr-credentials comment for why this isn't OAuth bearer.
+        table.sql-catalog.confluent.schema-registry.basic.auth.credentials.source: "USER_INFO"
+        table.sql-catalog.confluent.schema-registry.basic.auth.user.info: "cmf:cmf-secret"
