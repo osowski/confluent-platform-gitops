@@ -40,11 +40,11 @@ The Flink deployment consists of three ArgoCD Applications:
 
 Flink integrates with the existing Confluent Platform components:
 
-- **Kafka Broker**: `kafka.confluent.svc.cluster.local:9092`
+- **Kafka Broker**: `kafka.kafka.svc.cluster.local:9092`
   - Source and sink for Flink streaming jobs
   - Bootstrap servers configured in FlinkEnvironment
 
-- **Schema Registry**: `http://schemaregistry.confluent.svc.cluster.local:8081`
+- **Schema Registry**: `http://schemaregistry.kafka.svc.cluster.local:8081`
   - Schema management for Kafka topics
   - Avro serialization/deserialization
 
@@ -90,11 +90,11 @@ and Flink SQL — see [architecture.md](architecture.md#intra-application-sync-w
 spec:
   # Kafka integration
   kafkaCluster:
-    bootstrapServers: kafka.confluent.svc.cluster.local:9092
+    bootstrapServers: kafka.kafka.svc.cluster.local:9092
 
   # Schema Registry integration
   schemaRegistry:
-    url: http://schemaregistry.confluent.svc.cluster.local:8081
+    url: http://schemaregistry.kafka.svc.cluster.local:8081
 
   # Default resources (conservative for homelab)
   flinkConfiguration:
@@ -194,9 +194,9 @@ CREATE TABLE orders (
 ) WITH (
   'connector' = 'kafka',
   'topic' = 'orders',
-  'properties.bootstrap.servers' = 'kafka.confluent.svc.cluster.local:9092',
+  'properties.bootstrap.servers' = 'kafka.kafka.svc.cluster.local:9092',
   'format' = 'avro-confluent',
-  'avro-confluent.url' = 'http://schemaregistry.confluent.svc.cluster.local:8081'
+  'avro-confluent.url' = 'http://schemaregistry.kafka.svc.cluster.local:8081'
 );
 
 -- Aggregate and write to another topic
@@ -207,9 +207,9 @@ CREATE TABLE order_totals (
 ) WITH (
   'connector' = 'kafka',
   'topic' = 'order-totals',
-  'properties.bootstrap.servers' = 'kafka.confluent.svc.cluster.local:9092',
+  'properties.bootstrap.servers' = 'kafka.kafka.svc.cluster.local:9092',
   'format' = 'avro-confluent',
-  'avro-confluent.url' = 'http://schemaregistry.confluent.svc.cluster.local:8081'
+  'avro-confluent.url' = 'http://schemaregistry.kafka.svc.cluster.local:8081'
 );
 
 -- Execute streaming query
@@ -262,34 +262,34 @@ CMF provides a web interface for managing Flink applications:
 Monitor Flink pods:
 
 ```bash
-# View Flink operator pods
-kubectl get pods -n confluent -l app.kubernetes.io/name=flink-kubernetes-operator
+# View Flink operator pods (flink-kubernetes-operator and cmf run in the `operator` namespace)
+kubectl get pods -n operator -l app.kubernetes.io/name=flink-kubernetes-operator
 
 # View CMF pods
-kubectl get pods -n confluent -l app.kubernetes.io/name=cmf
+kubectl get pods -n operator -l app.kubernetes.io/name=cmf
 
-# View Flink application pods
-kubectl get pods -n confluent -l type=flink-native-kubernetes
+# View Flink application pods (tenant-scoped, e.g. flink-colors, flink-shapes, flink)
+kubectl get pods -n <namespace> -l type=flink-native-kubernetes
 
-# Check Flink custom resources
-kubectl get flinkdeployment -n confluent
-kubectl get flinkapplication -n confluent
+# Check Flink custom resources (tenant-scoped)
+kubectl get flinkdeployment -n <namespace>
+kubectl get flinkapplication -n <namespace>
 ```
 
 ### Logs
 
 ```bash
 # Flink Kubernetes Operator logs
-kubectl logs -n confluent -l app.kubernetes.io/name=flink-kubernetes-operator
+kubectl logs -n operator -l app.kubernetes.io/name=flink-kubernetes-operator
 
 # CMF logs
-kubectl logs -n confluent -l app.kubernetes.io/name=cmf
+kubectl logs -n operator -l app.kubernetes.io/name=cmf
 
-# Flink JobManager logs
-kubectl logs -n confluent <jobmanager-pod-name>
+# Flink JobManager logs (tenant-scoped)
+kubectl logs -n <namespace> <jobmanager-pod-name>
 
-# Flink TaskManager logs
-kubectl logs -n confluent <taskmanager-pod-name>
+# Flink TaskManager logs (tenant-scoped)
+kubectl logs -n <namespace> <taskmanager-pod-name>
 ```
 
 ## Troubleshooting
@@ -299,8 +299,8 @@ kubectl logs -n confluent <taskmanager-pod-name>
 **Problem**: Flink Kubernetes Operator not starting
 
 **Solution**:
-1. Check operator logs: `kubectl logs -n confluent -l app.kubernetes.io/name=flink-kubernetes-operator`
-2. Verify RBAC permissions: `kubectl auth can-i create flinkdeployment --as=system:serviceaccount:confluent:flink-kubernetes-operator -n confluent`
+1. Check operator logs: `kubectl logs -n operator -l app.kubernetes.io/name=flink-kubernetes-operator`
+2. Verify RBAC permissions: `kubectl auth can-i create flinkdeployment --as=system:serviceaccount:operator:flink-kubernetes-operator -n operator`
 3. Check CRDs installed: `kubectl get crd | grep flink`
 
 ### CMF Issues
@@ -308,8 +308,8 @@ kubectl logs -n confluent <taskmanager-pod-name>
 **Problem**: CMF pod in CrashLoopBackOff
 
 **Solution**:
-1. Check logs: `kubectl logs -n confluent -l app.kubernetes.io/name=cmf`
-2. Verify PVC bound: `kubectl get pvc -n confluent`
+1. Check logs: `kubectl logs -n operator -l app.kubernetes.io/name=cmf`
+2. Verify PVC bound: `kubectl get pvc -n operator`
 3. Check storage class available: `kubectl get storageclass`
 
 ### FlinkApplication Issues
@@ -317,9 +317,9 @@ kubectl logs -n confluent <taskmanager-pod-name>
 **Problem**: FlinkApplication not creating pods
 
 **Solution**:
-1. Check FlinkApplication status: `kubectl describe flinkapplication <name> -n confluent`
-2. Verify FlinkEnvironment exists: `kubectl get flinkenvironment -n confluent`
-3. Check CMFRestClass configured: `kubectl get cmfrestclass -n confluent`
+1. Check FlinkApplication status: `kubectl describe flinkapplication <name> -n <namespace>`
+2. Verify FlinkEnvironment exists: `kubectl get flinkenvironment -n <namespace>`
+3. Check CMFRestClass configured: `kubectl get cmfrestclass -n <namespace>`
 4. Verify Kafka connectivity from a test pod
 
 ### Kafka Connection Issues
@@ -327,11 +327,11 @@ kubectl logs -n confluent <taskmanager-pod-name>
 **Problem**: Flink jobs cannot connect to Kafka
 
 **Solution**:
-1. Verify Kafka broker running: `kubectl get kafka -n confluent`
+1. Verify Kafka broker running: `kubectl get kafka -n kafka`
 2. Test connectivity:
    ```bash
    kubectl run -it --rm kafka-test --image=confluentinc/cp-kafka:8.2.0 --restart=Never -- \
-     kafka-broker-api-versions --bootstrap-server kafka.confluent.svc.cluster.local:9092
+     kafka-broker-api-versions --bootstrap-server kafka.kafka.svc.cluster.local:9092
    ```
 3. Check FlinkEnvironment Kafka configuration
 4. Verify network policies allow traffic

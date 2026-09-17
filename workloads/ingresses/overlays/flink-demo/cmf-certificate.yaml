@@ -9,6 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "110"
 spec:
+  commonName: cmf.flink-demo.confluentdemo.local
   dnsNames:
     - cmf.flink-demo.confluentdemo.local
     - cmf-ui.flink-demo.confluentdemo.local

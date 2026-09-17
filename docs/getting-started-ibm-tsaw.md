@@ -14,7 +14,7 @@ Once the cluster is bootstrapped, this guide continues past Control Center into 
 git clone https://github.com/osowski/confluent-platform-gitops.git
 cd confluent-platform-gitops
 git tag --sort=-v:refname | head -n 1
-git checkout v0.8.2      # e.g., git checkout v0.2.0
+git checkout v0.9.0
 ```
 
 Checking out a release tag ensures you are working from a known-good snapshot where all `targetRevision` values are pinned to that version. If you stay on `main`, the deployment will track `HEAD` and may include in-progress changes. See [Release Process](release-process.md) for details.
@@ -90,10 +90,11 @@ kubectl wait pods --namespace argocd --all --for=condition=Ready --timeout=300s
 
 ## Bootstrap
 
-10. The environment already has this repository cloned into `/opt/lab/confluent-platform-gitops` on the VM — this is the root working directory for the rest of the workshop:
+10. The environment already has this repository cloned into `/opt/lab/confluent-platform-gitops` on the VM — this is the root working directory for the rest of the workshop. Ensure you are on the `main` branch:
 
 ```bash
 cd /opt/lab/confluent-platform-gitops
+git checkout main
 ```
 
 11. Apply the cluster bootstrap:
@@ -123,7 +124,7 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 ## Deploy Confluent and Flink Workloads
 
-The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy.
+The `confluent-resources`, `flink-agents`, `flink-resources`, `colors-and-shapes`, and `kube-prometheus-stack` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy. Only the first three are needed for this walkthrough; `flink-agents` and `kube-prometheus-stack` aren't exercised further in this guide.
 
 14. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding. This may take a few minutes as Kafka and Control Center come fully online.
 

@@ -24,7 +24,7 @@ For the full sync-wave table and architectural decision, see [Architecture - Int
 1. **cfk-operator** (wave 105)
    - Helm chart from https://packages.confluent.io/helm
    - Namespace-scoped operator managing Confluent Platform resources
-   - Deployed to `confluent` namespace
+   - Deployed to `operator` namespace
    - Creates 22 CRDs in the `platform.confluent.io` API group
 
 2. **confluent-resources** (wave 110)
@@ -48,7 +48,7 @@ For the full sync-wave table and architectural decision, see [Architecture - Int
 
 Kafka is accessible within the cluster at:
 ```
-kafka.confluent.svc.cluster.local:9092
+kafka.kafka.svc.cluster.local:9092
 ```
 
 ### kubectl Port-Forward
@@ -56,10 +56,10 @@ kafka.confluent.svc.cluster.local:9092
 For local development or testing:
 ```bash
 # Forward Kafka broker port
-kubectl port-forward -n confluent kafka-0 9092:9092
+kubectl port-forward -n kafka kafka-0 9092:9092
 
 # Forward Schema Registry port
-kubectl port-forward -n confluent schemaregistry-0 8081:8081
+kubectl port-forward -n kafka schemaregistry-0 8081:8081
 ```
 
 ### From a Pod
@@ -68,7 +68,7 @@ Use the internal DNS name and port 9092:
 ```yaml
 env:
   - name: KAFKA_BOOTSTRAP_SERVERS
-    value: "kafka.confluent.svc.cluster.local:9092"
+    value: "kafka.kafka.svc.cluster.local:9092"
 ```
 
 ## Common Operations
@@ -77,7 +77,7 @@ env:
 
 ```bash
 # Exec into Kafka pod
-kubectl exec -it -n confluent kafka-0 -- bash
+kubectl exec -it -n kafka kafka-0 -- bash
 
 # Create a topic
 kafka-topics \
@@ -107,14 +107,14 @@ kafka-topics \
 
 ```bash
 # Console producer
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-console-producer \
   --broker-list localhost:9092 \
   --topic my-topic
 # Type messages and press Ctrl+D to exit
 
 # Produce from a file
-kubectl exec -i -n confluent kafka-0 -- \
+kubectl exec -i -n kafka kafka-0 -- \
   kafka-console-producer \
   --broker-list localhost:9092 \
   --topic my-topic < messages.txt
@@ -124,14 +124,14 @@ kubectl exec -i -n confluent kafka-0 -- \
 
 ```bash
 # Console consumer (from beginning)
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-console-consumer \
   --bootstrap-server localhost:9092 \
   --topic my-topic \
   --from-beginning
 
 # Consumer with group
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-console-consumer \
   --bootstrap-server localhost:9092 \
   --topic my-topic \
@@ -142,20 +142,20 @@ kubectl exec -it -n confluent kafka-0 -- \
 
 ```bash
 # List consumer groups
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-consumer-groups \
   --bootstrap-server localhost:9092 \
   --list
 
 # Describe consumer group
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-consumer-groups \
   --bootstrap-server localhost:9092 \
   --group my-consumer-group \
   --describe
 
 # Reset consumer group offsets
-kubectl exec -it -n confluent kafka-0 -- \
+kubectl exec -it -n kafka kafka-0 -- \
   kafka-consumer-groups \
   --bootstrap-server localhost:9092 \
   --group my-consumer-group \
@@ -169,7 +169,7 @@ kubectl exec -it -n confluent kafka-0 -- \
 
 ```bash
 # Port-forward Schema Registry
-kubectl port-forward -n confluent schemaregistry-0 8081:8081
+kubectl port-forward -n kafka schemaregistry-0 8081:8081
 
 # List subjects (schemas)
 curl http://localhost:8081/subjects
@@ -191,18 +191,18 @@ curl -X POST http://localhost:8081/subjects/my-topic-value/versions \
 
 ```bash
 # Get all Confluent resources
-kubectl get kafka,kraftcontroller,schemaregistry -n confluent
+kubectl get kafka,kraftcontroller,schemaregistry -n kafka
 
 # Check pod status
-kubectl get pods -n confluent
+kubectl get pods -n kafka
 
 # View pod logs
-kubectl logs -n confluent kafka-0
-kubectl logs -n confluent kraftcontroller-0
-kubectl logs -n confluent schemaregistry-0
+kubectl logs -n kafka kafka-0
+kubectl logs -n kafka kraftcontroller-0
+kubectl logs -n kafka schemaregistry-0
 
 # Check PVCs
-kubectl get pvc -n confluent
+kubectl get pvc -n kafka
 ```
 
 ### Prometheus Integration
@@ -314,7 +314,7 @@ Commit changes to Git and ArgoCD will automatically sync.
 
 ```bash
 # Check pod events
-kubectl describe pod -n confluent kafka-0
+kubectl describe pod -n kafka kafka-0
 
 # Common issues:
 # - Insufficient resources (check node capacity)
@@ -333,15 +333,15 @@ kubectl get crd | grep platform.confluent.io
 # - kraftcontrollers.platform.confluent.io
 # - schemaregistries.platform.confluent.io
 
-# If missing, check operator deployment
-kubectl get pods -n confluent
-kubectl logs -n confluent -l app=cfk-operator
+# If missing, check operator deployment (cfk-operator runs in the `operator` namespace)
+kubectl get pods -n operator
+kubectl logs -n operator -l app=cfk-operator
 ```
 
 ### Connection Refused Errors
 
-- Ensure pods are running: `kubectl get pods -n confluent`
-- Check service endpoints: `kubectl get svc -n confluent`
+- Ensure pods are running: `kubectl get pods -n kafka`
+- Check service endpoints: `kubectl get svc -n kafka`
 - Verify network policies aren't blocking traffic
 - For KRaft dependency issues, ensure KRaft controller is ready before Kafka starts
 
@@ -349,12 +349,12 @@ kubectl logs -n confluent -l app=cfk-operator
 
 ```bash
 # Check PVC status
-kubectl get pvc -n confluent
+kubectl get pvc -n kafka
 
 # If PVC is pending:
 # - Verify storage class exists: kubectl get storageclass
 # - Check if storage provisioner is running (e.g., Longhorn)
-# - Review PVC events: kubectl describe pvc <pvc-name> -n confluent
+# - Review PVC events: kubectl describe pvc <pvc-name> -n kafka
 ```
 
 ## Security Considerations
@@ -396,7 +396,7 @@ For production-like deployments, consider:
 
 ```java
 Properties props = new Properties();
-props.put("bootstrap.servers", "kafka.confluent.svc.cluster.local:9092");
+props.put("bootstrap.servers", "kafka.kafka.svc.cluster.local:9092");
 props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 ```
@@ -407,12 +407,12 @@ props.put("value.serializer", "org.apache.kafka.common.serialization.StringSeria
 from kafka import KafkaProducer, KafkaConsumer
 
 producer = KafkaProducer(
-    bootstrap_servers=['kafka.confluent.svc.cluster.local:9092']
+    bootstrap_servers=['kafka.kafka.svc.cluster.local:9092']
 )
 
 consumer = KafkaConsumer(
     'my-topic',
-    bootstrap_servers=['kafka.confluent.svc.cluster.local:9092'],
+    bootstrap_servers=['kafka.kafka.svc.cluster.local:9092'],
     group_id='my-group'
 )
 ```
@@ -423,7 +423,7 @@ consumer = KafkaConsumer(
 import "github.com/confluentinc/confluent-kafka-go/kafka"
 
 producer, err := kafka.NewProducer(&kafka.ConfigMap{
-    "bootstrap.servers": "kafka.confluent.svc.cluster.local:9092",
+    "bootstrap.servers": "kafka.kafka.svc.cluster.local:9092",
 })
 ```
 
