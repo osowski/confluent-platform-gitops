@@ -17,7 +17,7 @@ once, both confirmed live:
 | Login path | Mechanism | Verified via |
 |---|---|---|
 | LDAP direct (Basic) | `LdapAuthenticateCallbackHandler` validates username/password against OpenLDAP, embedded MDS self-signs a JWT (`iss: "Confluent"`, RS256, keyed by `cmf.mds.token-key-path`) | CLI (`confluent login`, `admin`/`user-square`) **and** browser — a captured HAR (`GET /security/1.0/authenticate`) shows a real 6-hour JWT for `admin` issued by this exact path |
-| OIDC/SSO (Keycloak) | `jwks-endpoint-url`/`expected-issuer` validate IdP-issued tokens for SSO logins | Configured and live (pod stable, no crash) — **not yet independently exercised via a browser SSO redirect**; only the LDAP-direct path has browser evidence so far |
+| OIDC/SSO (Keycloak) | `jwks-endpoint-url`/`expected-issuer` validate IdP-issued tokens for SSO logins | **Now browser-verified end-to-end** ([#428](https://github.com/osowski/confluent-platform-gitops/issues/428)) |
 
 Root cause and fix: [#419](https://github.com/osowski/confluent-platform-gitops/issues/419),
 commit `43fca07` — the missing piece was the **top-level** Helm fields
@@ -27,8 +27,15 @@ them, `RbacApiApplication.createIdpLoginService` throws
 `IllegalArgumentException("Issuer must not be null or empty")` on startup
 whenever `sso.mode: oidc` is active, crash-looping the CMF pod.
 
-**Open item:** the SSO/OIDC browser-redirect flow itself remains
-unverified — flag before treating that leg as proven, not just configured.
+**Resolved ([#428](https://github.com/osowski/confluent-platform-gitops/issues/428)):**
+the SSO/OIDC browser-redirect flow itself failed on first real exercise —
+Keycloak rejected the token exchange (`"Offline tokens not allowed for the
+user or client"`) because the `cmf` Keycloak client had no
+`offline_access` client scope wired, and every realm user was missing the
+`offline_access`/`uma_authorization` realm roles (statically-imported
+users don't get Keycloak's default-role auto-assignment). Both fixed in
+`workloads/keycloak/base/realm-configmap.yaml` and mirrored into
+`realm-sync-job.yaml`'s Admin API calls for already-provisioned realms.
 
 ## Status: CFK `CMFRestClass` — resolved via mTLS ([#423](https://github.com/osowski/confluent-platform-gitops/issues/423))
 
@@ -63,6 +70,6 @@ catalog) — not a CFK↔CMF auth problem.
 | Question | Answer |
 |---|---|
 | Does CMF support LDAP-based end-user login? | **Yes, validated.** LDAP Basic-auth is live and browser-confirmed. |
-| Does CMF support LDAP + SSO together (`LDAP_WITH_OAUTH`)? | **Yes, configured and stable.** SSO leg not yet independently browser-verified. |
+| Does CMF support LDAP + SSO together (`LDAP_WITH_OAUTH`)? | **Yes, configured and stable — SSO leg now browser-verified too** ([#428](https://github.com/osowski/confluent-platform-gitops/issues/428)). |
 | Should this be embedded MDS or CP-MDS (broker-hosted)? | Embedded MDS is proven sufficient for CMF login alone. CP-MDS only earns its complexity if a customer needs one unified RBAC surface across Kafka **and** Flink — a requirement to confirm with them, not assume. |
 | Can CFK (the Kubernetes operator) manage Flink SQL resources against this CMF? | **Yes — resolved via mTLS ([#423](https://github.com/osowski/confluent-platform-gitops/issues/423)/[ADR-0018](../adrs/0018-cfk-cmf-mtls.md)).** A running SQL statement still needs the separate, out-of-scope Kafka-credential fix noted above. |
