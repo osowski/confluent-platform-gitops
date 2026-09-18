@@ -22,7 +22,7 @@ spec:
       containers:
         - name: producer
           image: quay.io/osowski/kafka-producer:v1.1.0-202609042223
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             # Kafka connection (internal listener)
             - name: KAFKA_BOOTSTRAP_SERVERS
@@ -75,7 +75,7 @@ spec:
       containers:
         - name: producer
           image: quay.io/osowski/kafka-producer:v1.1.0-202609042223
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             # Kafka connection (internal listener)
             - name: KAFKA_BOOTSTRAP_SERVERS
