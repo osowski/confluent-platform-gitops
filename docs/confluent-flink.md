@@ -371,6 +371,11 @@ Sensitive configuration should use Kubernetes Secrets:
 2. **Enable authentication**: Configure Kafka security (SASL/PLAIN or mTLS)
 3. **Tune resources**: Adjust memory and CPU based on workload requirements
 4. **Add to flink-demo cluster**: Replicate configuration for flink-demo cluster
+5. **Validate a change or a new job**: Use the `cp-flink-validation` Claude Skill
+   (`.claude/skills/cp-flink-validation/SKILL.md`) to conversationally define and
+   run a test case against `flink-demo` — data-flow validation, health
+   checks, or config/Helm-chart verification — via either a GitOps or a
+   manual execution path.
 
 ## References
 
