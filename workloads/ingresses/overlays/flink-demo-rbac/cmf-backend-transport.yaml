@@ -1,0 +1,15 @@
+---
+# ServersTransport for Traefik's backend hop to cmf-service (#423 turned on
+# HTTPS-only, self-signed via cmf-server-tls, on CMF's single listener
+# port - see workloads/cmf-operator/overlays/flink-demo-rbac/values.yaml's
+# cmf.ssl block). insecureSkipVerify is fine here: this leg never leaves
+# the cluster network, and every other internal ingress backend hop in
+# this overlay is unencrypted plaintext today - HTTPS+skipVerify is a
+# strict superset of that, not a weakened boundary.
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: cmf-backend-transport
+  namespace: operator
+spec:
+  insecureSkipVerify: true

@@ -1,0 +1,37 @@
+---
+# Overlay-local override for flink-demo-rbac only - do NOT edit
+# components/oauth/cmfrestclass-oauth-patch.yaml, which flink-demo-rbac-mtls
+# and eks-demo still use (issue #423 is scoped to flink-demo-rbac).
+#
+# Structure verified against the live CRD (`kubectl explain
+# cmfrestclass.spec.cmfRest.authentication --recursive` /
+# `...spec.cmfRest.tls --recursive` on kind-flink-demo-rbac): there is no
+# nested `authentication.mtls` object - `type: mtls` and
+# `sslClientAuthentication` are both direct fields of `authentication`, and
+# `tls.secretRef` alone (no `jksPassword`) is schema-legal, matching
+# cert-manager's PEM-only `cfk-cmf-client-tls` Secret (Task 1).
+#
+# IMPORTANT: kustomize's strategic-merge patching for CRDs (no registered
+# OpenAPI merge schema, unlike core types) does a plain deep JSON-merge, not
+# a wholesale field replacement - verified with
+# `kustomize build workloads/flink-resources/overlays/flink-demo-rbac | grep -A25 "kind: CMFRestClass"`.
+# A patch that only sets `authentication.type: mtls` leaves the oauth
+# component's `authentication.oauth` block (secretRef: cfk-cmf-oauth-client,
+# etc.) sitting alongside it in the rendered CR. `oauth: null` below is the
+# explicit SMP delete-field marker, needed to actually remove that block
+# rather than merge past it - confirmed the render now carries only the
+# mtls fields under `authentication`.
+apiVersion: platform.confluent.io/v1beta1
+kind: CMFRestClass
+metadata:
+  name: cmf-rest-class
+  namespace: flink
+spec:
+  cmfRest:
+    endpoint: https://cmf-service.operator.svc.cluster.local:80
+    authentication:
+      type: mtls
+      sslClientAuthentication: true
+      oauth: null
+    tls:
+      secretRef: cfk-cmf-client-tls

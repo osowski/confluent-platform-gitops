@@ -1,0 +1,43 @@
+---
+# CMF's own HTTPS listener cert (cmf.ssl -> Spring Boot server.ssl.*).
+# JKS output because Spring Boot's server.ssl.key-store/trust-store expect
+# a keystore file, not raw PEM.
+#
+# NOTE (verified live against cert-manager v1.19.2 CRDs on kind-flink-demo-rbac):
+# there is no `spec.truststore` field on this cert-manager version's
+# Certificate CRD - only `spec.keystores.{jks,pkcs12}` exists. Per
+# `keystores.jks.create`'s own field description, enabling it is sufficient:
+# cert-manager writes `keystore.jks` AND (because our issuer is a CA-backed
+# ClusterIssuer that supplies a CA cert) `truststore.jks` into this same
+# Secret, both encrypted with the one passwordSecretRef below. The brief's
+# sketched separate `truststore:` block does not exist in this CRD version
+# and has been omitted; see jks-passwords-secret.yaml for the password note.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cmf-server-tls
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  secretName: cmf-server-tls
+  commonName: cmf-service.operator.svc.cluster.local
+  dnsNames:
+    - cmf-service.operator.svc.cluster.local
+    - cmf-service
+    - cmf.flink-demo-rbac.confluentdemo.local
+  duration: 8760h    # 1 year
+  renewBefore: 360h  # 15 days
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  issuerRef:
+    name: cfk-cmf-mtls-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  keystores:
+    jks:
+      create: true
+      passwordSecretRef:
+        name: cfk-cmf-jks-passwords
+        key: keystore-password

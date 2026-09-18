@@ -87,6 +87,33 @@ spec:
                   -d '{"secret":"cmf-secret"}'
                 echo "CMF client secret updated"
 
+                # optionalClientScopes must include offline_access -- CMF's own
+                # OidcTokenService always requests scope=openid+offline_access
+                # for its native SSO login, and Keycloak rejects the whole
+                # token exchange ("Offline tokens not allowed for the user or
+                # client") if the client has no offline_access scope wired.
+                # Same gap as controlcenter already had fixed in
+                # realm-configmap.yaml; needs the same live PUT here since a
+                # ConfigMap edit alone never reaches an already-provisioned
+                # realm (see comment on the Control Center PUT below).
+                echo "Updating CMF client scopes (offline_access for native SSO)..."
+                ALL_SCOPES=$(curl -sf -X GET "http://keycloak:8080/admin/realms/confluent/client-scopes" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN")
+                # id is serialized immediately before name for each scope
+                # object, so this adjacent-field match works without a JSON
+                # parser (this image carries curl only, no jq).
+                for scope in web-origins acr profile roles email; do
+                  scope_id=$(echo "$ALL_SCOPES" | grep -o "\"id\":\"[^\"]*\",\"name\":\"$scope\"" | head -1 | sed -E 's/"id":"([^"]*)".*/\1/')
+                  [ -n "$scope_id" ] && curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CMF_CLIENT_ID/default-client-scopes/$scope_id" \
+                    -H "Authorization: Bearer $ADMIN_TOKEN"
+                done
+                for scope in address phone microprofile-jwt offline_access; do
+                  scope_id=$(echo "$ALL_SCOPES" | grep -o "\"id\":\"[^\"]*\",\"name\":\"$scope\"" | head -1 | sed -E 's/"id":"([^"]*)".*/\1/')
+                  [ -n "$scope_id" ] && curl -sf -X PUT "http://keycloak:8080/admin/realms/confluent/clients/$CMF_CLIENT_ID/optional-client-scopes/$scope_id" \
+                    -H "Authorization: Bearer $ADMIN_TOKEN"
+                done
+                echo "CMF client scopes updated"
+
                 # Add audience mapper for cmf client
                 echo "Adding audience mapper to CMF client..."
                 curl -sf -X POST "http://keycloak:8080/admin/realms/confluent/clients/$CMF_CLIENT_ID/protocol-mappers/models" \

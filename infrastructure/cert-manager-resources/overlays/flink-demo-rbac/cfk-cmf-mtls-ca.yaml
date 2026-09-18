@@ -1,0 +1,34 @@
+---
+# Root CA for CFK<->CMF mTLS only (issue #423). Separate from any CA used by
+# flink-demo-rbac-mtls (a different cluster) - this one exists purely so
+# CMF's server cert and CFK's client cert chain to a CA they both trust.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cfk-cmf-mtls-ca
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  isCA: true
+  commonName: cfk-cmf-mtls-ca
+  secretName: cfk-cmf-mtls-ca
+  duration: 87600h    # 10 years
+  renewBefore: 720h   # 30 days
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cfk-cmf-mtls-ca-issuer
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  ca:
+    secretName: cfk-cmf-mtls-ca

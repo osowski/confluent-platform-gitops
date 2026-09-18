@@ -4,10 +4,10 @@
 # This patch consolidates all Kafka broker configuration including:
 # - External NodePort listener configuration
 # - Resource limits for local demo environment
-# - MDS/RBAC configuration with OAuth provider (Keycloak)
-# - SSO/OIDC configuration for browser-based authentication (Control Center)
-# - Broker-to-KRaft controller OAuth authentication
-# - Internal listener OAuth authentication
+# - MDS/RBAC configuration with LDAP provider
+# - Broker-to-KRaft controller SASL/PLAIN with LDAP direct bind
+# - Internal listener SASL/PLAIN with LDAP direct bind (self-referential
+#   metadata-store client reading _confluent-metadata-auth)
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -35,19 +35,19 @@ spec:
           enabled: false
 
     # ==============================================================================
-    # INTERNAL LISTENER - OAuth authentication for inter-broker communication
+    # INTERNAL LISTENER - SASL/PLAIN with LDAP direct bind for inter-broker
+    # communication. This listener (port 9071) is what the broker's own
+    # self-referential RBAC metadata-store client (KafkaReader, reading
+    # _confluent-metadata-auth) actually uses — matches the KRaft controller
+    # listener's authentication shape below, not CFK's auto-added token
+    # listener (port 9073, used by other CP components; see
+    # dependencies.kafkaRest below).
     # ==============================================================================
     internal:
       authentication:
-        type: oauth
+        type: ldap
         jaasConfig:
-          secretRef: kafka-oauth-client
-        oauthSettings:
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-          subClaimName: client_id
-          groupsClaimName: groups
+          secretRef: kafka-controller-interbroker
 
   # ==============================================================================
   # RESOURCE LIMITS - Tuned for 24GB total cluster memory
@@ -64,12 +64,24 @@ spec:
   # ==============================================================================
   # AUTHORIZATION - RBAC with super users
   # ==============================================================================
+  # `erp` (KafkaRestClass's identity, #411) is a static superuser rather
+  # than a scoped ConfluentRolebinding like `sr`/`c3`: the CFK operator
+  # authenticates as erp for every ConfluentRolebinding reconciliation
+  # call, so erp's own privilege can't come from a rolebinding without a
+  # bootstrap chicken-and-egg (it would need privilege to create the
+  # binding that grants it privilege). Mirrors the existing `cmf` pattern,
+  # which is also both a superuser AND has its own cmf-systemadmin
+  # ConfluentRolebinding (see confluentrolebindings.yaml) — Kafka-cluster
+  # superuser status doesn't extend to the separate CMF authorization
+  # scope, which is why erp-cmf-systemadmin is still required alongside
+  # this superuser entry.
   authorization:
     type: rbac
     superUsers:
       - User:admin@osow.ski
       - User:cmf
       - User:kafka
+      - User:erp
 
   # ==============================================================================
   # MDS (METADATA SERVICE) - RBAC and SSO/OIDC configuration
@@ -80,17 +92,42 @@ spec:
       tokenKeyPair:
         secretRef: mds-token
 
-      # Provider configuration - OAuth for service accounts AND SSO for browser logins
+      # Provider configuration - LDAP for service account authentication,
+      # plus SSO/OIDC for Control Center's browser-based login.
+      #
+      # `sso` lives *inside* `provider`, as a sibling of `ldap`/`oauth`/etc,
+      # in the CFK 3.3.0 (chart 0.1718.10) CRD - NOT as a sibling of
+      # `provider` itself. Confirmed by pulling the chart directly
+      # (`helm pull confluentinc/confluent-for-kubernetes --version
+      # 0.1718.10 --untar`) and inspecting
+      # crds/platform.confluent.io_kafkas.yaml: sso only appears under
+      # spec.services.mds.provider.properties.sso (and, separately, under
+      # a new spec.identityProvider.sso - unused here). A prior attempt
+      # placed `sso` as `services.mds.sso` (matching eks-demo's and
+      # flink-demo-rbac-mtls's kafka-patch.yaml, both apparently written
+      # against an older CFK schema) - Kubernetes structural-schema
+      # pruning silently dropped it with no error, which is why the
+      # /security/1.0/oidc/* endpoints C3 proxies under /api/metadata/*
+      # kept 404ing even after that field was committed and synced.
       provider:
-        # OAuth provider for service-to-service authentication (client credentials flow)
-        oauth:
+        ldap:
+          address: ldap://openldap.openldap.svc.cluster.local:389
+          authentication:
+            type: simple
+            simple:
+              secretRef: mds-ldap-credential
+          tls:
+            enabled: false
           configurations:
-            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-            expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-            subClaimName: client_id
-
-        # SSO/OIDC configuration for browser-based authentication (authorization code flow)
-        # Used by Control Center for user login
+            groupNameAttribute: cn
+            groupObjectClass: groupOfNames
+            groupMemberAttribute: member
+            groupMemberAttributePattern: uid=(.*),ou=users,dc=confluentdemo,dc=local
+            groupSearchBase: ou=groups,dc=confluentdemo,dc=local
+            userNameAttribute: uid
+            userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
+            userObjectClass: inetOrgPerson
+            userSearchBase: dc=confluentdemo,dc=local
         sso:
           enabled: true
           clientCredentials:
@@ -98,16 +135,13 @@ spec:
           configurations:
             groupsClaimName: groups
             subClaimName: email
-            # Issuer must match external HTTPS URL (JWT token claim validation)
             issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-            # Browser redirects use external HTTPS
             authorizeBaseEndpointUri: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
-            # Server-side calls use internal HTTP (no TLS)
             jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
             refreshToken: false
-            sessionTokenExpiry: 900000      # 15 minutes
-            sessionMaxTimeout: 21600000     # 6 hours
+            sessionTokenExpiry: 900000
+            sessionMaxTimeout: 21600000
 
       # Impersonation settings for RBAC
       impersonation:
@@ -115,7 +149,7 @@ spec:
           - User:kafka
           - User:krp                        # Kafka REST Proxy principal
           - User:cmf                        # CMF service principal for user authorization
-          - User:admin@osow.ski             # Admin user from Keycloak
+          - User:admin@osow.ski             # Admin user from LDAP
         protectedUsers:
           - User:mds
           - User:superadmin
@@ -124,51 +158,32 @@ spec:
   # DEPENDENCIES - KRaft controller and Kafka REST authentication
   # ==============================================================================
   dependencies:
-    # Broker-to-KRaft controller OAuth authentication
+    # Broker-to-KRaft controller LDAP authentication
     kRaftController:
       controllerListener:
         authentication:
-          type: oauth
+          type: ldap
           jaasConfig:
-            secretRef: kafka-oauth-client
-          oauthSettings:
-            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            secretRef: kafka-controller-interbroker
       clusterRef:
         name: kraftcontroller
 
-    # Kafka REST (MDS) OAuth authentication
+    # Kafka REST (MDS) bearer token authentication
     kafkaRest:
       authentication:
-        type: oauth
-        jaasConfig:
-          secretRef: kafka-oauth-client
-        oauthSettings:
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-          subClaimName: client_id
+        type: bearer
+        bearer:
+          secretRef: kafka-mds-bearer-client
 
   # ==============================================================================
-  # JVM CONFIGURATION - OAuth SASL mechanism
+  # CONFIGURATION OVERRIDES - LDAP search scope for cross-OU lookups
   # ==============================================================================
+  # Confluent's LDAP client defaults ldap.user.search.scope to ONELEVEL (1),
+  # but userSearchBase above is the tree root (dc=confluentdemo,dc=local) so
+  # service principals under ou=services can be found alongside ou=users
+  # entries — that requires a SUBTREE (2) search, which has no first-class
+  # CRD field and must be set as a raw property override.
   configOverrides:
-    jvm:
-      # OAuth login callback handler
-      - "-Dorg.apache.kafka.sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
-      - "-Dsasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler"
-      # OAuth allowed URLs (internal HTTP and external HTTPS Keycloak endpoints)
-      - "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs,http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/certs,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/token,https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth/device"
-      # JWKS endpoint refresh interval
-      - "-Dorg.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler.JWKS_ENDPOINT_REFRESH_MS=3600000"
-
-    # ==============================================================================
-    # SERVER CONFIGURATION - MDS SSO device grant flow for CLI authentication
-    # ==============================================================================
     server:
-      # Enable CLI SSO using OAuth device grant flow (for confluent login)
-      # Uses internal HTTP URL - MDS needs to reach Keycloak from within the cluster
-      - confluent.oidc.idp.device.authorization.endpoint.uri=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/auth/device
+      - ldap.user.search.scope=2
 
-      # Internal listener OAuth groups claim extraction
-      # Required for group-based RBAC authorization (e.g., FlinkApplications with service accounts in groups)
-      - listener.name.internal.sasl.oauthbearer.groups.claim.name=groups

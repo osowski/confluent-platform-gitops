@@ -7,6 +7,11 @@ resources:
 components:
   - ../../components/oauth
 
+# Overrides the oauth component's CMFRestClass authentication (type: oauth)
+# with mTLS for this cluster only (#423) - see cmfrestclass-mtls-patch.yaml.
+patches:
+  - path: cmfrestclass-mtls-patch.yaml
+
 labels:
 - includeSelectors: false
   includeTemplates: true

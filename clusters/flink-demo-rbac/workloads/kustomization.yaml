@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - namespaces.yaml
+  - openldap.yaml
   - keycloak.yaml
   - cfk-operator.yaml
   - mds-keygen.yaml

@@ -4,9 +4,11 @@
 # This patch consolidates all Control Center configuration including:
 # - Resource limits for local demo environment
 # - ConfigOverrides (disable unused features, enable CMF)
-# - OAuth authentication to Kafka, MDS, and Schema Registry
+# - LDAP-backed authentication to Kafka (plain), MDS (bearer), and Schema
+#   Registry (basic), as the dedicated `c3` LDAP service principal (seeded
+#   by workloads/openldap/base/seed-ldif-configmap.yaml, #409)
 # - RBAC authorization
-# - OIDC SSO for browser-based user authentication
+# - OIDC SSO for browser-based user authentication (still Keycloak — #414)
 # ==============================================================================
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
@@ -38,13 +40,6 @@ spec:
       # Enable CMF (Confluent Manager for Apache Flink)
       - confluent.controlcenter.cmf.enable=true
       - confluent.controlcenter.cmf.url=http://cmf-service.operator.svc.cluster.local:80
-      # Schema Registry OAuth bearer authentication (required for C3 runtime access)
-      # Note: The CRD-level dependencies.schemaRegistry.authentication configures CFK,
-      #       but C3 application needs explicit bearer.auth.* properties to connect
-      - confluent.controlcenter.schema.registry.bearer.auth.credentials.source=OAUTHBEARER
-      - confluent.controlcenter.schema.registry.bearer.auth.issuer.endpoint.url=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-      - confluent.controlcenter.schema.registry.bearer.auth.client.id=controlcenter
-      - confluent.controlcenter.schema.registry.bearer.auth.client.secret=controlcenter-secret
 
   # ==============================================================================
   # AUTHORIZATION - RBAC
@@ -53,50 +48,48 @@ spec:
     type: rbac
 
   # ==============================================================================
-  # DEPENDENCIES - Kafka, MDS, and Schema Registry with OAuth authentication
+  # DEPENDENCIES - Kafka, MDS, and Schema Registry with LDAP-backed authentication
   # ==============================================================================
   dependencies:
     # Remove connect and ksqldb dependencies (disabled features)
     connect: null
     ksqldb: null
 
-    # Kafka connection with OAuth authentication
+    # Kafka connection config, presenting the `c3` LDAP principal via
+    # SASL/PLAIN. Retained to satisfy CFK's CR-schema validation only — at
+    # runtime this connection actually rides the MDS bearer identity
+    # (dependencies.mds below) over OAUTHBEARER on the auto-managed token
+    # listener (port 9073), confirmed via the rendered
+    # schemaregistry-shared-config ConfigMap for the equivalent SR case
+    # (#411). This PLAIN credential is validated-but-unused.
     kafka:
       bootstrapEndpoint: kafka.kafka.svc.cluster.local:9071
       authentication:
-        type: oauth
+        type: plain
         jaasConfig:
-          secretRef: controlcenter-oauth-client
-        oauthSettings:
-          subClaimName: client_id
-          tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          secretRef: c3-kafka-plain
 
-    # MDS connection with OAuth authentication AND OIDC SSO enablement
+    # MDS connection with bearer-token authentication AND OIDC SSO enablement
     mds:
       # Enable OIDC SSO protocol for browser-based user authentication
+      # (unchanged — stays on Keycloak until #414)
       ssoProtocol: oidc
       # MDS endpoint (internal)
       endpoint: http://kafka.kafka.svc.cluster.local:8090
       # Token key pair for MDS authentication (shared public key)
       tokenKeyPair:
         secretRef: mds-token
-      # Control Center service account authentication to MDS (OAuth)
+      # Control Center service account authentication to MDS (bearer, LDAP-backed)
       authentication:
-        type: oauth
-        oauth:
-          secretRef: controlcenter-oauth-client
-          configuration:
-            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-            expectedIssuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-            subClaimName: client_id
+        type: bearer
+        bearer:
+          secretRef: c3-mds-bearer
 
-    # Schema Registry connection with OAuth authentication
+    # Schema Registry connection with HTTP Basic Auth (LDAP-backed) — no
+    # `bearer` option exists in this field's schema (basic/mtls/oauth only)
     schemaRegistry:
       url: http://schemaregistry.kafka.svc.cluster.local:8081
       authentication:
-        type: oauth
-        oauth:
-          secretRef: controlcenter-oauth-client
-          configuration:
-            tokenEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+        type: basic
+        basic:
+          secretRef: c3-schemaregistry-basic

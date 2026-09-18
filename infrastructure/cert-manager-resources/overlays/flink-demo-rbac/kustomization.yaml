@@ -3,3 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - cfk-cmf-mtls-ca.yaml
+  - jks-passwords-secret.yaml
+  - cmf-server-cert.yaml
+  - cfk-client-cert.yaml
