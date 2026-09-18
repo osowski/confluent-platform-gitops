@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-17
+
 ### Added
 - **`secure-sql` Flink SQL tenant on `flink-demo-rbac-mtls`** ([#377](https://github.com/osowski/confluent-platform-gitops/issues/377)): the cluster's first client-facing mTLS path — a Flink SQL statement's Kafka connection now authenticates with a cert-manager-issued client certificate instead of Keycloak OAuth, with the CMF-side `FlinkSecret` holding only file paths, never certificate bytes. See [ADR-0011](../adrs/0011-flink-sql-kafka-mtls-cert-manager.md).
 - **`scripts/generate-hosts-entries.sh`** ([#370](https://github.com/osowski/confluent-platform-gitops/issues/370)): prints a `/etc/hosts` block for a cluster, discovered directly from its overlay manifests instead of hand-maintained. Defaults to `127.0.0.1` on macOS, auto-detects the public IP on a remote Linux VM, and prompts otherwise. Also fixed a `schemaregistry` → `schema-registry` typo it caught in `flink-demo`'s existing hand-written block.
@@ -446,7 +448,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.7.0...v0.8.0
