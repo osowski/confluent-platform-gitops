@@ -92,7 +92,23 @@ spec:
       tokenKeyPair:
         secretRef: mds-token
 
-      # Provider configuration - LDAP for service account authentication
+      # Provider configuration - LDAP for service account authentication,
+      # plus SSO/OIDC for Control Center's browser-based login.
+      #
+      # `sso` lives *inside* `provider`, as a sibling of `ldap`/`oauth`/etc,
+      # in the CFK 3.3.0 (chart 0.1718.10) CRD - NOT as a sibling of
+      # `provider` itself. Confirmed by pulling the chart directly
+      # (`helm pull confluentinc/confluent-for-kubernetes --version
+      # 0.1718.10 --untar`) and inspecting
+      # crds/platform.confluent.io_kafkas.yaml: sso only appears under
+      # spec.services.mds.provider.properties.sso (and, separately, under
+      # a new spec.identityProvider.sso - unused here). A prior attempt
+      # placed `sso` as `services.mds.sso` (matching eks-demo's and
+      # flink-demo-rbac-mtls's kafka-patch.yaml, both apparently written
+      # against an older CFK schema) - Kubernetes structural-schema
+      # pruning silently dropped it with no error, which is why the
+      # /security/1.0/oidc/* endpoints C3 proxies under /api/metadata/*
+      # kept 404ing even after that field was committed and synced.
       provider:
         ldap:
           address: ldap://openldap.openldap.svc.cluster.local:389
@@ -112,29 +128,20 @@ spec:
             userMemberOfAttributePattern: cn=(.*),ou=groups,dc=confluentdemo,dc=local
             userObjectClass: inetOrgPerson
             userSearchBase: dc=confluentdemo,dc=local
-
-      # SSO/OIDC configuration for Control Center's browser-based login
-      # (dependencies.mds.ssoProtocol: oidc in controlcenter-patch.yaml
-      # enables the client side; this is what actually serves the
-      # /security/1.0/oidc/* endpoints C3 proxies under /api/metadata/*,
-      # which were 404ing with no `sso:` block here at all). Mirrors the
-      # working eks-demo pattern — oidc-client-credentials already exists
-      # and wraps the "controlcenter" Keycloak client (clientId=controlcenter),
-      # which already has offline_access wired as an optional client scope.
-      sso:
-        enabled: true
-        clientCredentials:
-          secretRef: oidc-client-credentials
-        configurations:
-          groupsClaimName: groups
-          subClaimName: email
-          issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
-          authorizeBaseEndpointUri: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
-          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
-          tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
-          refreshToken: false
-          sessionTokenExpiry: 900000
-          sessionMaxTimeout: 21600000
+        sso:
+          enabled: true
+          clientCredentials:
+            secretRef: oidc-client-credentials
+          configurations:
+            groupsClaimName: groups
+            subClaimName: email
+            issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
+            authorizeBaseEndpointUri: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
+            jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+            tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            refreshToken: false
+            sessionTokenExpiry: 900000
+            sessionMaxTimeout: 21600000
 
       # Impersonation settings for RBAC
       impersonation:
