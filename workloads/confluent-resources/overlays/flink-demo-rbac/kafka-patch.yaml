@@ -113,6 +113,29 @@ spec:
             userObjectClass: inetOrgPerson
             userSearchBase: dc=confluentdemo,dc=local
 
+      # SSO/OIDC configuration for Control Center's browser-based login
+      # (dependencies.mds.ssoProtocol: oidc in controlcenter-patch.yaml
+      # enables the client side; this is what actually serves the
+      # /security/1.0/oidc/* endpoints C3 proxies under /api/metadata/*,
+      # which were 404ing with no `sso:` block here at all). Mirrors the
+      # working eks-demo pattern — oidc-client-credentials already exists
+      # and wraps the "controlcenter" Keycloak client (clientId=controlcenter),
+      # which already has offline_access wired as an optional client scope.
+      sso:
+        enabled: true
+        clientCredentials:
+          secretRef: oidc-client-credentials
+        configurations:
+          groupsClaimName: groups
+          subClaimName: email
+          issuer: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent
+          authorizeBaseEndpointUri: https://keycloak.flink-demo-rbac.confluentdemo.local/realms/confluent/protocol/openid-connect/auth
+          jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
+          tokenBaseEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+          refreshToken: false
+          sessionTokenExpiry: 900000
+          sessionMaxTimeout: 21600000
+
       # Impersonation settings for RBAC
       impersonation:
         admins:
