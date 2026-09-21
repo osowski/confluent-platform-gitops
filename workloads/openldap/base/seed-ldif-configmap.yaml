@@ -68,12 +68,9 @@ data:
     sn: cmf
     userPassword: cmf-secret
 
-    # sa-shapes-flink / sa-colors-flink - LDAP identities for the raw JAR
-    # FlinkApplication autoscaler jobs (#421), replacing their prior
-    # Keycloak/OAUTHBEARER identity for this same port-9071 listener
-    # (LDAP-only since #410). Password matches the string already baked
-    # into their FlinkApplication CRs pre-#421 (kept as-is to minimize
-    # churn - not a secret rotation).
+    # LDAP identities for the colors/shapes JAR FlinkApplication autoscaler
+    # jobs, authenticating to the internal Kafka listener and Schema
+    # Registry via SASL/PLAIN and HTTP Basic respectively.
     dn: uid=sa-shapes-flink,ou=services,dc=confluentdemo,dc=local
     objectClass: inetOrgPerson
     uid: sa-shapes-flink

@@ -45,22 +45,17 @@ spec:
                   name: shapes-flink-oauth
                   key: client-secret
   flinkConfiguration:
-    # #421: this JAR uses the plain (unshaded) kafka-clients and Schema
-    # Registry client libraries directly, connecting to the internal
-    # listener (port 9071) that's been LDAP-only (SASL/PLAIN direct bind)
-    # since #410 - OAUTHBEARER was never a supported mechanism on this
-    # listener, so it failed with "Unsupported SASL mechanism OAUTHBEARER"
-    # at the broker. Switched to the `sa-shapes-flink` LDAP service
-    # principal (seeded by #409/#421 in openldap/base/seed-ldif-configmap.yaml),
-    # mirroring the `cmf`/`sr` LDAP-PLAIN pattern ADR-0017 already proved
-    # for this same listener. Schema Registry similarly switches from
-    # Keycloak bearer auth to HTTP Basic against the same LDAP identity -
-    # SR's RBAC (MDS-backed, #411) validates Basic credentials the same
-    # way it validates bearer tokens (confirmed live in ADR-0017's #426
-    # update). The prior Keycloak/OAuth wiring (podTemplate env above,
-    # flink-oauth-secrets.yaml, keycloak-service-account-job.yaml) is left
-    # in place, unused, so reverting to OAuth is a config change here, not
-    # a reconstruction.
+    # LDAP-backed SASL/PLAIN against the internal listener (port 9071,
+    # LDAP-only - OAUTHBEARER is not a supported mechanism on it). Schema
+    # Registry uses HTTP Basic against the same LDAP identity; its RBAC
+    # authorization validates Basic credentials the same way it validates
+    # bearer tokens.
+    #
+    # TODO: the jaas.config/basic.auth.user.info values below are inline
+    # plaintext credentials. flinkConfiguration is a flat string map with
+    # no secretKeyRef support, so removing this requires either CFK
+    # support for secret-backed config values or an external
+    # secret-injection mechanism - not yet in place.
     kafka.bootstrap.servers: kafka.kafka.svc.cluster.local:9071
     kafka.security.protocol: SASL_PLAINTEXT
     kafka.sasl.mechanism: PLAIN
