@@ -40,30 +40,32 @@ spec:
                   name: colors-flink-oauth
                   key: client-secret
   flinkConfiguration:
-    # This JAR uses the plain (unshaded) kafka-clients and Schema Registry
-    # client libraries directly, unlike the CFK-managed Flink SQL statements
-    # sharing this namespace's compute pool - so its OAUTHBEARER
-    # token-endpoint allow-list needs the unshaded system property, not the
-    # shaded one ADR-0008 documents for the compute pool. See ADR-0013.
-    env.java.opts.all: "-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+    # #421: this JAR uses the plain (unshaded) kafka-clients and Schema
+    # Registry client libraries directly, connecting to the internal
+    # listener (port 9071) that's been LDAP-only (SASL/PLAIN direct bind)
+    # since #410 - OAUTHBEARER was never a supported mechanism on this
+    # listener, so it failed with "Unsupported SASL mechanism OAUTHBEARER"
+    # at the broker. Switched to the `sa-colors-flink` LDAP service
+    # principal (seeded by #409/#421 in openldap/base/seed-ldif-configmap.yaml),
+    # mirroring the `cmf`/`sr` LDAP-PLAIN pattern ADR-0017 already proved
+    # for this same listener. Schema Registry similarly switches from
+    # Keycloak bearer auth to HTTP Basic against the same LDAP identity -
+    # SR's RBAC (MDS-backed, #411) validates Basic credentials the same
+    # way it validates bearer tokens (confirmed live in ADR-0017's #426
+    # update). The prior Keycloak/OAuth wiring (podTemplate env above,
+    # flink-oauth-secrets.yaml, keycloak-service-account-job.yaml) is left
+    # in place, unused, so reverting to OAuth is a config change here, not
+    # a reconstruction.
     kafka.bootstrap.servers: kafka.kafka.svc.cluster.local:9071
     kafka.security.protocol: SASL_PLAINTEXT
-    kafka.sasl.mechanism: OAUTHBEARER
+    kafka.sasl.mechanism: PLAIN
     kafka.sasl.jaas.config: |
-      org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required
-      clientId="sa-colors-flink"
-      clientSecret="sa-colors-flink-secret"
-      tokenEndpointUri="http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token";
-    kafka.sasl.login.callback.handler.class: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
-    kafka.sasl.oauthbearer.token.endpoint.url: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+      org.apache.kafka.common.security.plain.PlainLoginModule required
+      username="sa-colors-flink"
+      password="sa-colors-flink-secret";
     schema.registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
-    schema.registry.bearer.auth.credentials.source: "OAUTHBEARER"
-    schema.registry.bearer.auth.issuer.endpoint.url: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
-    schema.registry.bearer.auth.client.id: "sa-colors-flink"
-    schema.registry.bearer.auth.client.secret: "sa-colors-flink-secret"
-    schema.registry.bearer.auth.scope: ""
-    schema.registry.bearer.auth.logical.cluster: ""
-    schema.registry.bearer.auth.identity.pool.id: ""
+    schema.registry.basic.auth.credentials.source: "USER_INFO"
+    schema.registry.basic.auth.user.info: "sa-colors-flink:sa-colors-flink-secret"
     kafka.consumer.group.id: colors-autoscaler
     kafka.consumer.auto.offset.reset: earliest
     kafka.producer.transaction.timeout.ms: "900000"
