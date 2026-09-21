@@ -77,11 +77,14 @@ spec:
   # this superuser entry.
   authorization:
     type: rbac
+    # NOTE: CFK's webhook normalizes this list alphabetically on the server
+    # side, so it must be listed alphabetically here too or ArgoCD's diff
+    # against the live CR never converges (perpetual OutOfSync).
     superUsers:
       - User:admin@osow.ski
       - User:cmf
-      - User:kafka
       - User:erp
+      - User:kafka
 
   # ==============================================================================
   # MDS (METADATA SERVICE) - RBAC and SSO/OIDC configuration
