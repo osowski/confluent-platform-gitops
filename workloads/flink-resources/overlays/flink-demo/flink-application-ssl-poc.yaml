@@ -56,8 +56,13 @@ spec:
             - |
               set -euo pipefail
               mkdir -p /flink-conf-resolved
+              # Scoped to just these variables -- an unscoped `envsubst` blanks
+              # every "$identifier" it finds, including Flink's own literal
+              # "$internal:" top-level YAML key. Harmless on Flink 1.20's flat
+              # flink-conf.yaml parser, but corrupts Flink 2.x's structured
+              # config.yaml into invalid YAML (confirmed separately).
               for f in /opt/flink/conf/*; do
-                envsubst < "$f" > "/flink-conf-resolved/$(basename "$f")"
+                envsubst '$KEYSTORE_PASSWORD $KEY_PASSWORD $TRUSTSTORE_PASSWORD' < "$f" > "/flink-conf-resolved/$(basename "$f")"
               done
           env:
             - name: KEYSTORE_PASSWORD
