@@ -1,0 +1,110 @@
+# EXPERIMENT (Pass 1): Flink internal-SSL secret injection spike.
+# Branch: feature-flink-ssl-secret-injection/flink-demo
+#
+# Keystore/truststore files come from the `flink-ssl-keystore` Secret via Flink's
+# native `kubernetes.secrets` mount. Keystore/key/truststore PASSWORDS come from
+# the `flink-ssl-passwords` Secret and are resolved into flink-conf.yaml at pod
+# startup by an init container running `envsubst` against a writable copy of the
+# operator-generated (read-only) conf ConfigMap. The password never appears in
+# plaintext in flinkConfiguration or in any ConfigMap -- only in the Secret and
+# in the writable emptyDir copy inside the running pod.
+#
+# Both `flink-ssl-keystore` and `flink-ssl-passwords` are created out-of-band via
+# `kubectl create secret` (not committed to git, not managed by ArgoCD) -- that's
+# the point of the exercise.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: flink-ssl-poc
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  flinkEnvironment: default
+  image: confluentinc/cp-flink:1.20.3-cp2-java17
+  flinkVersion: v1_20
+  flinkConfiguration:
+    "taskmanager.numberOfTaskSlots": "2"
+    "metrics.reporter.prom.factory.class": "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
+    "metrics.reporter.prom.port": "9249-9250"
+    "rest.profiling.enabled": "true"
+    # Pre-existing cluster default; incompatible with this non-HA setup and masks
+    # the real error if the job fails for any reason. Unrelated to SSL -- override
+    # so failures surface with their actual cause instead of this config guard.
+    "execution.submit-failed-job-on-application-error": "false"
+    # Mounts every key in `flink-ssl-keystore` as a file under /opt/flink/ssl/
+    "kubernetes.secrets": "flink-ssl-keystore:/opt/flink/ssl"
+    "security.ssl.internal.enabled": "true"
+    "security.ssl.internal.keystore": "/opt/flink/ssl/keystore.jks"
+    "security.ssl.internal.truststore": "/opt/flink/ssl/truststore.jks"
+    # Literal ${VAR} placeholders -- Flink's config parser does NOT interpolate
+    # these. They only resolve because the init container below runs them
+    # through envsubst before Flink ever reads the file.
+    "security.ssl.internal.keystore-password": "${KEYSTORE_PASSWORD}"
+    "security.ssl.internal.truststore-password": "${TRUSTSTORE_PASSWORD}"
+    "security.ssl.internal.key-password": "${KEY_PASSWORD}"
+  serviceAccount: flink
+  podTemplate:
+    metadata:
+      name: flink-ssl-poc-pod-template
+    spec:
+      initContainers:
+        - name: flink-conf-resolver
+          image: confluentinc/cp-flink:1.20.3-cp2-java17
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              mkdir -p /flink-conf-resolved
+              for f in /opt/flink/conf/*; do
+                envsubst < "$f" > "/flink-conf-resolved/$(basename "$f")"
+              done
+          env:
+            - name: KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flink-ssl-passwords
+                  key: KEYSTORE_PASSWORD
+            - name: KEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flink-ssl-passwords
+                  key: KEY_PASSWORD
+            - name: TRUSTSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flink-ssl-passwords
+                  key: TRUSTSTORE_PASSWORD
+          volumeMounts:
+            - name: flink-config-volume
+              mountPath: /opt/flink/conf
+              readOnly: true
+            - name: flink-conf-resolved
+              mountPath: /flink-conf-resolved
+      containers:
+        - name: flink-main-container
+          env:
+            - name: FLINK_CONF_DIR
+              value: /flink-conf-resolved
+          volumeMounts:
+            - name: flink-conf-resolved
+              mountPath: /flink-conf-resolved
+      volumes:
+        - name: flink-conf-resolved
+          emptyDir: {}
+  jobManager:
+    resource:
+      memory: 1048m
+      cpu: "1"
+  taskManager:
+    resource:
+      memory: 1048m
+      cpu: "1"
+  job:
+    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    state: running
+    parallelism: 3
+    upgradeMode: stateless
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink

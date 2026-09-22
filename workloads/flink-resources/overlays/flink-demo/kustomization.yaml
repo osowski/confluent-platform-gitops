@@ -4,6 +4,7 @@ kind: Kustomization
 # Reference base configuration
 resources:
   - ../../base
+  - flink-application-ssl-poc.yaml
 
 # Cluster-specific labels
 labels:
