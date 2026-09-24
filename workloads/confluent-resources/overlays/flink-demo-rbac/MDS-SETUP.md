@@ -23,6 +23,15 @@ The flink-demo-rbac cluster is configured with full RBAC authorization using:
    - ServiceAccounts and RoleBindings
    - See: `workloads/colors-and-shapes/components/rbac-oauth/`
 
+3. OpenLDAP directory deployed and seeded (see `workloads/openldap/README.md`,
+   [#409](https://github.com/osowski/confluent-platform-gitops/issues/409)) —
+   provides `services.mds.provider.ldap`'s user/group source as of
+   [#410](https://github.com/osowski/confluent-platform-gitops/issues/410),
+   and the `erp`/`sr`/`c3` service-account credentials KafkaRestClass, Schema
+   Registry, and Control Center authenticate with as of
+   [#411](https://github.com/osowski/confluent-platform-gitops/issues/411).
+   Keycloak is still used by Control Center SSO and CMF until #412/#414 land.
+
 ## Initial Setup
 
 ### 1. MDS Token Keypair Generation (Automated)
@@ -66,22 +75,33 @@ kubectl create secret generic mds-token \
 rm mds-tokenkeypair.txt mds-publickey.txt
 ```
 
-### 2. Verify OAuth Client Secrets
+### 2. Verify OAuth and LDAP Client Secrets
 
-The following secrets should exist with credentials matching Keycloak:
+The following secrets should exist:
 
 ```bash
-# Check Kafka OAuth client
+# Check Kafka OAuth client (orphaned as of #411 — no longer referenced by
+# any secretRef in this overlay; retained pending cleanup, see #412)
 kubectl get secret kafka-oauth-client -n kafka -o yaml
 
-# Check KRaft OAuth client
+# Check KRaft OAuth client (superseded by kafka-controller-interbroker — see below)
 kubectl get secret kraft-oauth-client -n kafka -o yaml
 
-# Check CMF MDS OAuth client
-kubectl get secret cmf-mds-oauth-client -n operator -o yaml
-```
+# Check the LDAP bind credential MDS and the KRaft controller's identityProvider use
+# (created in workloads/openldap/base/mds-bind-secret.yaml, #409; mirrored into
+# this namespace by Reflector)
+kubectl get secret mds-ldap-credential -n kafka -o yaml
 
-These are created by `oauth-client-secrets.yaml` with values from the Keycloak realm.
+# Check the KRaft controller's inter-broker LDAP bind credential
+kubectl get secret kafka-controller-interbroker -n kafka -o yaml
+
+# Check Kafka's MDS bearer client credential
+kubectl get secret kafka-mds-bearer-client -n kafka -o yaml
+
+# Check KafkaRestClass/SchemaRegistry/ControlCenter's LDAP-backed credentials
+# (erp/sr/c3 — created in mds-bearer-client-secrets.yaml, #411)
+kubectl get secret erp-mds-bearer sr-mds-bearer sr-kafka-plain c3-mds-bearer c3-kafka-plain c3-schemaregistry-basic -n kafka
+```
 
 ### 3. Deploy Resources
 

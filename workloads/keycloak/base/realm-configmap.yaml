@@ -44,7 +44,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/admins"]
+          "groups": ["/admins"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-square@osow.ski",
@@ -59,7 +60,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/shapes"]
+          "groups": ["/shapes"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-circle@osow.ski",
@@ -74,7 +76,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/shapes"]
+          "groups": ["/shapes"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-triangle@osow.ski",
@@ -89,7 +92,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/shapes"]
+          "groups": ["/shapes"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-trapezoid@osow.ski",
@@ -104,7 +108,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/shapes"]
+          "groups": ["/shapes"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-diamond@osow.ski",
@@ -119,7 +124,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/shapes"]
+          "groups": ["/shapes"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-red@osow.ski",
@@ -134,7 +140,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/colors"]
+          "groups": ["/colors"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-green@osow.ski",
@@ -149,7 +156,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/colors"]
+          "groups": ["/colors"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-orange@osow.ski",
@@ -164,7 +172,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/colors"]
+          "groups": ["/colors"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-blue@osow.ski",
@@ -179,7 +188,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/colors"]
+          "groups": ["/colors"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         },
         {
           "username": "user-yellow@osow.ski",
@@ -194,7 +204,8 @@ data:
               "temporary": false
             }
           ],
-          "groups": ["/colors"]
+          "groups": ["/colors"],
+          "realmRoles": ["offline_access", "uma_authorization"]
         }
       ],
       "clients": [
@@ -209,6 +220,19 @@ data:
           "redirectUris": ["*"],
           "webOrigins": ["*"],
           "secret": "cmf-secret",
+          "defaultClientScopes": [
+            "web-origins",
+            "acr",
+            "profile",
+            "roles",
+            "email"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "microprofile-jwt",
+            "offline_access"
+          ],
           "protocolMappers": [
             {
               "name": "email",

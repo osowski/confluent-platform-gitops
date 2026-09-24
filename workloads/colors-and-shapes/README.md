@@ -14,6 +14,12 @@ topics.
 added by the component), Keycloak OAuth secrets, and the OAuth-flavored
 `flinkConfiguration`/env var fields the base intentionally omits.
 
+`flink-demo-rbac`'s internal Kafka listener is LDAP-only, so that overlay
+also lists `components/rbac-ldap` after `rbac-oauth`. It switches the JAR
+`FlinkApplication`s' Kafka and Schema Registry auth to LDAP-backed
+SASL/PLAIN and HTTP Basic, and leaves the OAuth Secrets and Keycloak Job
+from `rbac-oauth` in place.
+
 **On `flink-demo`:** Kafka and Schema Registry are anonymous, so none of the
 shapes/colors resources carry any auth configuration — no
 `kafka.security.protocol`, no OAuth secrets, no per-group Kubernetes RBAC.

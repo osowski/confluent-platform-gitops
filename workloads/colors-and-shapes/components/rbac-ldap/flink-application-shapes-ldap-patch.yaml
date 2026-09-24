@@ -1,0 +1,33 @@
+# LDAP-backed SASL/PLAIN against the internal listener. Schema Registry
+# uses HTTP Basic against the same LDAP identity; its RBAC authorization
+# validates Basic credentials the same way it validates bearer tokens.
+#
+# TODO: the jaas.config/basic.auth.user.info values below are inline
+# plaintext credentials. flinkConfiguration is a flat string map with no
+# secretKeyRef support, so removing this requires either CFK support for
+# secret-backed config values or an external secret-injection mechanism -
+# not yet in place.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkApplication
+metadata:
+  name: shapes
+  namespace: flink-shapes
+spec:
+  flinkConfiguration:
+    kafka.sasl.mechanism: PLAIN
+    kafka.sasl.jaas.config: |
+      org.apache.kafka.common.security.plain.PlainLoginModule required
+      username="sa-shapes-flink"
+      password="sa-shapes-flink-secret";
+    schema.registry.basic.auth.credentials.source: "USER_INFO"
+    schema.registry.basic.auth.user.info: "sa-shapes-flink:sa-shapes-flink-secret"
+    env.java.opts.all: null
+    kafka.sasl.login.callback.handler.class: null
+    kafka.sasl.oauthbearer.token.endpoint.url: null
+    schema.registry.bearer.auth.credentials.source: null
+    schema.registry.bearer.auth.issuer.endpoint.url: null
+    schema.registry.bearer.auth.client.id: null
+    schema.registry.bearer.auth.client.secret: null
+    schema.registry.bearer.auth.scope: null
+    schema.registry.bearer.auth.logical.cluster: null
+    schema.registry.bearer.auth.identity.pool.id: null

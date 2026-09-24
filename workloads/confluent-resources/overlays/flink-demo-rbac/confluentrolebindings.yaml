@@ -18,6 +18,25 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
+# KafkaRestClass's own erp identity - SystemAdmin role on CMF cluster
+# The CFK operator authenticates as erp (KafkaRestClass's identity) for
+# EVERY ConfluentRolebinding reconciliation call, not just erp-scoped ones
+# - it needs its own permission grant to manage role bindings scoped to CMF.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: erp-cmf-systemadmin
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: erp
+  role: SystemAdmin
+  clustersScopeByIds:
+    cmfId: CMF-id
+  kafkaRestClassRef:
+    name: default
+---
 # Control Center service account - SystemAdmin role on CMF cluster for Flink UI access
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -27,7 +46,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: SystemAdmin
   clustersScopeByIds:
     cmfId: CMF-id
@@ -43,7 +62,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: SystemAdmin
   kafkaRestClassRef:
     name: default
@@ -293,6 +312,89 @@ spec:
 #   - colors-catalog-owner (KafkaCatalog - invalid resource type)
 #   - colors-database-owner (KafkaDatabase - invalid resource type)
 ---
+# Schema Registry's own sr identity - ResourceOwner on its internal schema
+# storage topic. sr authenticates as a dedicated LDAP principal (#411),
+# which is not a Kafka superuser, so it needs this explicit grant to
+# create/access its own topic.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-schemas-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _schemas_schemaregistry_kafka
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# Schema Registry's own sr identity - ResourceOwner on its internal
+# leader-election consumer group. Same reasoning as sr-schemas-topic-owner
+# above - sr is not a Kafka superuser, so it needs this explicit grant.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-consumergroup-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: id_schemaregistry_kafka
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# Schema Registry's own sr identity - ResourceOwner on the Confluent
+# license-validation topic. Same reasoning as the other sr-* bindings
+# above - SR's internal license fetcher needs this topic to validate its
+# commercial license, and sr is not a Kafka superuser.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-license-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _confluent-license
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# Schema Registry's own sr identity - ResourceOwner on Confluent Server's
+# internal command/coordination topic. Same reasoning as the other sr-*
+# bindings above - sr is not a Kafka superuser; the broker authorizer log
+# showed a live Describe denial on this exact resource for User:sr.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sr-command-topic-owner
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sr
+  role: ResourceOwner
+  resourcePatterns:
+    - patternType: LITERAL
+      name: _confluent-command
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
 # ==============================================================================
 # KAFKA TOPIC RBAC - Group-based topic access control
 # ==============================================================================
@@ -504,7 +606,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: kafka
+    name: sr
   role: ResourceOwner
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka
@@ -540,7 +642,7 @@ metadata:
 spec:
   principal:
     type: user
-    name: controlcenter
+    name: c3
   role: ResourceOwner
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka

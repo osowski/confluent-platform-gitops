@@ -1,0 +1,115 @@
+# CMF Embedded MDS Key Pair Generation Job
+# Generates a dedicated RSA keypair for CMF's embedded MDS (#418) — distinct
+# from the Kafka broker's own MDS keypair (mds-token, kafka namespace).
+# Runs directly in the operator namespace (no cross-namespace consumer, so
+# no Reflector mirroring needed, unlike mds-token's job).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cmf-embedded-mds-keygen
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-embedded-mds-keygen
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+    resourceNames: ["cmf-embedded-mds-keypair"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-embedded-mds-keygen
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cmf-embedded-mds-keygen
+subjects:
+  - kind: ServiceAccount
+    name: cmf-embedded-mds-keygen
+    namespace: operator
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cmf-embedded-mds-keygen
+  namespace: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: cmf-embedded-mds-keygen
+    spec:
+      serviceAccountName: cmf-embedded-mds-keygen
+      restartPolicy: OnFailure
+      containers:
+        - name: keygen
+          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066  # kubectl v1.35.4
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              echo "=== CMF Embedded MDS Key Pair Generator ==="
+
+              if kubectl get secret cmf-embedded-mds-keypair -n operator >/dev/null 2>&1; then
+                echo "Secret cmf-embedded-mds-keypair already exists, checking if it has valid keys..."
+                PUBLIC_KEY=$(kubectl get secret cmf-embedded-mds-keypair -n operator -o jsonpath='{.data.tokenPublicKey\.pem}' | base64 -d)
+                if echo "$PUBLIC_KEY" | grep -q "BEGIN PUBLIC KEY"; then
+                  echo "Valid keys already exist, nothing to do."
+                  exit 0
+                else
+                  echo "Invalid key format detected, will regenerate..."
+                fi
+              fi
+
+              echo "Generating RSA 2048-bit keypair..."
+
+              if ! command -v openssl &> /dev/null; then
+                echo "Installing openssl..."
+                apk add --no-cache openssl
+              fi
+
+              openssl genrsa -out /tmp/tokenKeypair.pem 2048
+              openssl rsa -in /tmp/tokenKeypair.pem -outform PEM -pubout -out /tmp/tokenPublicKey.pem
+
+              echo "Creating/updating cmf-embedded-mds-keypair secret..."
+              kubectl create secret generic cmf-embedded-mds-keypair \
+                --from-file=tokenKeypair.pem=/tmp/tokenKeypair.pem \
+                --from-file=tokenPublicKey.pem=/tmp/tokenPublicKey.pem \
+                --namespace operator \
+                --dry-run=client -o yaml | \
+              kubectl apply -f -
+
+              rm -f /tmp/tokenKeypair.pem /tmp/tokenPublicKey.pem
+
+              echo "=== Keypair generation complete ==="
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

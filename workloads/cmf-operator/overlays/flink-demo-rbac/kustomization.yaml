@@ -8,3 +8,4 @@ resources:
   - cmf-encryption-key.yaml
   - postgres-secret.yaml
   - postgres.yaml
+  - cmf-embedded-mds-keygen-job.yaml

@@ -1,0 +1,148 @@
+---
+# Demo directory tree seeded by seed-job.yaml. Structure is plain OpenLDAP
+# (inetOrgPerson / groupOfNames), not Active Directory-flavored — CFK's
+# services.mds.provider.ldap.configurations fields below are set to match
+# (see workloads/confluent-resources/overlays/*/kafka-patch.yaml once wired).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-seed
+  namespace: openldap
+data:
+  01-ou.ldif: |
+    dn: ou=users,dc=confluentdemo,dc=local
+    objectClass: organizationalUnit
+    ou: users
+
+    dn: ou=groups,dc=confluentdemo,dc=local
+    objectClass: organizationalUnit
+    ou: groups
+
+    dn: ou=services,dc=confluentdemo,dc=local
+    objectClass: organizationalUnit
+    ou: services
+
+  02-service-principals.ldif: |
+    # MDS's own LDAP bind user (search/read-only via ACL, see mds-bind-secret.yaml).
+    # Password set here matches mds-ldap-credential; if you rotate that
+    # Secret, add a standby entry here rather than editing this one in place.
+    dn: uid=mds,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: mds
+    cn: mds
+    sn: mds
+    userPassword: mds-bind-password
+
+    dn: uid=kafka,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: kafka
+    cn: kafka
+    sn: kafka
+    userPassword: kafka-secret
+
+    dn: uid=erp,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: erp
+    cn: erp
+    sn: erp
+    userPassword: erp-secret
+
+    dn: uid=sr,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: sr
+    cn: sr
+    sn: sr
+    userPassword: sr-secret
+
+    dn: uid=c3,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: c3
+    cn: c3
+    sn: c3
+    userPassword: c3-secret
+
+    dn: uid=cmf,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: cmf
+    cn: cmf
+    sn: cmf
+    userPassword: cmf-secret
+
+    # LDAP identities for the colors/shapes JAR FlinkApplication autoscaler
+    # jobs, authenticating to the internal Kafka listener and Schema
+    # Registry via SASL/PLAIN and HTTP Basic respectively.
+    dn: uid=sa-shapes-flink,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: sa-shapes-flink
+    cn: sa-shapes-flink
+    sn: sa-shapes-flink
+    userPassword: sa-shapes-flink-secret
+
+    dn: uid=sa-colors-flink,ou=services,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: sa-colors-flink
+    cn: sa-colors-flink
+    sn: sa-colors-flink
+    userPassword: sa-colors-flink-secret
+
+  03-demo-users.ldif: |
+    dn: uid=admin,ou=users,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: admin
+    cn: Admin User
+    sn: User
+    mail: admin@osow.ski
+    userPassword: admin123
+
+    dn: uid=user-square,ou=users,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: user-square
+    cn: Square User
+    sn: User
+    mail: user-square@osow.ski
+    userPassword: square123
+
+    dn: uid=user-circle,ou=users,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: user-circle
+    cn: Circle User
+    sn: User
+    mail: user-circle@osow.ski
+    userPassword: circle123
+
+    dn: uid=user-red,ou=users,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: user-red
+    cn: Red User
+    sn: User
+    mail: user-red@osow.ski
+    userPassword: red123
+
+    dn: uid=user-blue,ou=users,dc=confluentdemo,dc=local
+    objectClass: inetOrgPerson
+    uid: user-blue
+    cn: Blue User
+    sn: User
+    mail: user-blue@osow.ski
+    userPassword: blue123
+
+  04-groups.ldif: |
+    # groupOfNames requires >=1 member on creation; each group is seeded
+    # with its real members below (RFC 4519 groupOfNames has no "empty
+    # group" placeholder, unlike groupOfUniqueNames).
+    dn: cn=admins,ou=groups,dc=confluentdemo,dc=local
+    objectClass: groupOfNames
+    cn: admins
+    member: uid=admin,ou=users,dc=confluentdemo,dc=local
+
+    dn: cn=shapes,ou=groups,dc=confluentdemo,dc=local
+    objectClass: groupOfNames
+    cn: shapes
+    member: uid=user-square,ou=users,dc=confluentdemo,dc=local
+    member: uid=user-circle,ou=users,dc=confluentdemo,dc=local
+
+    dn: cn=colors,ou=groups,dc=confluentdemo,dc=local
+    objectClass: groupOfNames
+    cn: colors
+    member: uid=user-red,ou=users,dc=confluentdemo,dc=local
+    member: uid=user-blue,ou=users,dc=confluentdemo,dc=local
