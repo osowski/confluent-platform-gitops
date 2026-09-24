@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Switches the colors/shapes JAR FlinkApplications from Keycloak OAuth to
+# LDAP-backed SASL/PLAIN, for clusters whose internal Kafka listener is
+# LDAP-only (flink-demo-rbac). Must be listed after rbac-oauth: it patches
+# the auth keys rbac-oauth sets, and leaves rbac-oauth's Secrets and
+# Keycloak service-account Job in place.
+
+patches:
+  # flinkConfiguration is a map, so these merge per key: only the auth keys
+  # are listed, and OAuth-only keys are set to null to remove them.
+  - path: flink-application-shapes-ldap-patch.yaml
+  - path: flink-application-colors-ldap-patch.yaml
