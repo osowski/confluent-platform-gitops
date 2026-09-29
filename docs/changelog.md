@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **minio image mirrored to `quay.io/osowski/minio`** ([#430](https://github.com/osowski/confluent-platform-gitops/issues/430)): upstream `quay.io/minio/minio` moved to `quay.io/minio/aistor/minio`, breaking pulls; now sourced from our own mirror to avoid further registry churn.
+
 ## [0.9.0] - 2026-09-17
 
 ### Added
