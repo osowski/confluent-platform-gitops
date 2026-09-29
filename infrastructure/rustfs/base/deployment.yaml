@@ -10,6 +10,8 @@ metadata:
     app: rustfs
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: rustfs
@@ -30,6 +32,8 @@ spec:
           value: ":9001"
         - name: RUSTFS_CONSOLE_ENABLE
           value: "true"
+        - name: RUSTFS_CHECK_UPDATE
+          value: "false"
         - name: RUSTFS_ACCESS_KEY
           valueFrom:
             secretKeyRef:
