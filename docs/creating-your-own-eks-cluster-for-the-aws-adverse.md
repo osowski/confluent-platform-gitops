@@ -354,7 +354,7 @@ kubectl wait pods \
 kubectl apply --filename ./clusters/new-eks-cluster/bootstrap.yaml
 ```
 
-This creates a single ArgoCD `Application` named `bootstrap` that points ArgoCD at your cluster's configuration directory in the Git repository. From there, ArgoCD takes over: it creates the `infrastructure` and `workloads` parent Applications, which in turn deploy every configured component automatically — cert-manager, ExternalDNS, Traefik, MinIO, the Confluent and Flink operators, Keycloak, and everything else defined in the cluster configuration.
+This creates a single ArgoCD `Application` named `bootstrap` that points ArgoCD at your cluster's configuration directory in the Git repository. From there, ArgoCD takes over: it creates the `infrastructure` and `workloads` parent Applications, which in turn deploy every configured component automatically — cert-manager, ExternalDNS, Traefik, RustFS, the Confluent and Flink operators, Keycloak, and everything else defined in the cluster configuration.
 
 ### 16. Retrieve the ArgoCD Admin Password
 
@@ -460,7 +460,7 @@ All services are exposed through Traefik at subdomains of `new-eks-cluster.platf
 | Grafana | `https://grafana.new-eks-cluster.platform.dspdemos.com` | `admin` | `prom-operator` |
 | Prometheus | `https://prometheus.new-eks-cluster.platform.dspdemos.com` | — | — |
 | Alertmanager | `https://alertmanager.new-eks-cluster.platform.dspdemos.com` | — | — |
-| MinIO Console | `https://s3-console.new-eks-cluster.platform.dspdemos.com` | — | — |
+| RustFS Console | `https://s3-console.new-eks-cluster.platform.dspdemos.com` | — | — |
 | Keycloak Admin Console | `https://keycloak.new-eks-cluster.platform.dspdemos.com` | `flink-admin` | `admin123` |
 | CMF | `https://cmf.new-eks-cluster.platform.dspdemos.com` | — | — |
 

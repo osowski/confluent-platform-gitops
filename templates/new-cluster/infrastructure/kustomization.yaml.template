@@ -12,7 +12,7 @@ resources:
 - metrics-server.yaml
 - reflector.yaml
 - traefik.yaml
-- minio.yaml
+- rustfs.yaml
 - headlamp.yaml
 - vault.yaml
 - vault-config.yaml

@@ -330,7 +330,7 @@ main() {
     echo "     - clusters/$CLUSTER_NAME/workloads/kustomization.yaml"
     echo "  3. Create cluster-specific overlays as needed (see clusters/$CLUSTER_NAME/README.md)"
     echo "     - Required: Ingress overlays (argocd, vault, controlcenter)"
-    echo "     - Required: MinIO overlay (infrastructure/minio/overlays/$CLUSTER_NAME/)"
+    echo "     - Required: RustFS overlay (infrastructure/rustfs/overlays/$CLUSTER_NAME/)"
     echo "     - Required: Populate ingress overlay stubs:"
     echo "         infrastructure/ingresses/overlays/\$CLUSTER_NAME/ (ArgoCD, Vault, etc.)"
     echo "         workloads/ingresses/overlays/\$CLUSTER_NAME/ (CMF, ControlCenter, etc.)"

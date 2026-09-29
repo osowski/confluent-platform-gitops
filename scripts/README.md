@@ -86,7 +86,7 @@ whole thing is safe to re-run or resume.
    - `kubectl kustomize` renders of the ArgoCD-managed apps that are declared for the
      cluster but not yet synced and are sourced from a kustomize path in this repo (as
      of 2026-09-01: `confluent-resources`, `flink-resources`, `colors-and-shapes`,
-     `minio`), so images aren't missed just because ArgoCD hasn't created the pods yet.
+     `rustfs`), so images aren't missed just because ArgoCD hasn't created the pods yet.
    - ArgoCD's own bootstrap manifest, fetched directly from
      `raw.githubusercontent.com/argoproj/argo-cd`. This repo installs ArgoCD itself via
      a raw `kubectl apply` of that upstream manifest rather than a kustomize overlay

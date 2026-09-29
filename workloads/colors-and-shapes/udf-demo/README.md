@@ -19,7 +19,7 @@ Already satisfied on `flink-demo` — no infrastructure changes needed:
 
 - **Artifact management** is enabled cluster-wide
   (`workloads/cmf-operator/base/values.yaml`, `cmf.artifacts.enabled: true`,
-  backed by the in-cluster MinIO).
+  backed by the in-cluster RustFS).
 - **Environment catalog** is enabled by default on every cluster
   (`workloads/cmf-operator/base/values.yaml`,
   `cmf.sql.environmentCatalog.enabled: true`).

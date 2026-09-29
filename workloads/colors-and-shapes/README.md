@@ -147,7 +147,7 @@ The following must be deployed before this application:
   synced first (this workload references, but does not own, `cmf-rest-class`
   in the `flink` namespace)
 - Kafka cluster with Schema Registry
-- MinIO for object storage (deployed as infrastructure application)
+- RustFS for object storage (deployed as infrastructure application)
 - On the RBAC clusters: Keycloak (realm + demo users/groups) and MDS, since
   `components/rbac-oauth` depends on both
 
