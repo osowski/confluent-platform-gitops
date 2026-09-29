@@ -79,7 +79,7 @@ The following must be deployed before this application:
 - Confluent for Kubernetes (CFK) operator
 - Confluent Manager for Apache Flink (CMF) operator
 - Kafka cluster with Schema Registry
-- MinIO for object storage (deployed as infrastructure application)
+- RustFS for object storage (deployed as infrastructure application)
 
 ## Getting Started (Flink SQL demo)
 

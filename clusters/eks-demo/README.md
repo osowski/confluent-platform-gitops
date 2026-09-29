@@ -198,7 +198,7 @@ DNS is managed automatically by ExternalDNS — no `/etc/hosts` entries are need
 - CMF's native SSO handles the browser login directly — no reverse proxy involved. Artifact
   upload/management lives in this UI (Control Center has no artifacts page).
 
-**MinIO Console:**
+**RustFS Console:**
 - **URL**: https://s3-console.eks-demo.platform.dspdemos.com
 - **CMF Artifact Management**: enabled, backed by a dedicated `artifacts` bucket (`basePath: s3://artifacts/cmf`)
 
@@ -276,7 +276,7 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 - **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuers for Let's Encrypt staging and production
 - **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD and Headlamp UIs
-- **minio** (wave 85) - Object storage for Flink checkpoints and savepoints
+- **rustfs** (wave 85) - Object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 
 ### Workload Applications
@@ -302,7 +302,7 @@ Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 Document anything unique to this cluster:
 - OIDC/Keycloak SSO flow and realm configuration
 - RBAC model for MDS + Flink ConfluentRoleBindings
-- Flink checkpoint/savepoint storage layout in MinIO
+- Flink checkpoint/savepoint storage layout in RustFS
 - Let's Encrypt certificate lifecycle and renewal
 - SSM+SOCKS5 bastion access patterns
 -->

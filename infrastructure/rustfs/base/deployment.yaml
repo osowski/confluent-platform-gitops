@@ -2,30 +2,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio
+  name: rustfs
   namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "10"
   labels:
-    app: minio
+    app: rustfs
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: minio
+      app: rustfs
   template:
     metadata:
       labels:
-        app: minio
+        app: rustfs
     spec:
       containers:
-      - name: minio
-        image: quay.io/osowski/minio:RELEASE.2025-10-17T06-17-41Z
+      - name: rustfs
+        image: quay.io/rustfs/rustfs:1.0.0
         args:
-        - server
         - /data
-        - --console-address
-        - ":9001"
+        env:
+        - name: RUSTFS_ADDRESS
+          value: ":9000"
+        - name: RUSTFS_CONSOLE_ADDRESS
+          value: ":9001"
+        - name: RUSTFS_CONSOLE_ENABLE
+          value: "true"
+        - name: RUSTFS_CHECK_UPDATE
+          value: "false"
+        - name: RUSTFS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rustfs-credentials
+              key: access-key
+        - name: RUSTFS_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rustfs-credentials
+              key: secret-key
         ports:
         - name: api
           containerPort: 9000
@@ -33,17 +51,6 @@ spec:
         - name: console
           containerPort: 9001
           protocol: TCP
-        env:
-        - name: MINIO_ROOT_USER
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: root-user
-        - name: MINIO_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: root-password
         volumeMounts:
         - name: data
           mountPath: /data
@@ -56,17 +63,17 @@ spec:
             memory: 512Mi
         livenessProbe:
           httpGet:
-            path: /minio/health/live
+            path: /health
             port: 9000
           initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /minio/health/ready
+            path: /health
             port: 9000
           initialDelaySeconds: 5
           periodSeconds: 5
       volumes:
       - name: data
         persistentVolumeClaim:
-          claimName: minio-data
+          claimName: rustfs-data

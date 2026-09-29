@@ -1,0 +1,60 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rustfs-init
+  namespace: storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    app: rustfs
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: rustfs-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: aws-cli
+        image: public.ecr.aws/aws-cli/aws-cli:2.37.5
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: rustfs-credentials
+              key: access-key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rustfs-credentials
+              key: secret-key
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+        - name: RUSTFS_ENDPOINT
+          value: "http://rustfs.storage.svc.cluster.local:9000"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for RustFS to be ready..."
+          until aws --endpoint-url "$RUSTFS_ENDPOINT" s3 ls >/dev/null 2>&1; do
+            echo "RustFS not ready, waiting..."
+            sleep 5
+          done
+          echo "RustFS is ready"
+
+          for bucket in warehouse artifacts; do
+            if aws --endpoint-url "$RUSTFS_ENDPOINT" s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+              echo "Bucket $bucket already exists"
+            else
+              echo "Creating bucket $bucket"
+              aws --endpoint-url "$RUSTFS_ENDPOINT" s3 mb "s3://$bucket"
+            fi
+          done
+
+          echo "RustFS initialization complete"

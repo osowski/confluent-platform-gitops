@@ -14,4 +14,4 @@ labels:
 - includeSelectors: false
   includeTemplates: true
   pairs:
-    app: minio
+    app: rustfs

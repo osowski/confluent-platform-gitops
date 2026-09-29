@@ -1,10 +1,10 @@
 ---
-# TLS certificate for the MinIO S3 API and Console HTTPS IngressRoutes.
+# TLS certificate for the RustFS S3 API and Console HTTPS IngressRoutes.
 # flink-demo-rbac only: other clusters use different TLS models.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: minio-tls
+  name: rustfs-tls
   namespace: storage
   annotations:
     argocd.argoproj.io/sync-wave: "20"
@@ -16,7 +16,7 @@ spec:
     group: cert-manager.io
     kind: ClusterIssuer
     name: selfsigned-cluster-issuer
-  secretName: minio-tls
+  secretName: rustfs-tls
   usages:
     - digital signature
     - key encipherment

@@ -661,11 +661,11 @@ kubectl rollout restart deployment/flink-kubernetes-operator -n operator
 If your application's pods reference a Secret that lives in another
 namespace and reaches yours via the
 [Emberstack Reflector](https://github.com/emberstack/kubernetes-reflector)
-(for example, `minio-credentials` in `storage`, reflected wherever Flink jobs
+(for example, `rustfs-credentials` in `storage`, reflected wherever Flink jobs
 need S3 checkpoint/savepoint credentials), the source Secret's
 `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` annotation
 must list your new namespace by name. These patches live per-cluster, e.g.
-`infrastructure/minio/overlays/<cluster>/secret-patch.yaml`. Symptom if
+`infrastructure/rustfs/overlays/<cluster>/secret-patch.yaml`. Symptom if
 missed: pods in the new namespace fail with
 `CreateContainerConfigError` / `secret "<name>" not found` — Reflector never
 copies the secret in, and everything upstream of pod scheduling (the CR,

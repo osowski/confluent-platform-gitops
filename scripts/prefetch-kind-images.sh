@@ -104,7 +104,7 @@ if [[ "$DO_DISCOVER" -eq 1 ]]; then
     "workloads/confluent-resources/overlays/${CLUSTER}"
     "workloads/flink-resources/overlays/${CLUSTER}"
     "workloads/colors-and-shapes/overlays/${CLUSTER}"
-    "infrastructure/minio/overlays/${CLUSTER}"
+    "infrastructure/rustfs/overlays/${CLUSTER}"
   )
   : > "$RENDER_DIR/from-kustomize.txt"
   for p in "${RENDER_PATHS[@]}"; do

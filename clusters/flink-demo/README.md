@@ -122,13 +122,13 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **cert-manager** (wave 20) - TLS certificate management
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **trust-manager** (wave 30) - CA certificate distribution
-- **reflector** (wave 40) - Cross-namespace secret replication for minio-credentials
+- **reflector** (wave 40) - Cross-namespace secret replication for rustfs-credentials
 - **vault** (wave 40) - HashiCorp Vault (dev mode)
 - **vault-config** (wave 50) - Vault transit engine configuration
 - **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
 - **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD, Vault, and Headlamp UIs
-- **minio** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
+- **rustfs** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 - **registry** (wave 85) - In-cluster image registry at pinned ClusterIP `10.96.0.50:5000`
 - **registry-hosts** (wave 86) - PostSync Job writing per-node containerd `hosts.toml` for the registry
@@ -253,7 +253,7 @@ confluent flink environment list
 confluent flink application list --environment default
 ```
 
-**MinIO:**
+**RustFS:**
 - **API URL**: http://s3.flink-demo.confluentdemo.local
 - **Console URL**: http://s3-console.flink-demo.confluentdemo.local
 - **Credentials**: Access Key `admin`, Secret Key `password`

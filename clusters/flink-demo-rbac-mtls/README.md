@@ -11,7 +11,7 @@ The `flink-demo-rbac-mtls` cluster demonstrates a complete Confluent Platform de
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
 - **Security**: Keycloak for SSO/OAuth, MDS for RBAC, cert-manager for TLS, Reflector for secret replication, and **mTLS** on the Kafka↔KRaft controller and inter-broker replication paths (see [mTLS](#mtls))
 - **Networking**: Traefik ingress controller with local DNS resolution
-- **Storage**: MinIO for S3-compatible object storage (Flink checkpoints and savepoints)
+- **Storage**: RustFS for S3-compatible object storage (Flink checkpoints and savepoints)
 
 **Domain**: `*.flink-demo-rbac-mtls.confluentdemo.local`
 
@@ -154,7 +154,7 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
 - **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD and Headlamp UIs
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
-- **minio** (wave 85) - S3-compatible object storage (namespace: storage)
+- **rustfs** (wave 85) - S3-compatible object storage (namespace: storage)
 
 ### Workload Applications
 
@@ -294,7 +294,7 @@ confluent flink environment list
 confluent flink application list --environment shapes-env
 ```
 
-**MinIO (S3-compatible storage):**
+**RustFS (S3-compatible storage):**
 - **Console URL**: http://s3-console.flink-demo-rbac-mtls.confluentdemo.local
 - **S3 API URL**: http://s3.flink-demo-rbac-mtls.confluentdemo.local
 - **CMF Artifact Management**: enabled, backed by a dedicated `artifacts` bucket (`basePath: s3://artifacts/cmf`)
