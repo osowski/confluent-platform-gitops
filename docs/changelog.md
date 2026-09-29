@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-29
+
 ### Changed
 - **minio replaced with RustFS** ([#431](https://github.com/osowski/confluent-platform-gitops/issues/431)): quay.io/minio/minio moved to the license-gated AIStor product with no free path back, superseding the short-lived `quay.io/osowski/minio` mirror ([#430](https://github.com/osowski/confluent-platform-gitops/issues/430)) — neither the original nor the mirrored image can run without a paid license. Storage backend is now RustFS (Apache-2.0, quay.io-hosted), same ports and bucket layout.
   Breaking change for any cluster already running workloads against minio — see the cutover runbook in [PR #434](https://github.com/osowski/confluent-platform-gitops/pull/434) before applying to a live cluster.
@@ -452,7 +454,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workloads project: Namespace-scoped resources only
 - Secrets excluded from repository (external management)
 
-[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/osowski/confluent-platform-gitops/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/osowski/confluent-platform-gitops/compare/v0.8.0...v0.8.1
