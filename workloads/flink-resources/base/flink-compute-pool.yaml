@@ -63,7 +63,7 @@ spec:
       metrics.reporter.prom.port: "9249-9250"
       state.checkpoints.dir: "s3://warehouse/checkpoints/"
       state.savepoints.dir: "s3://warehouse/savepoints/"
-      s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
       state.backend: "filesystem"
@@ -87,13 +87,13 @@ spec:
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-user
+                    name: rustfs-credentials
+                    key: access-key
               - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-password
+                    name: rustfs-credentials
+                    key: secret-key
 
     # Both jobManager and taskManager resources must be specified, including
     # memory — CFK does not default them, and the pool fails to start without.

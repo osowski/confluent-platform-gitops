@@ -29,7 +29,7 @@ spec:
       execution.checkpointing.interval: "10s"
       state.checkpoints.dir: "s3://warehouse/checkpoints/shapes/"
       state.savepoints.dir: "s3://warehouse/savepoints/shapes/"
-      s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
       state.backend: "filesystem"
@@ -52,13 +52,13 @@ spec:
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-user
+                    name: rustfs-credentials
+                    key: access-key
               - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-password
+                    name: rustfs-credentials
+                    key: secret-key
     taskManager:
       resource:
         cpu: 1.0
@@ -92,7 +92,7 @@ spec:
       execution.checkpointing.interval: "10s"
       state.checkpoints.dir: "s3://warehouse/checkpoints/colors/"
       state.savepoints.dir: "s3://warehouse/savepoints/colors/"
-      s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
       state.backend: "filesystem"
@@ -115,13 +115,13 @@ spec:
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-user
+                    name: rustfs-credentials
+                    key: access-key
               - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
-                    name: minio-credentials
-                    key: root-password
+                    name: rustfs-credentials
+                    key: secret-key
     taskManager:
       resource:
         cpu: 1.0

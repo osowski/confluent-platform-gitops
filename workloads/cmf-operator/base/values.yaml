@@ -22,27 +22,27 @@ serviceAccount:
 
 # ---------------------------------------------------------------------------
 # Artifact Management (Issue #306) — enabled by default on all clusters.
-# Backed by the in-cluster MinIO (namespace `storage`). CMF uses these
+# Backed by the in-cluster RustFS (namespace `storage`). CMF uses these
 # credentials only for artifact upload/download/delete; running Flink jobs
 # fetch artifacts with their own per-deployment filesystem credentials.
 # ---------------------------------------------------------------------------
 
-# Inject MinIO credentials as AWS-style env vars. `minio-credentials` is
+# Inject RustFS credentials as AWS-style env vars. `rustfs-credentials` is
 # reflected into the `operator` namespace by the Emberstack Reflector
-# (see infrastructure/minio/overlays/*/secret-patch.yaml). Referenced as
+# (see infrastructure/rustfs/overlays/*/secret-patch.yaml). Referenced as
 # ${...} in cmf.artifacts.configuration below (resolved by CMF at runtime,
 # NOT by Helm — values must arrive via valueFiles, never --set).
 extraEnv:
   - name: AWS_ACCESS_KEY_ID
     valueFrom:
       secretKeyRef:
-        name: minio-credentials
-        key: root-user
+        name: rustfs-credentials
+        key: access-key
   - name: AWS_SECRET_ACCESS_KEY
     valueFrom:
       secretKeyRef:
-        name: minio-credentials
-        key: root-password
+        name: rustfs-credentials
+        key: secret-key
 
 cmf:
   artifacts:
@@ -50,7 +50,7 @@ cmf:
     # Required when enabled — CMF refuses to start without basePath.
     basePath: s3://artifacts/cmf
     configuration:
-      fs.s3a.endpoint: "http://minio.storage.svc.cluster.local:9000"
+      fs.s3a.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       fs.s3a.access.key: "${AWS_ACCESS_KEY_ID}"
       fs.s3a.secret.key: "${AWS_SECRET_ACCESS_KEY}"
       fs.s3a.path.style.access: "true"

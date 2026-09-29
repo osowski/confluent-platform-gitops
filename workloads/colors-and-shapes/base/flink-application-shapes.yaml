@@ -62,13 +62,13 @@ spec:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: minio-credentials
-                  key: root-user
+                  name: rustfs-credentials
+                  key: access-key
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: minio-credentials
-                  key: root-password
+                  name: rustfs-credentials
+                  key: secret-key
 
   # Flink configuration
   flinkConfiguration:
@@ -118,8 +118,8 @@ spec:
     state.savepoints.dir: "s3://warehouse/savepoints/shapes"
     state.checkpoints.num-retained: "10"
 
-    # S3 configuration (points to MinIO service)
-    s3.endpoint: "http://minio.storage.svc.cluster.local:9000"
+    # S3 configuration (points to RustFS service)
+    s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
     s3.path.style.access: "true"
     s3.connection.ssl.enabled: "false"
 
