@@ -12,7 +12,7 @@ resources:
 - metrics-server.yaml
 - reflector.yaml
 - traefik.yaml
-- minio.yaml
+- rustfs.yaml
 - headlamp.yaml
 
 # Infrastructure applications are deployed in sync wave order (10-85)

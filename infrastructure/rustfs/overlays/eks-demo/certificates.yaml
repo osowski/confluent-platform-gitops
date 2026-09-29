@@ -2,10 +2,10 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: minio-tls
+  name: rustfs-tls
   namespace: storage
 spec:
-  secretName: minio-tls
+  secretName: rustfs-tls
   dnsNames:
     - s3.eks-demo.platform.dspdemos.com
   issuerRef:
@@ -16,10 +16,10 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: minio-console-tls
+  name: rustfs-console-tls
   namespace: storage
 spec:
-  secretName: minio-console-tls
+  secretName: rustfs-console-tls
   dnsNames:
     - s3-console.eks-demo.platform.dspdemos.com
   issuerRef:

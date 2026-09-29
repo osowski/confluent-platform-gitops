@@ -2,7 +2,7 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: minio
+  name: rustfs
   namespace: storage
 spec:
   entryPoints:
@@ -11,16 +11,16 @@ spec:
     - match: Host(`s3.eks-demo.platform.dspdemos.com`)
       kind: Rule
       services:
-        - name: minio
+        - name: rustfs
           port: 9000
           scheme: http
   tls:
-    secretName: minio-tls
+    secretName: rustfs-tls
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: minio-console
+  name: rustfs-console
   namespace: storage
 spec:
   entryPoints:
@@ -29,8 +29,8 @@ spec:
     - match: Host(`s3-console.eks-demo.platform.dspdemos.com`)
       kind: Rule
       services:
-        - name: minio
+        - name: rustfs
           port: 9001
           scheme: http
   tls:
-    secretName: minio-console-tls
+    secretName: rustfs-console-tls

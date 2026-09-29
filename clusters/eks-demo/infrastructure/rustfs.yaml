@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: minio
+  name: rustfs
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "85" # After traefik/ingress (80), before workloads (100+)
@@ -13,14 +13,14 @@ spec:
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
     targetRevision: HEAD
-    path: infrastructure/minio/overlays/flink-demo
+    path: infrastructure/rustfs/overlays/eks-demo
   destination:
     server: https://kubernetes.default.svc
     namespace: storage
   syncPolicy:
     automated:
       prune: true
-      selfHeal: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
     retry:
