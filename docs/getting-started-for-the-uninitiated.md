@@ -167,13 +167,167 @@ The `confluent-resources`, `flink-resources`, and `colors-and-shapes` Applicatio
 
 14. Click on the `flink-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
 
-15. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status.
+15. Click on the `colors-and-shapes` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status. This deploys the two-tenant (`shapes`/`colors`) demo the rest of this guide walks through.
+   - For future self-paced research or reuse, reference the [colors-and-shapes/README.md](https://github.com/osowski/confluent-platform-gitops/blob/main/workloads/colors-and-shapes/README.md) document for a full detail on this sample artifact.
 
 ## Access Control Center
 
 16. Open Confluent Control Center in your browser:
 
 - URL: [`https://controlcenter.flink-demo.confluentdemo.local`](https://controlcenter.flink-demo.confluentdemo.local)
+
+> [!NOTE]
+> **Two ways to deploy a Flink job:** `colors-and-shapes` deploys the same logical pipeline twice, side by side, using both models CMF supports:
+>
+> - **Native `FlinkApplication` (JAR)** — a compiled Java job (`shapes`, `colors`) submitted as a Kubernetes custom resource. You bring a JAR; CMF/CFK run it. This is the model for hand-written stream processing applications.
+> - **Flink SQL (`FlinkStatement`)** — a declarative SQL `INSERT INTO ... SELECT` (`shapes-sql-enrich`, `colors-sql-enrich`), submitted through the CMF UI or REST API rather than compiled. This is the model for analysts and anyone who'd rather write SQL than Java.
+>
+> Both read the same `*-input` topic and write to their own output topic (`*-output` for the JAR, `*-sql-output` for SQL), so you can compare them directly on identical data. The rest of this guide uses the `colors` tenant as the running example — everything applies equally to `shapes`.
+
+## Access the CMF UI
+
+17. Open the CMF UI in your browser:
+
+- URL: [`https://cmf-ui.flink-demo.confluentdemo.local`](https://cmf-ui.flink-demo.confluentdemo.local)
+
+Take a moment to orient yourself around the main tabs:
+
+- **Environments** — `colors-env`/`shapes-env` (one per tenant) plus `default`
+- **Compute Pools** — `colors-pool`/`shapes-pool`, where SQL statements actually run
+- **Applications** — the JAR `FlinkApplication`s (`colors`, `shapes`)
+- **Statements** — the SQL `FlinkStatement`s (`colors-sql-enrich`, `shapes-sql-enrich`) plus any ad hoc statement you submit yourself
+- **Artifacts** — uploaded JARs available to reference from SQL (used later for the UDF)
+
+## Scale Up the Producers
+
+Both tenants ship with their producer `Deployment`s scaled to zero, so there's no traffic until you turn them on.
+
+18. Generate traffic for both tenants:
+
+```bash
+kubectl -n flink-colors scale deploy/colors-producer --replicas=1
+kubectl -n flink-shapes scale deploy/shapes-producer --replicas=1
+```
+
+Confirm messages are flowing in Control Center (**Topics** → `colors-input` → **Messages**). You only need to use `colors` or `shapes` for this tutorial; both are not required.
+
+## Explore the Running Jobs in CMF
+
+19. In the CMF UI, open **Environments** and click into **`colors-env`**. This scopes the rest of the page to just the `colors` tenant — its own Compute Pools, Applications, Statements, and Artifacts, rather than the cluster-wide lists from the previous step. Do the remaining steps in this guide from inside this environment view unless noted otherwise.
+
+20. Open **Applications** → `colors` to see the JAR job's graph, parallelism, and checkpoint history, then open **Statements** → `colors-sql-enrich` to see the SQL job's equivalent view. Both should show a `RUNNING` status once the producer traffic above reaches them.
+
+## Run a Flink SQL Statement
+
+21. Submit your own ad hoc statement against the `colors` tenant: in the CMF UI (inside `colors-env`), open the **Statements** tab and start a new statement via **Add statement** _(exact wording may vary by CMF version)_ against compute pool `colors-pool`, catalog `colors-catalog`, database `colors-database`, and run a simple read to confirm the setup:
+
+```sql
+SELECT * FROM `colors-input` LIMIT 10;
+```
+
+Once you've seen results, compare it against the "real" pipeline already running: `colors-sql-enrich`'s statement (viewable from **Statements** in the CMF UI) follows the same `INSERT INTO ... SELECT ... FROM colors-input` shape you'll use again in the next section.
+
+## Deploy and Reference a UDF
+
+This section walks through registering a user-defined function and calling it from SQL — the full version, with more background on artifacts and troubleshooting, lives in [colors-and-shapes' UDF demo](../workloads/colors-and-shapes/udf-demo/README.md).
+
+This section requires Java and Maven. Confirm you have them with `java -version && mvn -version`, or install via Homebrew if needed:
+
+```bash
+brew install openjdk maven
+```
+
+22. Build the function JAR:
+
+```bash
+cd workloads/colors-and-shapes/udf-demo
+mvn package
+```
+
+This writes `target/udfs.jar`, containing a scalar function `com.example.ToUpperCase`.
+
+23. Upload the JAR as a CMF artifact:
+
+   - **Via the browser** at [`https://cmf.flink-demo.confluentdemo.local/home/environments/details/colors-env/artifacts/list`](https://cmf.flink-demo.confluentdemo.local/home/environments/details/colors-env/artifacts/list) — use the upload control to select `target/udfs.jar` directly from your machine.
+
+   - **Or, via `curl`:**
+
+     ```bash
+     # Extract the CA cert cert-manager generated for cmf-tls (self-signed; only needed once per session)
+     kubectl get secret cmf-tls --namespace operator -o jsonpath='{.data.ca\.crt}' \
+       | base64 --decode > /tmp/cmf-ca.crt
+
+     cat > /tmp/artifact.json <<'EOF'
+     {
+       "apiVersion": "cmf.confluent.io/v1",
+       "kind": "Artifact",
+       "metadata": {
+         "name": "udfs.jar"
+       },
+       "spec": {}
+     }
+     EOF
+
+     curl -X POST https://cmf.flink-demo.confluentdemo.local/cmf/api/v1/environments/colors-env/artifacts \
+       --cacert /tmp/cmf-ca.crt \
+       -F 'artifact=@/tmp/artifact.json;type=application/json' \
+       -F 'file=@target/udfs.jar'
+     ```
+
+A successful upload returns HTTP 201 with the created artifact at version 1. Confirm it in the browser: open the CMF UI's **Artifacts** tab (inside `colors-env`) and refresh — `udfs.jar` should now be listed at version 1.
+
+24. Register the function: start a new SQL statement against environment `colors-env`, compute pool `colors-pool`, catalog `_env_colors-env`, database `default`, and run:
+
+```sql
+CREATE FUNCTION IF NOT EXISTS to_upper
+  AS 'com.example.ToUpperCase'
+  USING JAR 'cmf://colors-env/udfs.jar';
+```
+
+25. Stop the existing `colors-sql-enrich` statement so it isn't also writing to `colors-sql-output` while you test the UDF:
+
+```bash
+kubectl delete flinkstatement -n flink-colors colors-sql-enrich
+```
+
+Deleting the `FlinkStatement` CR tells CFK to reconcile the deletion into CMF; within a few seconds, `colors-sql-enrich` should disappear from the CMF UI's **Statements** tab (inside `colors-env`) and its Flink job stops.
+
+26. Apply the function: start a **new** statement, same environment/pool, but with catalog `colors-catalog` and database `colors-database` this time (the catalog where `colors-input`/`colors-sql-output` live), and run:
+
+```sql
+INSERT INTO `colors-sql-output`
+/*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+(`timestamp`, `type`, `location`, `value`, `status`, `id`, `encoded`, `error`, `original`)
+SELECT `timestamp`, `_env_colors-env`.`default`.`to_upper`(`type`) AS `type`, `location`, `value`,
+  `_env_colors-env`.`default`.`to_upper`(`status`) AS `status`, `id`,
+  CAST(NULL AS STRING) AS `encoded`, CAST(NULL AS STRING) AS `error`, CAST(NULL AS STRING) AS `original`
+FROM `colors-input`
+/*+ OPTIONS('properties.group.id' = 'colors-udf-demo') */;
+```
+
+> [!WARNING]
+> An unqualified `to_upper()` here fails validation — function resolution is scoped to the current catalog (`colors-catalog`), and `to_upper` was registered in `_env_colors-env`. It must be called by its fully-qualified path, as above.
+
+## Verify in Control Center
+
+27. Open Control Center → **Topics** → `colors-sql-output` → **Messages**, and browse records. Every record should show `type`/`status` in upper case — since `colors-sql-enrich` was deleted in the previous section, this UDF statement is now the only thing writing to `colors-sql-output`. (If you skipped that deletion, you'll instead see upper-cased records interleaved with original-case ones, since both statements read `colors-input` independently but write to the same sink.)
+
+## Cleanup
+
+28. When you're done experimenting, tear down what you added (the base `colors-and-shapes` deployment stays running):
+
+In the CMF UI's **Statements** tab (inside `colors-env`), stop/delete the ad hoc statements you submitted above — the `SELECT * FROM colors-input LIMIT 10` test and the `INSERT INTO colors-sql-output ... to_upper(...)` statement. Unlike `colors-sql-enrich` (a named `FlinkStatement` CR), ad hoc statements get an auto-generated ID as their name, something like `c3-20260911-163407-fe8658440bc1bc028c65c233` — match them by their SQL preview in the Statements list, not by name. Then drop the function:
+
+```sql
+DROP FUNCTION IF EXISTS to_upper;
+```
+
+Then scale the producers back down if you're pausing rather than finishing:
+
+```bash
+kubectl -n flink-colors scale deploy/colors-producer --replicas=0
+kubectl -n flink-shapes scale deploy/shapes-producer --replicas=0
+```
 
 ---
 
