@@ -12,7 +12,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-439/disable-c3-cpf-flink-agents-default
     path: bootstrap
     helm:
       valuesObject:
@@ -20,7 +20,7 @@ spec:
           name: flink-demo
           domain: confluentdemo.local
         git:
-          targetRevision: "HEAD"
+          targetRevision: "feature-439/disable-c3-cpf-flink-agents-default"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
