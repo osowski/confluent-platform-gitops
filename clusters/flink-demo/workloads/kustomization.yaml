@@ -7,7 +7,6 @@ resources:
   - colors-and-shapes.yaml
   - confluent-resources.yaml
   #- flink-agents.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
-  ## If this was previously synced, commenting it out here prunes the Application (workloads has prune+selfHeal), which cascade-deletes flink-agents-workflow/flink-agents-react via its finalizer.
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml
   - namespaces.yaml
