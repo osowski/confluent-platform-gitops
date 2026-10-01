@@ -165,7 +165,7 @@ The model name must be kept in sync across **two separate locations**. These are
 | Location | File | Key |
 |---|---|---|
 | What Ollama pulls | `workloads/ollama/base/model-config.yaml` (ConfigMap `data.models`) | `qwen3:8b` |
-| What the agent requests | `workloads/flink-agents/base/flink-application.yaml` (env var) | `OLLAMA_MODEL: qwen3:8b` |
+| What the agent requests | `workloads/flink-agents/base/flink-application-{workflow,react}.yaml` (env var) | `OLLAMA_MODEL: qwen3:8b` |
 
 If the model names do not match, Ollama will attempt to pull the requested model on-demand (slow) or fail if there is no internet access.
 
