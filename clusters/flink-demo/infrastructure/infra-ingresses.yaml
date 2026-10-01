@@ -12,7 +12,7 @@ spec:
   project: infrastructure
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: feature-439/disable-c3-cpf-flink-agents-default
+    targetRevision: HEAD
     path: infrastructure/ingresses/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc

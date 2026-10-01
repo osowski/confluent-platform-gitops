@@ -20,7 +20,7 @@ spec:
           - $values/infrastructure/kube-prometheus-stack/overlays/flink-demo/values.yaml
         ignoreMissingValueFiles: true
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: feature-439/disable-c3-cpf-flink-agents-default
+      targetRevision: HEAD
       ref: values
   destination:
     server: https://kubernetes.default.svc
