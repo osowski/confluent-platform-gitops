@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **C3's CMF (CP Flink UI) integration disabled by default** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): `confluent.controlcenter.cmf.enable` is now `false` on all four clusters, since the CMF UI is the primary CP Flink UI going forward.
 - **`flink-agents` no longer created by default on `flink-demo`** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): it sat unsynced most of the time; apply it manually per the [Flink Agents README](../workloads/flink-agents/README.md) when needed.
+- **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): `workloads/flink-agents/base` now targets `host.docker.internal` directly; in-cluster Ollama is opt-in per overlay via the new `ollama-in-cluster-mode` component (replaces `ollama-host-mode`, which did the inverse).
 
 ## [0.10.0] - 2026-09-29
 

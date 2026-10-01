@@ -63,16 +63,60 @@ Shows incoming inference requests, model load times, and token generation as the
 
 ---
 
-## Option 1: In-Cluster Ollama (base default)
+## Option 1: Ollama on the Native macOS Host (global default)
 
-Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121). This is `workloads/flink-agents/base`'s default, but the `flink-demo` overlay (the only overlay deployed) layers the `ollama-host-mode` component from Option 2 below on top — so in-cluster is not what actually runs unless you remove that component.
+Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster — and it's `workloads/flink-agents/base`'s default; no component or overlay changes needed.
 
-**Endpoint (default):** `http://ollama.ollama.svc.cluster.local:11434`
+**Endpoint (default):** `http://host.docker.internal:11434` — the DNS name Kind pods use to reach the macOS host (provided by Docker Desktop).
+
+### Install and start
+
+```bash
+brew install ollama
+brew services run ollama # starts on :11434, uses Metal automatically on Apple Silicon
+ollama pull qwen3:8b  # or whichever model is configured (see Model section)
+```
+
+Verify the initContainer can reach the host once synced:
+
+```bash
+kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
+  curl -sf http://host.docker.internal:11434
+# Expected: "Ollama is running"
+```
+
+### Performance knobs (native macOS)
+
+| Setting | How to set | Notes |
+|---|---|---|
+| `OLLAMA_NUM_PARALLEL` | `launchctl setenv OLLAMA_NUM_PARALLEL 2` or env before `ollama serve` | GPU handles concurrency well; start at 2 |
+| `OLLAMA_FLASH_ATTENTION` | `OLLAMA_FLASH_ATTENTION=1 ollama serve` | Enables Flash Attention — significant speedup on Apple Silicon |
+| Model | `ollama pull <model>` | Larger models are viable with GPU; see Model section |
+| `NUM_ASYNC_THREADS` | `WorkflowSingleAgentExample.java` | Can increase to 2 when `OLLAMA_NUM_PARALLEL=2` |
+| `requestTimeout` | `CustomTypesAndResources.java` | Can reduce to 60s with GPU-accelerated inference |
+
+---
+
+## Option 2: In-Cluster Ollama (opt-in)
+
+Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121). Opt into this per overlay — it is no longer the default anywhere.
 
 > [!WARNING]
 > **The performance constraint on macOS**
 >
 > When running on Kind (Docker Desktop), Ollama runs inside a Linux VM. **Apple Silicon's GPU and Neural Engine are not accessible from inside the VM.** Inference is CPU-only regardless of the host hardware. This caps throughput significantly.
+
+### Opting in
+
+Add the `ollama-in-cluster-mode` Kustomize component to the cluster overlay:
+
+```yaml
+# workloads/flink-agents/overlays/<cluster>/kustomization.yaml
+components:
+  - ../../components/ollama-in-cluster-mode
+```
+
+This component patches both the `wait-for-ollama` initContainer and `flink-main-container` `OLLAMA_ENDPOINT` values to `http://ollama.ollama.svc.cluster.local:11434`. Remove the `components:` entry to go back to native-host Ollama.
 
 ### Performance knobs (in-cluster)
 
@@ -104,50 +148,6 @@ patches:
         value:
           name: OLLAMA_NUM_PARALLEL
           value: "1"
-```
-
----
-
-## Option 2: Ollama on the Native macOS Host (flink-demo default)
-
-Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster — and it's what `workloads/flink-agents/overlays/flink-demo` deploys out of the box via the `ollama-host-mode` component below.
-
-### Install and start
-
-```bash
-brew install ollama
-brew services run ollama # starts on :11434, uses Metal automatically on Apple Silicon
-ollama pull qwen3:8b  # or whichever model is configured (see Model section)
-```
-
-### Performance knobs (native macOS)
-
-| Setting | How to set | Notes |
-|---|---|---|
-| `OLLAMA_NUM_PARALLEL` | `launchctl setenv OLLAMA_NUM_PARALLEL 2` or env before `ollama serve` | GPU handles concurrency well; start at 2 |
-| `OLLAMA_FLASH_ATTENTION` | `OLLAMA_FLASH_ATTENTION=1 ollama serve` | Enables Flash Attention — significant speedup on Apple Silicon |
-| Model | `ollama pull <model>` | Larger models are viable with GPU; see Model section |
-| `NUM_ASYNC_THREADS` | `WorkflowSingleAgentExample.java` | Can increase to 2 when `OLLAMA_NUM_PARALLEL=2` |
-| `requestTimeout` | `CustomTypesAndResources.java` | Can reduce to 60s with GPU-accelerated inference |
-
-### Pointing Flink at the native host
-
-Kind pods reach the macOS host via the DNS name `host.docker.internal` (provided by Docker Desktop). Include the `ollama-host-mode` Kustomize component in the cluster overlay:
-
-```yaml
-# workloads/flink-agents/overlays/flink-demo/kustomization.yaml
-components:
-  - ../../components/ollama-host-mode
-```
-
-This component patches both the `wait-for-ollama` initContainer and `flink-main-container` `OLLAMA_ENDPOINT` values to `http://host.docker.internal:11434`. To revert to in-cluster Ollama, remove the `components:` entry.
-
-After syncing, verify the initContainer can reach the host:
-
-```bash
-kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
-  curl -sf http://host.docker.internal:11434
-# Expected: "Ollama is running"
 ```
 
 ---
