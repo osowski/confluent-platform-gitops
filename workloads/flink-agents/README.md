@@ -63,9 +63,9 @@ Shows incoming inference requests, model load times, and token generation as the
 
 ---
 
-## Option 1: In-Cluster Ollama (default)
+## Option 1: In-Cluster Ollama (base default)
 
-Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121).
+Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121). This is `workloads/flink-agents/base`'s default, but the `flink-demo` overlay (the only overlay deployed) layers the `ollama-host-mode` component from Option 2 below on top — so in-cluster is not what actually runs unless you remove that component.
 
 **Endpoint (default):** `http://ollama.ollama.svc.cluster.local:11434`
 
@@ -108,9 +108,9 @@ patches:
 
 ---
 
-## Option 2: Ollama on the Native macOS Host
+## Option 2: Ollama on the Native macOS Host (flink-demo default)
 
-Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster.
+Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster — and it's what `workloads/flink-agents/overlays/flink-demo` deploys out of the box via the `ollama-host-mode` component below.
 
 ### Install and start
 
