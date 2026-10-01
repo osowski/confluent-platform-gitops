@@ -21,7 +21,7 @@ flink-agents-workflow (flink ns)        flink-agents-react (flink ns)
        └─ OLLAMA_MODEL                                        └─ qwen3:8b (or configured model)
 ```
 
-Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_ENDPOINT` controls where inference requests are sent — defaulting to the in-cluster Ollama service, overridden per cluster overlay for native macOS. Only one agent should be running at a time to avoid Ollama resource contention.
+Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_ENDPOINT` controls where inference requests are sent — defaulting to the native macOS host, opt into the in-cluster service per cluster overlay instead. Only one agent should be running at a time to avoid Ollama resource contention.
 
 ---
 
@@ -83,6 +83,12 @@ Verify the initContainer can reach the host once synced:
 kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
   curl -sf http://host.docker.internal:11434
 # Expected: "Ollama is running"
+```
+
+**Cleanup:** once you're done with the exercise, stop Ollama so it isn't left running (or re-launching at login):
+
+```bash
+brew services stop ollama
 ```
 
 ### Performance knobs (native macOS)
