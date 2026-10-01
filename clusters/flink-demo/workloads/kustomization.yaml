@@ -6,7 +6,7 @@ resources:
   - cmf-operator.yaml
   - colors-and-shapes.yaml
   - confluent-resources.yaml
-  - flink-agents.yaml
+  #- flink-agents.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml
   - namespaces.yaml

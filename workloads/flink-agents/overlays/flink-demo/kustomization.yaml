@@ -6,10 +6,9 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Use host-mode Ollama component — routes OLLAMA_ENDPOINT to the native macOS
-# host instead of the in-cluster service. Remove this when running Ollama in-cluster.
-components:
-  - ../../components/ollama-host-mode
+# Base already targets native macOS host Ollama by default — no component
+# needed here. Add the ollama-in-cluster-mode component to opt into in-cluster
+# Ollama instead.
 
 # Patch spec.image with the SHA tag from the most recent osowski/flink-agents build.
 # kustomize images: transformer does not apply to FlinkApplication's spec.image (custom CRD field).

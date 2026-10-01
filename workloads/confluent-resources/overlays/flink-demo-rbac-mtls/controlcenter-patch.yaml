@@ -3,7 +3,7 @@
 # ==============================================================================
 # This patch consolidates all Control Center configuration including:
 # - Resource limits for local demo environment
-# - ConfigOverrides (disable unused features, enable CMF)
+# - ConfigOverrides (disable unused features, CMF UI integration off)
 # - OAuth authentication to Kafka, MDS, and Schema Registry
 # - RBAC authorization
 # - OIDC SSO for browser-based user authentication
@@ -35,9 +35,7 @@ spec:
       - confluent.controlcenter.ksql.enable=false
       - confluent.controlcenter.connect.enable=false
       - confluent.controlcenter.ui.replicator.monitoring.enable=false
-      # Enable CMF (Confluent Manager for Apache Flink)
-      - confluent.controlcenter.cmf.enable=true
-      - confluent.controlcenter.cmf.url=http://cmf-service.operator.svc.cluster.local:80
+      - confluent.controlcenter.cmf.enable=false
       # Schema Registry OAuth bearer authentication (required for C3 runtime access)
       # Note: The CRD-level dependencies.schemaRegistry.authentication configures CFK,
       #       but C3 application needs explicit bearer.auth.* properties to connect

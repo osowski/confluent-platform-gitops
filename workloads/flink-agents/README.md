@@ -21,13 +21,21 @@ flink-agents-workflow (flink ns)        flink-agents-react (flink ns)
        └─ OLLAMA_MODEL                                        └─ qwen3:8b (or configured model)
 ```
 
-Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_ENDPOINT` controls where inference requests are sent — defaulting to the in-cluster Ollama service, overridden per cluster overlay for native macOS. Only one agent should be running at a time to avoid Ollama resource contention.
+Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_ENDPOINT` controls where inference requests are sent — defaulting to the native macOS host, opt into the in-cluster service per cluster overlay instead. Only one agent should be running at a time to avoid Ollama resource contention.
 
 ---
 
 ## Running the Agent
 
-**1. Sync in ArgoCD:**
+**1. Create the Application:**
+
+The `flink-agents` Application is not created by default. Apply it manually:
+
+```bash
+kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
+```
+
+**2. Sync in ArgoCD:**
 
 The `flink-agents` Application manages two FlinkApplications (`flink-agents-workflow` and `flink-agents-react`). **Only sync one at a time** — running both concurrently will contend for the same Ollama instance and degrade inference throughput for both.
 
@@ -37,7 +45,7 @@ In the ArgoCD UI, click `flink-agents` → **Sync**, then select only the resour
 
 The `wait-for-ollama` initContainer will block until Ollama is reachable before the Flink job starts. To stop a running agent, set `spec.job.state: suspended` in the overlay patch or delete the FlinkApplication resource in ArgoCD before syncing the other.
 
-**2. Tail Flink agent output:**
+**3. Tail Flink agent output:**
 
 ```bash
 kubectl logs -n flink -l component=taskmanager,app=flink-agents-workflow -f
@@ -45,7 +53,7 @@ kubectl logs -n flink -l component=taskmanager,app=flink-agents-workflow -f
 
 This streams the TaskManager output, including agent actions, LLM responses, and `OutputEvent` results from the workflow DAG.
 
-**3. Tail Ollama logs:**
+**4. Tail Ollama logs:**
 
 ```bash
 tail -f /opt/homebrew/var/log/ollama.log
@@ -55,16 +63,66 @@ Shows incoming inference requests, model load times, and token generation as the
 
 ---
 
-## Option 1: In-Cluster Ollama (default)
+## Option 1: Ollama on the Native macOS Host (global default)
 
-Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121).
+Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster — and it's `workloads/flink-agents/base`'s default; no component or overlay changes needed.
 
-**Endpoint (default):** `http://ollama.ollama.svc.cluster.local:11434`
+**Endpoint (default):** `http://host.docker.internal:11434` — the DNS name Kind pods use to reach the macOS host (provided by Docker Desktop).
+
+### Install and start
+
+```bash
+brew install ollama
+brew services run ollama # starts on :11434, uses Metal automatically on Apple Silicon
+ollama pull qwen3:8b  # or whichever model is configured (see Model section)
+```
+
+Verify the initContainer can reach the host once synced:
+
+```bash
+kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
+  curl -sf http://host.docker.internal:11434
+# Expected: "Ollama is running"
+```
+
+**Cleanup:** once you're done with the exercise, stop Ollama so it isn't left running (or re-launching at login):
+
+```bash
+brew services stop ollama
+```
+
+### Performance knobs (native macOS)
+
+| Setting | How to set | Notes |
+|---|---|---|
+| `OLLAMA_NUM_PARALLEL` | `launchctl setenv OLLAMA_NUM_PARALLEL 2` or env before `ollama serve` | GPU handles concurrency well; start at 2 |
+| `OLLAMA_FLASH_ATTENTION` | `OLLAMA_FLASH_ATTENTION=1 ollama serve` | Enables Flash Attention — significant speedup on Apple Silicon |
+| Model | `ollama pull <model>` | Larger models are viable with GPU; see Model section |
+| `NUM_ASYNC_THREADS` | `WorkflowSingleAgentExample.java` | Can increase to 2 when `OLLAMA_NUM_PARALLEL=2` |
+| `requestTimeout` | `CustomTypesAndResources.java` | Can reduce to 60s with GPU-accelerated inference |
+
+---
+
+## Option 2: In-Cluster Ollama (opt-in)
+
+Ollama runs as a Kubernetes Deployment in the `ollama` namespace, managed by ArgoCD at sync-wave 110 (before flink-agents at 121). Opt into this per overlay — it is no longer the default anywhere.
 
 > [!WARNING]
 > **The performance constraint on macOS**
 >
 > When running on Kind (Docker Desktop), Ollama runs inside a Linux VM. **Apple Silicon's GPU and Neural Engine are not accessible from inside the VM.** Inference is CPU-only regardless of the host hardware. This caps throughput significantly.
+
+### Opting in
+
+Add the `ollama-in-cluster-mode` Kustomize component to the cluster overlay:
+
+```yaml
+# workloads/flink-agents/overlays/<cluster>/kustomization.yaml
+components:
+  - ../../components/ollama-in-cluster-mode
+```
+
+This component patches both the `wait-for-ollama` initContainer and `flink-main-container` `OLLAMA_ENDPOINT` values to `http://ollama.ollama.svc.cluster.local:11434`. Remove the `components:` entry to go back to native-host Ollama.
 
 ### Performance knobs (in-cluster)
 
@@ -100,50 +158,6 @@ patches:
 
 ---
 
-## Option 2: Ollama on the Native macOS Host
-
-Running Ollama natively on macOS gives access to Apple Silicon's GPU via Metal. This is the recommended approach for demo performance — expect 10–50x faster inference compared to CPU-only in-cluster.
-
-### Install and start
-
-```bash
-brew install ollama
-brew services run ollama # starts on :11434, uses Metal automatically on Apple Silicon
-ollama pull qwen3:8b  # or whichever model is configured (see Model section)
-```
-
-### Performance knobs (native macOS)
-
-| Setting | How to set | Notes |
-|---|---|---|
-| `OLLAMA_NUM_PARALLEL` | `launchctl setenv OLLAMA_NUM_PARALLEL 2` or env before `ollama serve` | GPU handles concurrency well; start at 2 |
-| `OLLAMA_FLASH_ATTENTION` | `OLLAMA_FLASH_ATTENTION=1 ollama serve` | Enables Flash Attention — significant speedup on Apple Silicon |
-| Model | `ollama pull <model>` | Larger models are viable with GPU; see Model section |
-| `NUM_ASYNC_THREADS` | `WorkflowSingleAgentExample.java` | Can increase to 2 when `OLLAMA_NUM_PARALLEL=2` |
-| `requestTimeout` | `CustomTypesAndResources.java` | Can reduce to 60s with GPU-accelerated inference |
-
-### Pointing Flink at the native host
-
-Kind pods reach the macOS host via the DNS name `host.docker.internal` (provided by Docker Desktop). Include the `ollama-host-mode` Kustomize component in the cluster overlay:
-
-```yaml
-# workloads/flink-agents/overlays/flink-demo/kustomization.yaml
-components:
-  - ../../components/ollama-host-mode
-```
-
-This component patches both the `wait-for-ollama` initContainer and `flink-main-container` `OLLAMA_ENDPOINT` values to `http://host.docker.internal:11434`. To revert to in-cluster Ollama, remove the `components:` entry.
-
-After syncing, verify the initContainer can reach the host:
-
-```bash
-kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n flink -- \
-  curl -sf http://host.docker.internal:11434
-# Expected: "Ollama is running"
-```
-
----
-
 ## Model Selection and Flink Agent Impact
 
 The model name must be kept in sync across **two separate locations**. These are owned by different ArgoCD Applications (`ollama` and `flink-agents`) in different namespaces — Kustomize has no mechanism to share a value across separate Applications, so this is an intentional convention rather than a technical enforcement:
@@ -151,7 +165,7 @@ The model name must be kept in sync across **two separate locations**. These are
 | Location | File | Key |
 |---|---|---|
 | What Ollama pulls | `workloads/ollama/base/model-config.yaml` (ConfigMap `data.models`) | `qwen3:8b` |
-| What the agent requests | `workloads/flink-agents/base/flink-application.yaml` (env var) | `OLLAMA_MODEL: qwen3:8b` |
+| What the agent requests | `workloads/flink-agents/base/flink-application-{workflow,react}.yaml` (env var) | `OLLAMA_MODEL: qwen3:8b` |
 
 If the model names do not match, Ollama will attempt to pull the requested model on-demand (slow) or fail if there is no internet access.
 
