@@ -124,7 +124,7 @@ You should see the `bootstrap`, `infrastructure`, and `workloads` Applications s
 
 ## Deploy Confluent and Flink Workloads
 
-The `confluent-resources`, `flink-agents`, `flink-resources`, `colors-and-shapes`, and `kube-prometheus-stack` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy. Only the first three are needed for this walkthrough; `flink-agents` and `kube-prometheus-stack` aren't exercised further in this guide.
+The `confluent-resources`, `flink-resources`, `colors-and-shapes`, and `kube-prometheus-stack` Applications are not configured for automatic sync, as they depend on the operators and namespaces being fully ready first. Trigger them manually once the `workloads` Application is healthy. Only the first three are needed for this walkthrough; `kube-prometheus-stack` isn't exercised further in this guide. (`flink-agents` is not created by default on this cluster — see the [Flink Agents README](../workloads/flink-agents/README.md) if you want to apply it separately.)
 
 14. In the ArgoCD UI, click on the `confluent-resources` Application, then click **Sync** → **Synchronize**. Wait for it to reach a `Healthy` status before proceeding. This may take a few minutes as Kafka and Control Center come fully online.
 

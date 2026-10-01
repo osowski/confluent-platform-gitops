@@ -146,7 +146,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources — **manual sync**
 - **colors-and-shapes** (wave 121) - Two-tenant Flink demo (JAR + SQL), anonymous on this cluster — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
-- **flink-agents** (wave 121) - Flink Agents workflow demo (LLM-driven review analysis) — **manual sync** — see [Flink Agents README](../../workloads/flink-agents/README.md)
+- **flink-agents** (wave 121) - Flink Agents workflow demo (LLM-driven review analysis) — **not created by default**, apply manually — see [Flink Agents README](../../workloads/flink-agents/README.md)
 - **ollama** (wave 110) - In-cluster Ollama LLM backend — **disabled** (run Ollama natively on macOS instead; see [Flink Agents README](../../workloads/flink-agents/README.md))
 
 ## Environment Access

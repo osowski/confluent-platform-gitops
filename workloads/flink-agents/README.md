@@ -27,7 +27,15 @@ Both FlinkApplications share the same image and Ollama configuration. `OLLAMA_EN
 
 ## Running the Agent
 
-**1. Sync in ArgoCD:**
+**1. Create the Application:**
+
+The `flink-agents` Application is not created by default. Apply it manually:
+
+```bash
+kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
+```
+
+**2. Sync in ArgoCD:**
 
 The `flink-agents` Application manages two FlinkApplications (`flink-agents-workflow` and `flink-agents-react`). **Only sync one at a time** — running both concurrently will contend for the same Ollama instance and degrade inference throughput for both.
 
@@ -37,7 +45,7 @@ In the ArgoCD UI, click `flink-agents` → **Sync**, then select only the resour
 
 The `wait-for-ollama` initContainer will block until Ollama is reachable before the Flink job starts. To stop a running agent, set `spec.job.state: suspended` in the overlay patch or delete the FlinkApplication resource in ArgoCD before syncing the other.
 
-**2. Tail Flink agent output:**
+**3. Tail Flink agent output:**
 
 ```bash
 kubectl logs -n flink -l component=taskmanager,app=flink-agents-workflow -f
@@ -45,7 +53,7 @@ kubectl logs -n flink -l component=taskmanager,app=flink-agents-workflow -f
 
 This streams the TaskManager output, including agent actions, LLM responses, and `OutputEvent` results from the workflow DAG.
 
-**3. Tail Ollama logs:**
+**4. Tail Ollama logs:**
 
 ```bash
 tail -f /opt/homebrew/var/log/ollama.log

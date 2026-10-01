@@ -14,8 +14,7 @@ spec:
     server:
       - confluent.controlcenter.ksql.enable=false
       - confluent.controlcenter.ui.replicator.monitoring.enable=false
-      - confluent.controlcenter.cmf.enable=true
-      - confluent.controlcenter.cmf.url=http://cmf-service.operator.svc.cluster.local:80
+      - confluent.controlcenter.cmf.enable=false
   dataVolumeCapacity: 10Gi
   dependencies:
     schemaRegistry:
