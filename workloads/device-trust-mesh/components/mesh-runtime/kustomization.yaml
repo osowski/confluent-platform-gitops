@@ -1,0 +1,30 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Ray Serve runtime (context-mcp + agents) and the device simulator.
+# Requires the kuberay-operator Application (ray.io CRDs) and published
+# device-trust-mesh images; add this component to a cluster overlay only
+# once both exist.
+resources:
+  - rayservice.yaml
+  - simulator.yaml
+
+# DEVICE_CAP has exactly one source: device-trust-mesh-config.
+replacements:
+  - source:
+      kind: ConfigMap
+      name: device-trust-mesh-config
+      fieldPath: data.DEVICE_CAP
+    targets:
+      - select:
+          kind: Deployment
+          name: device-simulator
+        fieldPaths:
+          - spec.template.spec.containers.[name=simulator].env.[name=DEVICE_CAP].value
+      - select:
+          kind: RayService
+          name: device-trust-mesh
+        fieldPaths:
+          - spec.rayClusterConfig.headGroupSpec.template.spec.containers.[name=ray-head].env.[name=DEVICE_CAP].value
+          - spec.rayClusterConfig.workerGroupSpecs.[groupName=mesh].template.spec.containers.[name=ray-worker].env.[name=DEVICE_CAP].value

@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # device-trust-mesh namespace is owned by workloads/namespaces (flink-demo
+  # overlay) - not declared here.
+  # Flink SQL CR chain, applied in dependency order via sync waves 5-60
+  - flink-environment.yaml
+  - flink-catalog-database.yaml
+  - flink-compute-pool.yaml
+  - config.yaml
+  - topics.yaml
+
+# Common labels applied to all resources
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    app.kubernetes.io/part-of: device-trust-mesh
+    app.kubernetes.io/managed-by: argocd

@@ -198,6 +198,7 @@ Apply in that order and delete in reverse, so each CMF-side resource is removed 
 |---|---|
 | `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50 (RBAC clusters additionally use waves 10/20/30 for a `default`-env Secret/FlinkSecret/mapping chain via a Kustomize Component — coexists with the reference application at wave 10 since neither depends on the other) |
 | `colors-and-shapes` | environment 5; catalog 40; database 50; pool 60; statement 70; application 80 (waves 10/20/30 are reserved for the Secret/FlinkSecret/mapping chain a Kustomize Component adds on RBAC clusters — not present in the anonymous base) |
+| `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; statements 70; RayService 80; simulator 90 |
 
 `FlinkApplication` must come after `FlinkEnvironment` rather than sharing its wave. Unwaved they race, and CFK reports `FlinkEnvironment "<env>" not found` on the application. Without a health check that failure is invisible — ArgoCD marks the application Healthy on creation and CFK retries in the background — but once health is evaluated it fails the sync outright.
 
@@ -313,6 +314,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
 | 120/121 | colors-and-shapes | Two-tenant Flink demo (`shapes-env`, `colors-env`) with a native `FlinkApplication` (JAR) and Flink SQL (`FlinkStatement`) side by side; anonymous on flink-demo (wave 121), Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the three RBAC clusters (wave 120) |
+| 122 | device-trust-mesh | Agentic Device Trust Mesh (topics, shared Flink compute pool, runtime config; RayService via the `mesh-runtime` component); opt-in on flink-demo — see [Device Trust Mesh README](../workloads/device-trust-mesh/README.md) |
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).

@@ -1,0 +1,156 @@
+# RayService hosting the device-trust-mesh Ray Serve application:
+# context-mcp (materializer + FastMCP context tools) and the A2A agents.
+#
+# The image tag is a placeholder until the device-trust-mesh-ray image is
+# published from osowski/flink-sandbox; rayVersion must match the Ray version
+# in that image. Serve applications map 1:1 to the agents in agents.yaml, and
+# num_replicas must stay <= the topic partition count (6).
+#
+# KubeRay exposes Serve on the device-trust-mesh-serve-svc Service (port 8000);
+# agents reach context-mcp at /context-mcp/mcp on that Service.
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: device-trust-mesh
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "80"
+spec:
+  serveConfigV2: |
+    applications:
+      - name: context-mcp
+        route_prefix: /context-mcp
+        import_path: dtm.mesh.context_mcp:app
+        deployments:
+          - name: ContextMcp
+            num_replicas: 1
+      - name: risk
+        route_prefix: /risk
+        import_path: dtm.mesh.risk:app
+        deployments:
+          - name: RiskAgent
+            num_replicas: 1
+      - name: enrolment
+        route_prefix: /enrolment
+        import_path: dtm.mesh.enrolment:app
+        deployments:
+          - name: EnrolmentAgent
+            num_replicas: 1
+      - name: step-up
+        route_prefix: /step-up
+        import_path: dtm.mesh.step_up:app
+        deployments:
+          - name: StepUpAgent
+            num_replicas: 1
+      - name: compliance
+        route_prefix: /compliance
+        import_path: dtm.mesh.compliance:app
+        deployments:
+          - name: ComplianceAgent
+            num_replicas: 1
+      - name: revocation
+        route_prefix: /revocation
+        import_path: dtm.mesh.revocation:app
+        deployments:
+          - name: RevocationAgent
+            num_replicas: 1
+  rayClusterConfig:
+    rayVersion: "2.46.0"
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: quay.io/osowski/device-trust-mesh-ray:0.0.0-placeholder
+              imagePullPolicy: IfNotPresent
+              ports:
+                - containerPort: 6379
+                  name: gcs
+                - containerPort: 8265
+                  name: dashboard
+                - containerPort: 10001
+                  name: client
+                - containerPort: 8000
+                  name: serve
+              env:
+                - name: DEVICE_CAP
+                  value: "replaced-by-kustomize"
+                - name: LLM_ENDPOINT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: device-trust-mesh-config
+                      key: LLM_ENDPOINT
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 2Gi
+                limits:
+                  cpu: "1"
+                  memory: 2Gi
+              volumeMounts:
+                - name: dtm-config
+                  mountPath: /etc/dtm
+                  readOnly: true
+          volumes:
+            - name: dtm-config
+              projected:
+                sources:
+                  - configMap:
+                      name: device-trust-mesh-agents
+                  - configMap:
+                      name: device-trust-mesh-prompts
+                      items:
+                        - key: risk.v1
+                          path: prompts/risk.v1
+                        - key: enrolment.v1
+                          path: prompts/enrolment.v1
+                        - key: revocation.v1
+                          path: prompts/revocation.v1
+    workerGroupSpecs:
+      - groupName: mesh
+        replicas: 1
+        minReplicas: 1
+        maxReplicas: 2
+        rayStartParams: {}
+        template:
+          spec:
+            containers:
+              - name: ray-worker
+                image: quay.io/osowski/device-trust-mesh-ray:0.0.0-placeholder
+                imagePullPolicy: IfNotPresent
+                env:
+                  - name: DEVICE_CAP
+                    value: "replaced-by-kustomize"
+                  - name: LLM_ENDPOINT
+                    valueFrom:
+                      configMapKeyRef:
+                        name: device-trust-mesh-config
+                        key: LLM_ENDPOINT
+                resources:
+                  requests:
+                    cpu: "2"
+                    memory: 3Gi
+                  limits:
+                    cpu: "2"
+                    memory: 3Gi
+                volumeMounts:
+                  - name: dtm-config
+                    mountPath: /etc/dtm
+                    readOnly: true
+            volumes:
+              - name: dtm-config
+                projected:
+                  sources:
+                    - configMap:
+                        name: device-trust-mesh-agents
+                    - configMap:
+                        name: device-trust-mesh-prompts
+                        items:
+                          - key: risk.v1
+                            path: prompts/risk.v1
+                          - key: enrolment.v1
+                            path: prompts/enrolment.v1
+                          - key: revocation.v1
+                            path: prompts/revocation.v1

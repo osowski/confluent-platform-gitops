@@ -6,6 +6,7 @@ resources:
   - cmf-operator.yaml
   - colors-and-shapes.yaml
   - confluent-resources.yaml
+  #- device-trust-mesh.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/device-trust-mesh.yaml -n argocd
   #- flink-agents.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml

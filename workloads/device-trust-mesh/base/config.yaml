@@ -1,0 +1,67 @@
+# Runtime configuration for the Agentic Device Trust Mesh.
+#
+# device-trust-mesh-config holds the scalar knobs that overlays and
+# components set per run; Kustomize replacements in the mesh-runtime
+# component copy DEVICE_CAP from here into every consumer, so this is the
+# only place to set it.
+#
+# device-trust-mesh-agents and device-trust-mesh-prompts are mounted into the
+# Ray pods at /etc/dtm/. Agents reload them at a message boundary without a
+# pod restart and stamp the resulting configVersion on every output.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-trust-mesh-config
+  namespace: device-trust-mesh
+data:
+  # Upper bound on unique device ids tracked in a run. The simulator draws ids
+  # from the fixed pool dev-0001..dev-<DEVICE_CAP> and never exceeds it.
+  # Topic partitioning (6) supports caps up to 500.
+  DEVICE_CAP: "20"
+  # LLM endpoint interpolated into agents.yaml as ${LLM_ENDPOINT}. Defaults to
+  # native macOS Ollama; the ollama-in-cluster-mode component switches it to
+  # the in-cluster service.
+  LLM_ENDPOINT: "http://host.docker.internal:11434"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-trust-mesh-agents
+  namespace: device-trust-mesh
+data:
+  agents.yaml: |
+    llm:
+      provider: ollama                 # ollama | openai-compatible | recorded (replay)
+      endpoint: ${LLM_ENDPOINT}
+      model: qwen3:4b
+      options: { temperature: 0, seed: 42, think: false, num_ctx: 4096 }
+      timeoutMs: 30000
+    agents:
+      risk:       { enabled: true,  replicas: 1, promptRef: risk.v1,       llm: {} }  # llm: per-agent override (empty = global)
+      enrolment:  { enabled: true,  replicas: 1, promptRef: enrolment.v1,  llm: {} }
+      step-up:    { enabled: true,  replicas: 1 }
+      compliance: { enabled: true,  replicas: 1 }
+      revocation: { enabled: false, replicas: 1, promptRef: revocation.v1, llm: {} }
+    bus:
+      mode: live                       # live | replay
+      startPosition: committed         # committed | earliest | offset | timestamp (replay)
+      topicPrefix: ""                  # replay sets "replay.<run-id>."
+      policyCommands: enabled          # enabled | redirect | disabled
+      allowedConsume: [ "agent.tasks.<self>", "agent.task-events", "agent.cards" ]
+    context:
+      mcpUrl: http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp/mcp
+      waitTimeoutMs: 2000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-trust-mesh-prompts
+  namespace: device-trust-mesh
+data:
+  risk.v1: |
+    Placeholder prompt; defined by the agent stories.
+  enrolment.v1: |
+    Placeholder prompt; defined by the agent stories.
+  revocation.v1: |
+    Placeholder prompt; defined by the agent stories.

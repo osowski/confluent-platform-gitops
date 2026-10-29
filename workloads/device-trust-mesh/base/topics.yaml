@@ -1,0 +1,343 @@
+# KafkaTopic resources for the Agentic Device Trust Mesh.
+#
+# Topic names contain dots and underscores, which Kubernetes object names do
+# not allow, so metadata.name is a DNS-safe alias and spec.name carries the
+# real topic name.
+#
+# Partitions: 6 per topic (supports DEVICE_CAP up to 500; partition counts
+# cannot shrink, so they are not derived from the cap). agent.cards,
+# agent.cards_human_readable and simulator.control use 1.
+#
+# 7-day retention on the replay-relevant inputs defines the replay window;
+# the compacted context topics are the durable store behind context-mcp.
+---
+# Business-data plane. Agents never consume these; they read business
+# state only through the context-mcp FastMCP tools.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: device-events
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: device.events
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: device-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: device.context
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "compact"
+    min.compaction.lag.ms: "0"
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: customer-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: customer.context
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "compact"
+    min.compaction.lag.ms: "0"
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: device-risk-signals
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: device.risk-signals
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+# Business side effects and records. Agents produce, never consume.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: device-policy-commands
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: device.policy-commands
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: audit-log
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: audit.log
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "-1"  # retained indefinitely
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+# Agent plane: A2A v1.0 over Kafka. One request topic per agent (A2A
+# SendMessage), the shared agent.task-events reply topic (Task, status and
+# artifact events), Agent Cards, and the LLM interaction log replay reads.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-tasks-risk
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.tasks.risk
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-tasks-enrolment
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.tasks.enrolment
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-tasks-step-up
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.tasks.step-up
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-tasks-revocation
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.tasks.revocation
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-task-events
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.task-events
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-cards
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.cards
+  replicas: 3
+  partitionCount: 1
+  configs:
+    cleanup.policy: "compact"
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-llm-interactions
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.llm-interactions
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+# Derived: Flink views that flatten the A2A JSON into Avro for the C3
+# message browser and ad-hoc Flink SQL. Never consumed by agents.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-tasks-human-readable
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.tasks_human_readable
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-decisions-human-readable
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.decisions_human_readable
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-task-status-human-readable
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.task-status_human_readable
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-cards-human-readable
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.cards_human_readable
+  replicas: 3
+  partitionCount: 1
+  configs:
+    cleanup.policy: "compact"
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+# Simulator control (scenario injection from the presenter CLI).
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: simulator-control
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: simulator.control
+  replicas: 3
+  partitionCount: 1
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "86400000"  # 1 day
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka

@@ -1,0 +1,44 @@
+# Device simulator Deployment
+# Produces device.events for a device pool bounded by DEVICE_CAP and consumes
+# device.policy-commands to close the loop. The image tag is a placeholder
+# until the device-trust-mesh-simulator image is published.
+# Default replicas: 0 (scale to 1 to start a run)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-simulator
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "90"
+  labels:
+    app: device-simulator
+spec:
+  replicas: 0  # Disabled by default - scale to 1 to start a run
+  selector:
+    matchLabels:
+      app: device-simulator
+  template:
+    metadata:
+      labels:
+        app: device-simulator
+    spec:
+      containers:
+        - name: simulator
+          image: quay.io/osowski/device-trust-mesh-simulator:0.0.0-placeholder
+          imagePullPolicy: IfNotPresent
+          env:
+            # Kafka connection (internal listener)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+            - name: SCHEMA_REGISTRY_URL
+              value: "http://schemaregistry.kafka.svc.cluster.local:8081"
+            # Upper bound on unique device ids (copied from device-trust-mesh-config)
+            - name: DEVICE_CAP
+              value: "replaced-by-kustomize"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

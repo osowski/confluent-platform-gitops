@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: device-trust-mesh
+  labels:
+    app.kubernetes.io/name: device-trust-mesh
+    app.kubernetes.io/component: platform
+    group: device-trust-mesh

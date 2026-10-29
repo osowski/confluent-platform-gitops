@@ -1,0 +1,16 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Switches the LLM endpoint from the native macOS host (the base default) to
+# the in-cluster Ollama service. Used when Ollama runs as a Kubernetes
+# Deployment rather than locally via `brew services`. Every agent reads
+# LLM_ENDPOINT from device-trust-mesh-config.
+patches:
+  - target:
+      kind: ConfigMap
+      name: device-trust-mesh-config
+    patch: |-
+      - op: replace
+        path: /data/LLM_ENDPOINT
+        value: http://ollama.ollama.svc.cluster.local:11434
