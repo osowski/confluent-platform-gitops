@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **CMF 2.4.4, CFK 3.3.1 and Flink Kubernetes Operator 1.15.0-cp4 on all clusters** ([#442](https://github.com/osowski/confluent-platform-gitops/issues/442)): enables stateful shared compute pools (stop/resume no longer loses statement state) and picks up CFK's Flink status and `KafkaTopic` fixes. RBAC/mTLS/EKS clusters rendered but not live-tested in this change.
 - **C3's CMF (CP Flink UI) integration disabled by default** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): `confluent.controlcenter.cmf.enable` is now `false` on all four clusters, since the CMF UI is the primary CP Flink UI going forward.
 - **`flink-agents` no longer created by default on `flink-demo`** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): it sat unsynced most of the time; apply it manually per the [Flink Agents README](../workloads/flink-agents/README.md) when needed.
 - **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): in-cluster Ollama is now opt-in per overlay instead of the default.
