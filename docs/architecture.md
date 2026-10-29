@@ -71,6 +71,8 @@ Platform infrastructure components deployed before workloads.
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
+- **device-trust-mesh** (wave 122, flink-demo only, opt-in) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style `context-mcp`, shared Flink compute pool ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md))
+- **kuberay-operator** (wave 117, flink-demo only, opt-in) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 
 **Future components:**
