@@ -4,10 +4,11 @@
 # Enable debug logging for homelab troubleshooting
 debug: true
 
-# Watch additional namespaces for the colors-and-shapes demo
+# Watch additional namespaces for the colors-and-shapes and device-trust-mesh demos
 namespaceList:
   - flink
   - flink-shapes
   - flink-colors
+  - device-trust-mesh
   - kafka
   - operator

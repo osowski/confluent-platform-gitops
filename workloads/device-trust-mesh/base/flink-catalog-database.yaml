@@ -1,0 +1,40 @@
+---
+# Flink SQL catalog and database (CFK 3.3.0+, RFC 68)
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: dtm-catalog
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  # Required and immutable, even though CMF catalogs are global.
+  flinkEnvironment: dtm-env
+  srInstance:
+    connectionConfig:
+      schema.registry.url: "http://schemaregistry.kafka.svc.cluster.local:8081"
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: dtm-database
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  flinkEnvironment: dtm-env
+  catalogRef:
+    name: dtm-catalog
+  kafkaCluster:
+    connectionConfig:
+      bootstrap.servers: "kafka.kafka.svc.cluster.local:9071"
+  # Environments allowed to run DDL (CREATE TABLE and friends) against this
+  # database. CMF rejects DDL from any environment not listed here.
+  ddlEnvironments:
+    - dtm-env
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
