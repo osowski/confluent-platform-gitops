@@ -18,7 +18,7 @@ spec:
           - $values/workloads/kuberay-operator/base/values.yaml
           - $values/workloads/kuberay-operator/overlays/flink-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: feature-444/device-trust-mesh-scaffold
       ref: values
   destination:
     server: https://kubernetes.default.svc
