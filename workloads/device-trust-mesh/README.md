@@ -327,11 +327,15 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    kubectl apply -f clusters/flink-demo/workloads/device-trust-mesh.yaml -n argocd
    kubectl patch application device-trust-mesh -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
    ```
+   On a cluster that was bootstrapped before `device-trust-mesh` joined the Flink Kubernetes Operator's `watchNamespaces`, restart the operator once so it watches the new namespace. Otherwise the shared pool's `FlinkDeployment` never gets pods. See [Adding Applications](../../docs/adding-applications.md#2-flink-kubernetes-operators-watchnamespaces):
+   ```bash
+   kubectl rollout restart deployment/flink-kubernetes-operator -n operator
+   ```
 5. **Verify:**
    ```bash
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
-   kubectl get pods -n device-trust-mesh    # shared-pool session cluster JobManager + TaskManager
+   kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:
    - Control Center topic browser: `agent.tasks.*`, `agent.task-events`, `*_human_readable`
