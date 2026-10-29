@@ -142,6 +142,7 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
+- **kuberay-operator** (wave 117) - KubeRay operator for the device-trust-mesh agent runtime — **not created by default**, apply manually — see [Device Trust Mesh README](../../workloads/device-trust-mesh/README.md)
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources — **manual sync**

@@ -9,6 +9,7 @@ resources:
   #- flink-agents.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/flink-agents.yaml -n argocd
   - flink-kubernetes-operator.yaml
   - flink-resources.yaml
+  #- kuberay-operator.yaml ## Not created by default; apply manually with: kubectl apply -f clusters/flink-demo/workloads/kuberay-operator.yaml -n argocd
   - namespaces.yaml
   - observability-resources.yaml
   #- ollama.yaml ## DISABLED temporarily in favor of running Ollama locally on MacBooks

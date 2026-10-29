@@ -1,0 +1,17 @@
+# KubeRay Operator Configuration
+# Base values - only overrides from chart defaults
+
+# Limit operator to the namespace hosting the device-trust-mesh RayService
+# Chart default: unset (all namespaces)
+watchNamespace:
+  - device-trust-mesh
+
+# Resource requests/limits sized for a local Kind cluster
+# Chart defaults: limits.cpu: 100m, limits.memory: 512Mi, no requests
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
