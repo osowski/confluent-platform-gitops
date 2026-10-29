@@ -309,6 +309,7 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
 | 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
+| 117 | kuberay-operator | KubeRay operator (RayService CRDs) for the device-trust-mesh agent runtime; opt-in on flink-demo |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
 | 120/121 | colors-and-shapes | Two-tenant Flink demo (`shapes-env`, `colors-env`) with a native `FlinkApplication` (JAR) and Flink SQL (`FlinkStatement`) side by side; anonymous on flink-demo (wave 121), Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the three RBAC clusters (wave 120) |
@@ -448,6 +449,7 @@ The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for O
 - **Note**: Enhanced RBAC added for:
   - Confluent for Kubernetes operator (22 CRDs and webhooks)
   - Flink Kubernetes Operator and CMF (FlinkDeployment, FlinkSessionJob, CMFRestClass, FlinkEnvironment, FlinkApplication)
+  - KubeRay operator (Helm repo `https://ray-project.github.io/kuberay-helm/`, `ray.io/RayService`)
 
 ## Naming Conventions
 

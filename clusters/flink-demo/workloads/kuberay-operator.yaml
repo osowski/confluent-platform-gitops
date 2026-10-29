@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kuberay-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "117"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  sources:
+    - repoURL: https://ray-project.github.io/kuberay-helm/
+      chart: kuberay-operator
+      targetRevision: 1.7.1
+      helm:
+        valueFiles:
+          - $values/workloads/kuberay-operator/base/values.yaml
+          - $values/workloads/kuberay-operator/overlays/flink-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ray-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
