@@ -1,0 +1,306 @@
+# Flink table DDL: typed columns on the inferred device-trust-mesh tables.
+#
+# The dtm-catalog infers every table from its topic and Schema Registry
+# subjects. Avro topics get typed columns; the A2A topics have no <topic>-value
+# subject (see schemas.yaml), so they infer as raw `key`/`val` VARBINARY.
+# Each statement here is one ALTER TABLE ... ADD that layers columns on top:
+#
+#   * device.events: Kafka partition/offset metadata and a processing-time
+#     attribute for OVER/LAG ordering.
+#   * agent.tasks.*: the Kafka headers plus JSON_VALUE/JSON_QUERY columns over
+#     the JSON-RPC SendMessage request, including the 13 envelope fields from
+#     metadata['urn:device-trust-mesh:envelope:v1']. The four statements are
+#     identical apart from the table name.
+#   * agent.task-events: the reply kind, task/status/artifact columns and the
+#     envelope, each COALESCEd over the task, statusUpdate and artifactUpdate
+#     shapes.
+#   * agent.cards: Agent Card name, version, skills and interface.
+#
+# parts[0] is the typed data part and parts[1] the text summary; the columns
+# rely on that order.
+#
+# BIGINT columns use CAST(JSON_VALUE(...) AS BIGINT): Flink 1.19 rejects
+# JSON_VALUE ... RETURNING BIGINT only when a query first reads the column,
+# so the ALTER itself would still complete.
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT: each DDL runs once
+# ---------------------------------------------------------------------------
+# A DDL statement completes (phase COMPLETED) and its CR stays as the record.
+# spec.statement is immutable, and re-creating a CR against a table that
+# already has these columns fails, because ALTER TABLE ... ADD rejects
+# existing columns. Ship any table change as a new versioned CR
+# (`dtm-ddl-agent-task-events-v2`) whose ALTER adds, drops or modifies only the
+# delta. Deleting a CR does not undo its ALTER; the columns live in the
+# catalog until the topic is deleted.
+# ---------------------------------------------------------------------------
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-device-events
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `device.events` ADD (
+    `kafka_partition` INT METADATA FROM 'partition' VIRTUAL,
+    `kafka_offset` BIGINT METADATA FROM 'offset' VIRTUAL,
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-tasks-risk
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.tasks.risk` ADD (
+    `headers` MAP<STRING, BYTES> METADATA,
+    `rpc_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.id'),
+    `rpc_method` AS JSON_VALUE(CAST(`val` AS STRING), '$.method'),
+    `message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.messageId'),
+    `context_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.contextId'),
+    `task_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.taskId'),
+    `role` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.role'),
+    `reference_task_ids` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.referenceTaskIds'),
+    `data_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.parts[0].data'),
+    `summary` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.parts[1].text'),
+    `env_message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'),
+    `env_correlation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'),
+    `env_causation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'),
+    `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
+    `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
+    `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
+    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
+    `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
+    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
+    `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-tasks-enrolment
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.tasks.enrolment` ADD (
+    `headers` MAP<STRING, BYTES> METADATA,
+    `rpc_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.id'),
+    `rpc_method` AS JSON_VALUE(CAST(`val` AS STRING), '$.method'),
+    `message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.messageId'),
+    `context_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.contextId'),
+    `task_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.taskId'),
+    `role` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.role'),
+    `reference_task_ids` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.referenceTaskIds'),
+    `data_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.parts[0].data'),
+    `summary` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.parts[1].text'),
+    `env_message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'),
+    `env_correlation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'),
+    `env_causation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'),
+    `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
+    `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
+    `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
+    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
+    `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
+    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
+    `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-tasks-step-up
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.tasks.step-up` ADD (
+    `headers` MAP<STRING, BYTES> METADATA,
+    `rpc_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.id'),
+    `rpc_method` AS JSON_VALUE(CAST(`val` AS STRING), '$.method'),
+    `message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.messageId'),
+    `context_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.contextId'),
+    `task_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.taskId'),
+    `role` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.role'),
+    `reference_task_ids` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.referenceTaskIds'),
+    `data_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.parts[0].data'),
+    `summary` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.parts[1].text'),
+    `env_message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'),
+    `env_correlation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'),
+    `env_causation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'),
+    `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
+    `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
+    `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
+    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
+    `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
+    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
+    `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-tasks-revocation
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.tasks.revocation` ADD (
+    `headers` MAP<STRING, BYTES> METADATA,
+    `rpc_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.id'),
+    `rpc_method` AS JSON_VALUE(CAST(`val` AS STRING), '$.method'),
+    `message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.messageId'),
+    `context_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.contextId'),
+    `task_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.taskId'),
+    `role` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.role'),
+    `reference_task_ids` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.referenceTaskIds'),
+    `data_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.params.message.parts[0].data'),
+    `summary` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.parts[1].text'),
+    `env_message_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'),
+    `env_correlation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'),
+    `env_causation_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'),
+    `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
+    `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
+    `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
+    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
+    `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
+    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
+    `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-task-events
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.task-events` ADD (
+    `rpc_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.id'),
+    `kind` AS CASE WHEN JSON_EXISTS(CAST(`val` AS STRING), '$.result.artifactUpdate') THEN 'artifactUpdate' WHEN JSON_EXISTS(CAST(`val` AS STRING), '$.result.statusUpdate') THEN 'statusUpdate' WHEN JSON_EXISTS(CAST(`val` AS STRING), '$.result.task') THEN 'task' END,
+    `task_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.taskId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.taskId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.id')),
+    `context_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.contextId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.contextId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.contextId')),
+    `state` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.status.state'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.status.state')),
+    `status_time` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.status.timestamp'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.status.timestamp')),
+    `status_text` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.status.message.parts[0].text'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.status.message.parts[0].text')),
+    `artifact_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.artifact.artifactId'),
+    `artifact_name` AS JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.artifact.name'),
+    `artifact_data_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.result.artifactUpdate.artifact.parts[0].data'),
+    `artifact_text` AS JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.artifact.parts[1].text'),
+    `env_message_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].messageId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].messageId')),
+    `env_correlation_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].correlationId')),
+    `env_causation_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].causationId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].causationId')),
+    `env_agent_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].agentId')),
+    `env_agent_version` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion')),
+    `env_config_version` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion')),
+    `env_event_time` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime')) AS BIGINT),
+    `env_device_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId')),
+    `env_customer_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].customerId')),
+    `env_device_seq` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq')) AS BIGINT),
+    `env_required_context_seq` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq')) AS BIGINT),
+    `env_mode` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].mode'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].mode'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].mode')),
+    `env_replay_run_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId')),
+    `proc_time` AS PROCTIME()
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-cards
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.cards` ADD (
+    `card_name` AS JSON_VALUE(CAST(`val` AS STRING), '$.name'),
+    `card_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.version'),
+    `card_description` AS JSON_VALUE(CAST(`val` AS STRING), '$.description'),
+    `skills_json` AS JSON_QUERY(CAST(`val` AS STRING), '$.skills[*].name'),
+    `interface_url` AS JSON_VALUE(CAST(`val` AS STRING), '$.supportedInterfaces[0].url'),
+    `protocol_binding` AS JSON_VALUE(CAST(`val` AS STRING), '$.supportedInterfaces[0].protocolBinding')
+    )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink

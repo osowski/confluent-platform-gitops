@@ -4,12 +4,144 @@ kind: Kustomization
 resources:
   # device-trust-mesh namespace is owned by workloads/namespaces (flink-demo
   # overlay) - not declared here.
-  # Flink SQL CR chain, applied in dependency order via sync waves 5-60
+  # Flink SQL CR chain, applied in dependency order via sync waves 5-65
   - flink-environment.yaml
   - flink-catalog-database.yaml
   - flink-compute-pool.yaml
+  - flink-ddl.yaml
   - config.yaml
   - topics.yaml
+  - schemas.yaml
+
+# One ConfigMap per generated schema in schemas/, referenced by the Schema CRs
+# in schemas.yaml. Regenerate with scripts/generate-dtm-schemas.py.
+configMapGenerator:
+  - name: dtm-schema-device-events-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/device.events-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-device-context-key
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/device.context-key.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-device-context-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/device.context-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-customer-context-key
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/customer.context-key.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-customer-context-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/customer.context-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-device-risk-signals-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/device.risk-signals-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-device-policy-commands-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/device.policy-commands-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-audit-log-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/audit.log-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-llm-interactions-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.llm-interactions-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-tasks-human-readable-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.tasks_human_readable-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-decisions-human-readable-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.decisions_human_readable-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-task-status-human-readable-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.task-status_human_readable-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-cards-human-readable-key
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.cards_human_readable-key.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-cards-human-readable-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/agent.cards_human_readable-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-simulator-control-value
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/avro/simulator.control-value.avsc
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-tasks-risk-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.tasks.risk.json
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-tasks-enrolment-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.tasks.enrolment.json
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-tasks-step-up-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.tasks.step-up.json
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-tasks-revocation-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.tasks.revocation.json
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-task-events-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.task-events.json
+    options:
+      disableNameSuffixHash: true
+  - name: dtm-schema-agent-cards-a2a
+    namespace: device-trust-mesh
+    files:
+      - schema=schemas/a2a/agent.cards.json
+    options:
+      disableNameSuffixHash: true
 
 # Common labels applied to all resources
 labels:
