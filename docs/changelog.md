@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Device Trust Mesh schemas and Flink tables** ([#446](https://github.com/osowski/confluent-platform-gitops/issues/446)): registers Avro and A2A v1.0.1 JSON Schemas and declares typed Flink tables over the A2A topics.
 - **Agentic Device Trust Mesh scaffolding on `flink-demo`** ([#441](https://github.com/osowski/confluent-platform-gitops/issues/441)): opt-in `kuberay-operator` and `device-trust-mesh` Applications (topics, shared Flink compute pool, runtime config). Agents land in follow-up stories; see the [use-case README](../workloads/device-trust-mesh/README.md).
 
 ### Changed
