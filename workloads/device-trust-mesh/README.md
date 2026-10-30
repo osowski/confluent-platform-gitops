@@ -335,7 +335,7 @@ The `dtm-view-*` statements (same file, wave 70) flatten the A2A topics into the
 - **`task_type`.** `ASSESS_ENROLMENT` on `agent.tasks.risk` and `STEP_UP` on `agent.tasks.step-up`. On `agent.tasks.enrolment` and `agent.tasks.revocation` it is the payload's `taskType`, defaulting to `DECIDE_ENROLMENT` and `REVOKE`.
 - **Agent names.** `from_agent` and `agent` are the envelope `agentId` without its `agent:` / `flink:` prefix, so router requests show `dtm-a2a-task-router`.
 - **Envelope and key.** The three append views copy the A2A record's envelope (`event_time` converted from epoch millis) and are keyed by its `deviceId`.
-- **Duplicates.** Each source is deduplicated on its message id (`messageId` on requests, the envelope `messageId` on `agent.task-events`), keeping the first copy, so an at-least-once redelivery or a re-produced record adds no row. Dedupe state expires after 7 days without input for an id (`table.exec.state.ttl`).
+- **Duplicates.** Each source is deduplicated on its message id (`messageId` on requests, the envelope `messageId` on `agent.task-events`), keeping the first copy, so an at-least-once redelivery or a re-produced record adds no row. Dedupe state expires 7 days after an id's first copy (`table.exec.state.ttl`); a duplicate after that adds a row. A `-v2` of an append view that reads from the earliest offset starts with empty dedupe state, so it writes every row again.
 - **Malformed records.** A record missing a required envelope field, or with a `mode` other than `LIVE` / `REPLAY`, produces no row. A request without a `messageId` produces no row either. The statements keep running.
 - **Cards.** `agent.cards_human_readable` follows the compacted `agent.cards`: a new card upserts its agent's row and a card tombstone deletes it. An Agent Card has no envelope, so the view writes one: `message_id` and `correlation_id` are a `DTM_ID` over the statement name, agent and card JSON, `agent_id` is `flink:dtm-view-cards`, `event_time` is the card record's Kafka timestamp, `device_id` is `n/a` and `mode` is `LIVE`.
 - **Cards state.** `dtm-view-cards` runs without a state TTL. The upsert source keeps each agent's last card in state, and a tombstone that arrives after that state has expired is dropped, which would leave a disabled agent's row behind. The state is one row per agent.
@@ -350,7 +350,7 @@ SELECT envelope.device_id, agent, outcome, policy_action, risk_score, rationale
 FROM `agent.decisions_human_readable`
 WHERE envelope.device_id = 'dev-0007';
 
--- The A2A requests in one conversation (correlation id = the simulator's contextId)
+-- The A2A requests in one conversation (correlation id = the device event's correlation_id)
 SELECT envelope.event_time, from_agent, to_agent, task_type, summary
 FROM `agent.tasks_human_readable`
 WHERE envelope.correlation_id = '<correlation id>';

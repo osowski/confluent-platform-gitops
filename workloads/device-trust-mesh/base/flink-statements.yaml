@@ -148,8 +148,8 @@
 #     the envelope messageId on agent.task-events), keeping the first row by
 #     processing time, so a redelivered or re-produced record adds no row.
 #     Keep-first on processing time is append-only. The dedupe state expires
-#     after 7 d without input for an id (table.exec.state.ttl); a duplicate
-#     after that adds a row.
+#     7 d after an id's first row (table.exec.state.ttl); a duplicate after
+#     that adds a row.
 #   * A record with a required envelope field missing, or a mode other than
 #     LIVE or REPLAY, is filtered out before the dedupe. The not-null
 #     enforcer only checks top-level columns; a null or an unknown enum
