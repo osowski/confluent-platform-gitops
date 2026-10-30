@@ -19,9 +19,13 @@
 # parts[0] is the typed data part and parts[1] the text summary; the columns
 # rely on that order.
 #
-# BIGINT columns use CAST(JSON_VALUE(...) AS BIGINT): Flink 1.19 rejects
+# BIGINT columns use TRY_CAST(JSON_VALUE(...) AS BIGINT): Flink 1.19 rejects
 # JSON_VALUE ... RETURNING BIGINT only when a query first reads the column,
-# so the ALTER itself would still complete.
+# so the ALTER itself would still complete. Text that is not a plain number
+# becomes NULL (an ISO timestamp, or a float that JSON_VALUE renders as
+# 1.79332393777E12) instead of failing the job: the views drop a record
+# whose env_event_time is NULL and pass a NULL sequence through. Plain
+# decimal text such as 3.7 truncates to 3.
 #
 # ---------------------------------------------------------------------------
 # IMPORTANT: each DDL runs once
@@ -33,6 +37,14 @@
 # (`dtm-ddl-agent-task-events-v2`) whose ALTER adds, drops or modifies only the
 # delta. Deleting a CR does not undo its ALTER; the columns live in the
 # catalog until the topic is deleted.
+#
+# Recovering a deleted CR: when a dtm-ddl-* CR is deleted (including by
+# `kubectl delete flinkstatement --all`), Argo CD re-creates it and it FAILS
+# because its columns already exist. To recover:
+#   1. Stop or delete the statements that read the table.
+#   2. Run ALTER TABLE `<table>` DROP (<every column the CR adds>) as a
+#      one-off statement through CMF (UI or REST).
+#   3. Sync the device-trust-mesh Application so the CR runs again.
 # ---------------------------------------------------------------------------
 ---
 apiVersion: platform.confluent.io/v1beta1
@@ -89,11 +101,11 @@ spec:
     `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
     `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
     `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
-    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_event_time` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
     `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
     `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
-    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
-    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_device_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
     `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
     `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
     `proc_time` AS PROCTIME()
@@ -133,11 +145,11 @@ spec:
     `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
     `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
     `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
-    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_event_time` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
     `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
     `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
-    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
-    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_device_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
     `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
     `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
     `proc_time` AS PROCTIME()
@@ -177,11 +189,11 @@ spec:
     `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
     `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
     `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
-    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_event_time` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
     `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
     `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
-    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
-    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_device_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
     `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
     `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
     `proc_time` AS PROCTIME()
@@ -221,11 +233,11 @@ spec:
     `env_agent_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'),
     `env_agent_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'),
     `env_config_version` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'),
-    `env_event_time` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
+    `env_event_time` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime') AS BIGINT),
     `env_device_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'),
     `env_customer_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'),
-    `env_device_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
-    `env_required_context_seq` AS CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
+    `env_device_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq') AS BIGINT),
+    `env_required_context_seq` AS TRY_CAST(JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq') AS BIGINT),
     `env_mode` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].mode'),
     `env_replay_run_id` AS JSON_VALUE(CAST(`val` AS STRING), '$.params.message.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'),
     `proc_time` AS PROCTIME()
@@ -266,11 +278,11 @@ spec:
     `env_agent_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].agentId')),
     `env_agent_version` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].agentVersion')),
     `env_config_version` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].configVersion')),
-    `env_event_time` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime')) AS BIGINT),
+    `env_event_time` AS TRY_CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].eventTime')) AS BIGINT),
     `env_device_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].deviceId')),
     `env_customer_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].customerId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].customerId')),
-    `env_device_seq` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq')) AS BIGINT),
-    `env_required_context_seq` AS CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq')) AS BIGINT),
+    `env_device_seq` AS TRY_CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].deviceSeq')) AS BIGINT),
+    `env_required_context_seq` AS TRY_CAST(COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].requiredContextSeq')) AS BIGINT),
     `env_mode` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].mode'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].mode'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].mode')),
     `env_replay_run_id` AS COALESCE(JSON_VALUE(CAST(`val` AS STRING), '$.result.statusUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.artifactUpdate.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId'), JSON_VALUE(CAST(`val` AS STRING), '$.result.task.metadata[''urn:device-trust-mesh:envelope:v1''].replayRunId')),
     `proc_time` AS PROCTIME()
