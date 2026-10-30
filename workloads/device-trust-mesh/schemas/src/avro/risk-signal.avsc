@@ -1,0 +1,61 @@
+{
+  "type": "record",
+  "name": "RiskSignal",
+  "namespace": "io.confluent.dtm",
+  "doc": "Anomaly signal derived from device events by Flink.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "signal_id",
+      "type": "string"
+    },
+    {
+      "name": "signal_type",
+      "type": {
+        "type": "enum",
+        "name": "SignalType",
+        "symbols": [
+          "COMPROMISED_OS",
+          "OUTDATED_OS",
+          "NEW_DEVICE_ESTABLISHED_ACCOUNT",
+          "IMPOSSIBLE_TRAVEL"
+        ]
+      }
+    },
+    {
+      "name": "severity",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "Severity",
+          "symbols": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "detail",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "source_event_type",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}

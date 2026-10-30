@@ -1,0 +1,27 @@
+{
+  "title": "AssessEnrolmentRequest",
+  "description": "agent.tasks.risk request payload: assess the enrolment risk of one device.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deviceId",
+    "customerId",
+    "requiredContextSeq",
+    "fingerprintSummary"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string"
+    },
+    "customerId": {
+      "type": "string"
+    },
+    "requiredContextSeq": {
+      "type": "integer"
+    },
+    "fingerprintSummary": {
+      "description": "Readable one-line device fingerprint.",
+      "type": "string"
+    }
+  }
+}

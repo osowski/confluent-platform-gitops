@@ -1,0 +1,140 @@
+{
+  "type": "record",
+  "name": "LlmInteraction",
+  "namespace": "io.confluent.dtm",
+  "doc": "One LLM request/response exchange, keyed for replay by request_hash.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "request_hash",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "provider",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "model",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "options_json",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "prompt_ref",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "rendered_prompt",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "input_message_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "request_json",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "response_json",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "latency_ms",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null
+    },
+    {
+      "name": "prompt_tokens",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "completion_tokens",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "guardrail_result",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "status",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "LlmStatus",
+          "symbols": [
+            "OK",
+            "ERROR",
+            "TIMEOUT"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "error",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}

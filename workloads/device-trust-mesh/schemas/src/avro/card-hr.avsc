@@ -1,0 +1,53 @@
+{
+  "type": "record",
+  "name": "CardHumanReadable",
+  "namespace": "io.confluent.dtm",
+  "doc": "Flattened A2A Agent Card from agent.cards.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "version",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "description",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "skills",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "JSON array text of skill names"
+    },
+    {
+      "name": "request_topic",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "protocol_binding",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}

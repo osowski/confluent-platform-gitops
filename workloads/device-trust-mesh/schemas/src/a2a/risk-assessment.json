@@ -1,0 +1,72 @@
+{
+  "title": "RiskAssessment",
+  "description": "risk-assessment artifact payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "score",
+    "rationale",
+    "signalIds",
+    "asOf"
+  ],
+  "properties": {
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "signalIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "asOf": {
+      "description": "Context the agent saw, copied from the context-mcp as_of.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contextSeq",
+        "materializedAt",
+        "sourceOffsets"
+      ],
+      "properties": {
+        "contextSeq": {
+          "description": "device.context context_seq the decision used.",
+          "type": "integer"
+        },
+        "materializedAt": {
+          "description": "Epoch millis at which context-mcp materialized that context.",
+          "type": "integer"
+        },
+        "sourceOffsets": {
+          "description": "Source offsets applied by the materializer.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "topic",
+              "partition",
+              "offset"
+            ],
+            "properties": {
+              "topic": {
+                "type": "string"
+              },
+              "partition": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

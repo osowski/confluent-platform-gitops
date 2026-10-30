@@ -1,0 +1,18 @@
+{
+  "title": "AuditRecord",
+  "description": "audit-record artifact payload; mirrors the audit.log record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "auditId",
+    "subjectTaskId"
+  ],
+  "properties": {
+    "auditId": {
+      "type": "string"
+    },
+    "subjectTaskId": {
+      "type": "string"
+    }
+  }
+}

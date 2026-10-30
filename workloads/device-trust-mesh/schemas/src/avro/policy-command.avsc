@@ -1,0 +1,57 @@
+{
+  "type": "record",
+  "name": "PolicyCommand",
+  "namespace": "io.confluent.dtm",
+  "doc": "Policy side effect produced by the enrolment and step-up agents.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "action",
+      "type": {
+        "type": "enum",
+        "name": "PolicyAction",
+        "symbols": [
+          "ALLOW",
+          "BLOCK",
+          "READ_ONLY",
+          "CHALLENGE"
+        ]
+      }
+    },
+    {
+      "name": "reason",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "challenge_method",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "ChallengeMethod",
+          "symbols": [
+            "MFA_PUSH",
+            "BIOMETRIC",
+            "OTP"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "enrolment_task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}

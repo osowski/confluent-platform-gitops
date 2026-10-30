@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "CustomerContextKey",
+  "namespace": "io.confluent.dtm",
+  "doc": "Record key of customer.context.",
+  "fields": [
+    {
+      "name": "customer_id",
+      "type": "string"
+    }
+  ]
+}

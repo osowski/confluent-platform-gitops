@@ -1,0 +1,59 @@
+{
+  "title": "DecideEnrolmentRequest",
+  "description": "agent.tasks.enrolment request payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taskType",
+    "deviceId"
+  ],
+  "properties": {
+    "taskType": {
+      "type": "string",
+      "enum": [
+        "DECIDE_ENROLMENT",
+        "REMOVE_TRUST",
+        "RESOLVE_CHALLENGE"
+      ]
+    },
+    "deviceId": {
+      "type": "string"
+    },
+    "customerId": {
+      "type": "string"
+    },
+    "riskAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "signalIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "llmInteractionId": {
+          "type": "string"
+        }
+      }
+    },
+    "enrolmentTaskId": {
+      "type": "string"
+    },
+    "challengeResult": {
+      "type": "string",
+      "enum": [
+        "PASSED",
+        "FAILED"
+      ]
+    }
+  }
+}

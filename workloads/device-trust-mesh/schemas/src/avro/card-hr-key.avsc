@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "CardKey",
+  "namespace": "io.confluent.dtm",
+  "doc": "Record key of agent.cards_human_readable.",
+  "fields": [
+    {
+      "name": "agent",
+      "type": "string"
+    }
+  ]
+}

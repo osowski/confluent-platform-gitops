@@ -1,0 +1,69 @@
+{
+  "type": "record",
+  "name": "TaskHumanReadable",
+  "namespace": "io.confluent.dtm",
+  "doc": "Flattened A2A SendMessage request from agent.tasks.*.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "from_agent",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "to_agent",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "task_type",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "message_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "reference_task_ids",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "JSON array text"
+    },
+    {
+      "name": "summary",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}
