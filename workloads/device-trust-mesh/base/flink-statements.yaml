@@ -107,8 +107,9 @@
 #     enrolment_task_id, so the agent resumes that task. Without one the event
 #     is not routed.
 #   * messageId (also the JSON-RPC id and envelope messageId) is DTM_ID over
-#     the statement name, the source topic and the event's Kafka partition and
-#     offset. A re-read from earliest-offset reproduces the same ids, so agents
+#     the literal 'dtm-a2a-task-router', the source topic and the event's Kafka
+#     partition and offset. A -v2 must keep that literal, or it re-sends every
+#     historical request under new ids. A re-read from earliest-offset reproduces the same ids, so agents
 #     dedupe on messageId; a re-produced event has a new offset and so a new id.
 #   * contextId and the envelope correlationId are the event's correlation_id;
 #     causationId is its message_id. requiredContextSeq (envelope and risk
