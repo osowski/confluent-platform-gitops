@@ -36,15 +36,20 @@
 #     makes the planner emit update-before rows, which the upsert sink writes
 #     as tombstones ahead of every update.
 #   * For the same reason dtm-customer-context INNER JOINs its event and
-#     command aggregates, and seeds the command aggregate with one zero row per
-#     event so it exists for every customer with events and never empties. A
+#     command aggregates, and seeds the command aggregate with one empty row
+#     per event so it exists for every customer with events and never empties. A
 #     LEFT JOIN, or a per-customer group that empties while a device's latest
 #     action is retracted, emits a DELETE, which the sink writes as a
 #     tombstone.
+#   * recent_anomaly_count counts distinct non-ALLOW command message ids, so a
+#     duplicate or re-produced command is counted once.
 #
-# Envelope message ids are DTM_ID: a UUIDv5-formatted SHA-1 of the statement
-# name, the key and context_seq (device) or the latest event's message id
-# (customer), deterministic under replay.
+# Envelope message ids are DTM_ID: a UUIDv5-formatted SHA-1 over the record's
+# content, so the id changes whenever the content does. The device id hashes
+# the statement name, device_id, context_seq and trust_status; the customer id
+# hashes the statement name, customer_id, the latest event's message id and the
+# two command counts. The device id is deterministic under replay; the
+# customer id depends on arrival order across a customer's devices.
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
 apiVersion: platform.confluent.io/v1beta1
@@ -78,12 +83,15 @@ spec:
     `env_event_time`, `device_id`, `customer_id`, `context_seq`, CAST(NULL AS BIGINT), `env_mode`, `env_replay_run_id`
     ),
     `customer_id`, `context_seq`,
-    COALESCE(`command_status`, CASE WHEN `enrol_requests` > 0 THEN CAST('PENDING' AS STRING) ELSE CAST('UNKNOWN' AS STRING) END),
+    `trust_status`,
     `platform`, `os_version`, `rooted`, `last_country`, `last_lat`, `last_lon`,
     `last_event_type`, `last_event_time`
     FROM (
     SELECT *,
-    SHA1(CONCAT_WS('|', 'dtm-device-context', `device_id`, CAST(`context_seq` AS STRING))) AS `h`
+    SHA1(CONCAT_WS('|', 'dtm-device-context', `device_id`, CAST(`context_seq` AS STRING), `trust_status`)) AS `h`
+    FROM (
+    SELECT *,
+    COALESCE(`command_status`, CASE WHEN `enrol_requests` > 0 THEN CAST('PENDING' AS STRING) ELSE CAST('UNKNOWN' AS STRING) END) AS `trust_status`
     FROM (
     SELECT
     `device_id`,
@@ -158,6 +166,7 @@ spec:
     GROUP BY `device_id`
     )
     )
+    )
   parallelism: 1
   stopped: false
   cmfRestClassRef:
@@ -186,22 +195,25 @@ spec:
     (`customer_id`, `envelope`, `device_count`, `trusted_device_count`, `known_countries`,
     `recent_anomaly_count`, `account_age_days`, `last_country`, `last_event_time`)
     SELECT
-    `ev`.`customer_id`,
+    `customer_id`,
     ROW(
-    CONCAT(SUBSTR(`ev`.`h`, 1, 8), '-', SUBSTR(`ev`.`h`, 9, 4), '-5', SUBSTR(`ev`.`h`, 14, 3), '-8', SUBSTR(`ev`.`h`, 18, 3), '-', SUBSTR(`ev`.`h`, 21, 12)),
-    `ev`.`env_correlation_id`, `ev`.`env_causation_id`,
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)),
+    `env_correlation_id`, `env_causation_id`,
     CAST('flink:dtm-customer-context' AS STRING), CAST('dtm-customer-context' AS STRING), CAST('n/a' AS STRING),
-    `ev`.`last_event_time`, `ev`.`env_device_id`, `ev`.`customer_id`, `ev`.`env_device_seq`, CAST(NULL AS BIGINT),
-    `ev`.`env_mode`, `ev`.`env_replay_run_id`
+    `last_event_time`, `env_device_id`, `customer_id`, `env_device_seq`, CAST(NULL AS BIGINT),
+    `env_mode`, `env_replay_run_id`
     ),
-    `ev`.`device_count`,
-    `cmd`.`trusted_device_count`,
-    `ev`.`known_countries`,
-    `cmd`.`recent_anomaly_count`,
-    `ev`.`account_age_days`, `ev`.`last_country`, `ev`.`last_event_time`
+    `device_count`, `trusted_device_count`, `known_countries`, `recent_anomaly_count`,
+    `account_age_days`, `last_country`, `last_event_time`
     FROM (
     SELECT *,
-    SHA1(CONCAT_WS('|', 'dtm-customer-context', `customer_id`, `env_causation_id`)) AS `h`
+    SHA1(CONCAT_WS('|', 'dtm-customer-context', `customer_id`, `env_causation_id`,
+    CAST(`trusted_device_count` AS STRING), CAST(`recent_anomaly_count` AS STRING))) AS `h`
+    FROM (
+    SELECT
+    `ev`.*,
+    `cmd`.`trusted_device_count`,
+    `cmd`.`recent_anomaly_count`
     FROM (
     SELECT
     `customer_id`,
@@ -233,18 +245,18 @@ spec:
     WHERE `envelope`.`customer_id` IS NOT NULL
     )
     GROUP BY `customer_id`
-    )
     ) AS `ev`
     JOIN (
     SELECT
     `customer_id`,
     CAST(SUM(CASE WHEN `latest_action` = 'ALLOW' THEN 1 ELSE 0 END) AS INT) AS `trusted_device_count`,
-    CAST(SUM(`anomaly`) AS INT) AS `recent_anomaly_count`
+    CAST(COUNT(DISTINCT CASE WHEN `action` <> 'ALLOW' THEN `message_id` END) AS INT) AS `recent_anomaly_count`
     FROM (
     SELECT
     `envelope`.`customer_id` AS `customer_id`,
     CAST(NULL AS STRING) AS `latest_action`,
-    0 AS `anomaly`
+    CAST(NULL AS STRING) AS `action`,
+    CAST(NULL AS STRING) AS `message_id`
     FROM `device.events`
     /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
     WHERE `envelope`.`customer_id` IS NOT NULL
@@ -252,7 +264,8 @@ spec:
     SELECT
     `envelope`.`customer_id`,
     CAST(NULL AS STRING),
-    CASE WHEN `action` <> 'ALLOW' THEN 1 ELSE 0 END
+    `action`,
+    `envelope`.`message_id`
     FROM `device.policy-commands`
     /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
     WHERE `envelope`.`customer_id` IS NOT NULL
@@ -260,7 +273,8 @@ spec:
     SELECT
     `customer_id`,
     LAST_VALUE(`action`),
-    0
+    CAST(NULL AS STRING),
+    CAST(NULL AS STRING)
     FROM (
     SELECT
     `envelope`.`customer_id` AS `customer_id`,
@@ -275,6 +289,8 @@ spec:
     GROUP BY `customer_id`
     ) AS `cmd`
     ON `ev`.`customer_id` = `cmd`.`customer_id`
+    )
+    )
   parallelism: 1
   stopped: false
   cmfRestClassRef:
