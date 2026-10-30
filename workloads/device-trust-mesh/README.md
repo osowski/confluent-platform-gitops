@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
+> This workload is scaffolding. The topics, schemas, Flink tables, the device and customer context statements, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The remaining Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
 
 ---
 
@@ -262,14 +262,33 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 
 | Statement | Input → Output | Logic | Story |
 |---|---|---|---|
-| `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq`, `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
-| `dtm-customer-context` | same → `customer.context` | Trusted device count, known countries, recent anomalies | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
+| `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq` (max `device_seq`), `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
+| `dtm-customer-context` | same → `customer.context` | Device count, trusted device count (latest action `ALLOW`), known countries, non-`ALLOW` command count | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
 | `dtm-risk-signals` | `device.events` → `device.risk-signals` | `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT`, `IMPOSSIBLE_TRAVEL` | [#448](https://github.com/osowski/confluent-platform-gitops/issues/448) |
 | `dtm-a2a-task-router` | `device.events` → `agent.tasks.risk`, `agent.tasks.enrolment` | The bank's A2A client: builds `SendMessage` requests | [#449](https://github.com/osowski/confluent-platform-gitops/issues/449) |
 | `dtm-view-tasks` | `agent.tasks.*` → `agent.tasks_human_readable` | Unnests JSON-RPC and `parts` | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-decisions` | `agent.task-events` → `agent.decisions_human_readable` | One row per artifact | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-task-status` | `agent.task-events` → `agent.task-status_human_readable` | One row per state change | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-cards` | `agent.cards` → `agent.cards_human_readable` | Flattened Agent Cards | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
+
+The context statements ([`base/flink-statements.yaml`](base/flink-statements.yaml), wave 70) are pure `GROUP BY` aggregates:
+
+- **Ordering.** `LAST_VALUE` follows arrival order across the two input topics, not event time. That is acceptable at demo rates.
+- **`trust_status`** comes from the device's latest policy command:
+
+  | Latest command | `trust_status` |
+  |---|---|
+  | `ALLOW` | `TRUSTED` |
+  | `READ_ONLY` | `READ_ONLY` |
+  | `CHALLENGE` | `CHALLENGED` |
+  | `BLOCK`, reason `UNENROLLED` | `UNENROLLED` |
+  | other `BLOCK` | `BLOCKED` |
+  | none yet, `ENROL_REQUESTED` seen | `PENDING` |
+  | none yet, no enrolment request | `UNKNOWN` |
+
+- **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
+- **Ignored commands.** `dtm-customer-context` only counts commands that carry a `customer_id`.
+- **No tombstones.** Neither statement writes tombstones to the compacted topics: every update is an upsert. The header comment in `base/flink-statements.yaml` explains how.
 
 ### Ad-hoc Queries
 
@@ -412,7 +431,7 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
    kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
-   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* phase COMPLETED
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, dtm-*-context RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:
