@@ -273,7 +273,7 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 
 The context statements ([`base/flink-statements.yaml`](base/flink-statements.yaml), wave 70) are pure `GROUP BY` aggregates:
 
-- **Ordering.** `LAST_VALUE` follows arrival order across the two input topics, not event time. That is acceptable at demo rates.
+- **Ordering.** `LAST_VALUE` follows arrival order across the two input topics, not event time. That is acceptable at demo rates. Event times (`last_event_time`, `envelope.event_time`) use `MAX`, because `LAST_VALUE` does not accept `TIMESTAMP_LTZ` on Flink 1.19.
 - **`trust_status`** comes from the device's latest policy command:
 
   | Latest command | `trust_status` |
@@ -288,6 +288,9 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
 
 - **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
 - **Ignored commands.** `dtm-customer-context` only counts commands that carry a `customer_id`.
+- **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
+- **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair (`trusted_device_count` updated, `recent_anomaly_count` not yet) within one commit. The pair converges.
+- **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
 - **No tombstones.** Neither statement writes tombstones to the compacted topics: every update is an upsert. The header comment in `base/flink-statements.yaml` explains how.
 
 ### Ad-hoc Queries
