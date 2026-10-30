@@ -70,17 +70,27 @@
 #     counts.
 #   * IMPOSSIBLE_TRAVEL (HIGH): LAG over the customer's events; haversine
 #     distance above 900 km/h of elapsed envelope.event_time. The previous
-#     event must exist and elapsed time must be positive, so a re-produced
-#     older event raises nothing.
+#     event must exist and elapsed time must be at least 1 s
+#     (TIMESTAMPDIFF(SECOND) truncates), so a re-produced older event raises
+#     nothing.
 #   * OVER clauses order by processing time (proc_time on device.events,
 #     PROCTIME() on device.policy-commands). "Previously" means processed
-#     earlier, so a re-read from earliest-offset can interleave events and
-#     commands differently from the live run.
+#     earlier, so a replay, backfill or re-read from earliest-offset can
+#     interleave events and commands differently from the live run, and so
+#     omit, or newly add, NEW_DEVICE_ESTABLISHED_ACCOUNT and
+#     IMPOSSIBLE_TRAVEL signals.
+#   * OVER state expires with table.exec.state.ttl (7 d of no input per
+#     partition). NEW_DEVICE_ESTABLISHED_ACCOUNT only remembers ALLOWs inside
+#     that window, and the per-device and per-customer states expire
+#     independently, so a device's own re-enrolment after expiry can be
+#     miscounted. IMPOSSIBLE_TRAVEL has no previous event after 7 idle days
+#     for the customer.
 #   * signal_id (also envelope.message_id) is DTM_ID over the statement name,
-#     signal_type and the causing event's message id: re-produced events
-#     repeat existing ids, never mint new ones. The envelope copies the
-#     event's correlation, device, customer, device_seq and mode fields, so
-#     every required field is non-null by construction.
+#     signal_type and the causing event's message id, so it is deterministic
+#     per (signal_type, causing event) and a duplicate dedupes on signal_id.
+#     The envelope copies the event's correlation, event_time, device,
+#     customer, device_seq, mode and replay_run_id fields, so every required
+#     field is non-null by construction.
 #   * detail literals are ASCII: non-ASCII literals reach the job mangled.
 #
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).

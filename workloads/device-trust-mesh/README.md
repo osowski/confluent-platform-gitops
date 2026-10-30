@@ -299,11 +299,15 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
 |---|---|---|
 | `COMPROMISED_OS` | `HIGH` | `fingerprint.rooted` is true |
 | `OUTDATED_OS` | `MEDIUM` | OS major version below **17** on `IOS` or **13** on `ANDROID` (an unparseable version raises nothing) |
-| `NEW_DEVICE_ESTABLISHED_ACCOUNT` | `MEDIUM` | `ENROL_REQUESTED` with `account_age_days` above **90** and at least one *other* device of the customer already `ALLOW`ed. A device blocked after its `ALLOW` still counts |
-| `IMPOSSIBLE_TRAVEL` | `HIGH` | Haversine distance from the customer's previous event above **900 km/h** of elapsed `envelope.event_time`; elapsed time must be positive |
+| `NEW_DEVICE_ESTABLISHED_ACCOUNT` | `MEDIUM` | `ENROL_REQUESTED` with `account_age_days` above **90** and at least one *other* device of the customer already `ALLOW`ed within the state TTL. A device blocked after its `ALLOW` still counts |
+| `IMPOSSIBLE_TRAVEL` | `HIGH` | Haversine distance from the customer's previous event (within the state TTL) above **900 km/h** of elapsed `envelope.event_time`; elapsed time must be at least **1 s**, since it is counted in whole seconds |
 
-- **Ordering.** "Previous" and "already" mean processed earlier (processing time). A statement that re-reads from the earliest offset can interleave events and commands differently from the live run.
-- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over the signal type and the causing event's `message_id`, which is also `causation_id`. A re-produced event repeats an existing id and never mints a new one, so consumers dedupe on `signal_id`.
+- **Ordering.** "Previous" and "already" mean processed earlier (processing time). A replay, backfill or re-read from the earliest offset can interleave events and commands differently from the live run, so it can omit, or newly add, `NEW_DEVICE_ESTABLISHED_ACCOUNT` and `IMPOSSIBLE_TRAVEL` signals.
+- **State TTL.** Window state expires after 7 days without input (`table.exec.state.ttl`):
+  - `NEW_DEVICE_ESTABLISHED_ACCOUNT` only remembers `ALLOW`s inside that window. An established customer whose only `ALLOW` is older than 7 days raises no signal.
+  - The per-device and per-customer states expire independently, so a device's own re-enrolment after expiry can be miscounted as another device's `ALLOW`.
+  - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
+- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over the signal type and the causing event's `message_id`, which is also `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
 
 ### Ad-hoc Queries
 
