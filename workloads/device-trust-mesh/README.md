@@ -250,13 +250,13 @@ Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived F
 | `agent.task-events` | `raw` + computed columns | raw `key`, append | event columns, `proc_time` |
 | `agent.cards` | `raw` + computed columns | PK `key`, upsert (compacted) | card columns |
 
-Computed columns are `JSON_VALUE` / `JSON_QUERY` over `CAST(val AS STRING)`. `env_event_time`, `env_device_seq` and `env_required_context_seq` are `BIGINT` via `CAST(JSON_VALUE(…) AS BIGINT)`; `*_json` and `reference_task_ids` hold JSON text; everything else is `STRING`:
+Computed columns are `JSON_VALUE` / `JSON_QUERY` over `CAST(val AS STRING)`. `env_event_time`, `env_device_seq` and `env_required_context_seq` are `BIGINT` via `TRY_CAST(JSON_VALUE(…) AS BIGINT)`, so text that is not a plain number (an ISO timestamp, or a float that `JSON_VALUE` renders as `1.79332393777E12`) becomes `NULL` instead of failing the job (the views drop a record with a `NULL` `env_event_time` and pass a `NULL` sequence through); `*_json` and `reference_task_ids` hold JSON text; everything else is `STRING`:
 
 - **Task tables:** `rpc_id`, `rpc_method`, `message_id`, `context_id`, `task_id`, `role`, `reference_task_ids`, `data_json` (`parts[0].data`), `summary` (`parts[1].text`), and the 13 envelope fields as `env_message_id` … `env_replay_run_id`.
 - **`agent.task-events`:** `rpc_id`, `kind` (`task` / `statusUpdate` / `artifactUpdate`), `task_id`, `context_id`, `state`, `status_time` (ISO-8601 string), `status_text`, `artifact_id`, `artifact_name`, `artifact_data_json`, `artifact_text`, and the 13 `env_*` columns. Each is coalesced across the three result shapes.
 - **`agent.cards`:** `card_name`, `card_version`, `card_description`, `skills_json` (skill names), `interface_url`, `protocol_binding`.
 
-A DDL statement runs once and its CR is immutable. Re-creating it against a table that already has the columns fails, so table changes ship as a new `-v2` DDL CR that alters only the delta.
+A DDL statement runs once and its CR is immutable. Re-creating it against a table that already has the columns fails, so table changes ship as a new `-v2` DDL CR that alters only the delta. If a `dtm-ddl-*` CR is deleted, Argo CD re-creates it and it fails; the recovery (drop the CR's columns, then re-sync) is in the [`base/flink-ddl.yaml`](base/flink-ddl.yaml) header.
 
 ### Statements
 
@@ -287,7 +287,7 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   | none yet, no enrolment request | `UNKNOWN` |
 
 - **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
-- **Ignored commands.** `dtm-customer-context` only counts commands that carry a `customer_id`.
+- **Commands carry `customer_id`.** Every `device.policy-commands` record an agent produces must carry `envelope.customer_id`; `dtm-customer-context` ignores a command without one, so it never counts toward `trusted_device_count` or `recent_anomaly_count`.
 - **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
 - **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair within one commit (for example `recent_anomaly_count` rises before `trusted_device_count` falls). The pair converges.
 - **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
