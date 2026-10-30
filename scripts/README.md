@@ -7,6 +7,7 @@ full usage docs will be filled in later.
 ## Table of Contents
 
 - [clone-cluster.sh](#clone-clustersh)
+- [generate-dtm-schemas.py](#generate-dtm-schemaspy)
 - [generate-hosts-entries.sh](#generate-hosts-entriessh)
 - [new-application.sh](#new-applicationsh)
 - [new-cluster.sh](#new-clustersh)
@@ -29,6 +30,21 @@ Clone an existing cluster configuration with a new name.
 ```
 
 *(details TBD)*
+
+---
+
+## generate-dtm-schemas.py
+
+Generate the device-trust-mesh Avro and A2A JSON Schemas under
+`workloads/device-trust-mesh/base/schemas/` from their sources in
+`workloads/device-trust-mesh/schemas/`. Python 3 standard library only.
+
+```bash
+./scripts/generate-dtm-schemas.py           # regenerate
+./scripts/generate-dtm-schemas.py --check   # exit 1 if generated files are stale
+```
+
+See the [device-trust-mesh README](../workloads/device-trust-mesh/README.md) for the schema layout.
 
 ---
 
