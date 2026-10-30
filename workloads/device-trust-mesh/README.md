@@ -287,7 +287,7 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   | none yet, no enrolment request | `UNKNOWN` |
 
 - **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
-- **Ignored commands.** `dtm-customer-context` only counts commands that carry a `customer_id`.
+- **Commands carry `customer_id`.** Every `device.policy-commands` record an agent produces must carry `envelope.customer_id`; `dtm-customer-context` ignores a command without one, so it never counts toward `trusted_device_count` or `recent_anomaly_count`.
 - **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
 - **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair within one commit (for example `recent_anomaly_count` rises before `trusted_device_count` falls). The pair converges.
 - **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
