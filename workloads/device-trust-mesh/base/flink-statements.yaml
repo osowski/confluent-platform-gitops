@@ -1,6 +1,7 @@
 ---
 # Flink SQL statements: long-running INSERT INTOs that maintain the
-# device-trust-mesh context tables and derive risk signals.
+# device-trust-mesh context tables, derive risk signals and route device
+# events to the agents as A2A requests.
 #
 # ---------------------------------------------------------------------------
 # IMPORTANT: spec.statement is immutable once the statement is running
@@ -92,6 +93,38 @@
 #     customer, device_seq, mode and replay_run_id fields, so every required
 #     field is non-null by construction.
 #   * detail literals are ASCII: non-ASCII literals reach the job mangled.
+#
+# dtm-a2a-task-router turns device.events into A2A v1.0 SendMessage JSON-RPC
+# requests, as one EXECUTE STATEMENT SET with one INSERT per raw sink:
+#
+#   * ENROL_REQUESTED -> agent.tasks.risk, AssessEnrolmentRequest. The
+#     payload requires customerId and requiredContextSeq, so an event without
+#     customer_id or device_seq is not routed.
+#   * UNENROL_REQUESTED -> agent.tasks.enrolment, DecideEnrolmentRequest
+#     REMOVE_TRUST.
+#   * CHALLENGE_PASSED / CHALLENGE_FAILED with a non-empty enrolment_task_id
+#     -> agent.tasks.enrolment, RESOLVE_CHALLENGE; message.taskId is the
+#     enrolment_task_id, so the agent resumes that task. Without one the event
+#     is not routed.
+#   * messageId (also the JSON-RPC id and envelope messageId) is DTM_ID over
+#     the statement name, the source topic and the event's Kafka partition and
+#     offset. A re-read from earliest-offset reproduces the same ids, so agents
+#     dedupe on messageId; a re-produced event has a new offset and so a new id.
+#   * contextId and the envelope correlationId are the event's correlation_id;
+#     causationId is its message_id. requiredContextSeq (envelope and risk
+#     payload) is the event's device_seq: the device.context context_seq an
+#     agent waits for before reading context.
+#   * eventTime is the event's event_time in epoch millis. A TIMESTAMP_LTZ
+#     cannot be CAST to a number, and TIMESTAMPDIFF returns INT, so whole
+#     minutes since the epoch are widened to BIGINT before the seconds and
+#     millis are added.
+#   * Optional JSON members are absent, never null: every JSON_OBJECT that can
+#     hold a null member carries ABSENT ON NULL itself (the clause does not
+#     reach nested objects). The nested JSON_OBJECT and JSON_ARRAY calls are
+#     inline, so they serialise as JSON rather than as strings.
+#   * The record key is the device_id. Headers: a2a-correlation-id,
+#     a2a-message-id, a2a-reply-topic (agent.task-events), dtm-agent-id and
+#     dtm-mode. Map keys are CAST to STRING so CHAR literals are not padded.
 #
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
@@ -514,6 +547,177 @@ spec:
     )
     )
     )
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-a2a-task-router
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    EXECUTE STATEMENT SET
+    BEGIN
+    INSERT INTO `agent.tasks.risk`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `val`, `headers`)
+    SELECT
+    CAST(`device_id` AS BYTES),
+    CAST(JSON_OBJECT(
+    'jsonrpc' VALUE '2.0',
+    'id' VALUE `msg_id`,
+    'method' VALUE 'SendMessage',
+    'params' VALUE JSON_OBJECT('message' VALUE JSON_OBJECT(
+    'messageId' VALUE `msg_id`,
+    'contextId' VALUE `correlation_id`,
+    'role' VALUE 'ROLE_USER',
+    'extensions' VALUE JSON_ARRAY('urn:device-trust-mesh:envelope:v1'),
+    'metadata' VALUE JSON_OBJECT('urn:device-trust-mesh:envelope:v1' VALUE JSON_OBJECT(
+    'messageId' VALUE `msg_id`,
+    'correlationId' VALUE `correlation_id`,
+    'causationId' VALUE `message_id`,
+    'agentId' VALUE 'flink:dtm-a2a-task-router',
+    'agentVersion' VALUE 'dtm-a2a-task-router',
+    'configVersion' VALUE 'n/a',
+    'eventTime' VALUE `event_time_ms`,
+    'deviceId' VALUE `device_id`,
+    'customerId' VALUE `customer_id`,
+    'deviceSeq' VALUE `device_seq`,
+    'requiredContextSeq' VALUE `device_seq`,
+    'mode' VALUE `mode`,
+    'replayRunId' VALUE `replay_run_id`
+    ABSENT ON NULL) ABSENT ON NULL),
+    'parts' VALUE JSON_ARRAY(
+    JSON_OBJECT('data' VALUE JSON_OBJECT(
+    'deviceId' VALUE `device_id`,
+    'customerId' VALUE `customer_id`,
+    'requiredContextSeq' VALUE `device_seq`,
+    'fingerprintSummary' VALUE `fingerprint_summary`
+    ABSENT ON NULL), 'mediaType' VALUE 'application/json' ABSENT ON NULL),
+    JSON_OBJECT('text' VALUE CONCAT('Assess enrolment risk for ', `device_id`, ' (customer ', `customer_id`, ')') ABSENT ON NULL)
+    ABSENT ON NULL)
+    ABSENT ON NULL) ABSENT ON NULL)
+    ABSENT ON NULL) AS BYTES),
+    MAP[
+    CAST('a2a-correlation-id' AS STRING), CAST(`correlation_id` AS BYTES),
+    CAST('a2a-message-id' AS STRING), CAST(`msg_id` AS BYTES),
+    CAST('a2a-reply-topic' AS STRING), CAST('agent.task-events' AS BYTES),
+    CAST('dtm-agent-id' AS STRING), CAST('flink:dtm-a2a-task-router' AS BYTES),
+    CAST('dtm-mode' AS STRING), CAST(`mode` AS BYTES)
+    ]
+    FROM (
+    SELECT *,
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)) AS `msg_id`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    CAST(TIMESTAMPDIFF(MINUTE, TO_TIMESTAMP_LTZ(0, 3), `envelope`.`event_time`) AS BIGINT) * 60000
+    + EXTRACT(SECOND FROM `envelope`.`event_time`) * 1000 + EXTRACT(MILLISECOND FROM `envelope`.`event_time`) AS `event_time_ms`,
+    CONCAT(`fingerprint`.`platform`, ' ', `fingerprint`.`os_version`, ', rooted=', LOWER(CAST(`fingerprint`.`rooted` AS STRING)),
+    ', network=', `fingerprint`.`network_type`, ', country=', `geo`.`country`) AS `fingerprint_summary`,
+    SHA1(CONCAT_WS('|', 'dtm-a2a-task-router', 'device.events', CAST(`kafka_partition` AS STRING), CAST(`kafka_offset` AS STRING))) AS `h`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `event_type` = 'ENROL_REQUESTED' AND `envelope`.`customer_id` IS NOT NULL AND `envelope`.`device_seq` IS NOT NULL
+    )
+    );
+    INSERT INTO `agent.tasks.enrolment`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `val`, `headers`)
+    SELECT
+    CAST(`device_id` AS BYTES),
+    CAST(JSON_OBJECT(
+    'jsonrpc' VALUE '2.0',
+    'id' VALUE `msg_id`,
+    'method' VALUE 'SendMessage',
+    'params' VALUE JSON_OBJECT('message' VALUE JSON_OBJECT(
+    'messageId' VALUE `msg_id`,
+    'contextId' VALUE `correlation_id`,
+    'taskId' VALUE `task_id`,
+    'role' VALUE 'ROLE_USER',
+    'extensions' VALUE JSON_ARRAY('urn:device-trust-mesh:envelope:v1'),
+    'metadata' VALUE JSON_OBJECT('urn:device-trust-mesh:envelope:v1' VALUE JSON_OBJECT(
+    'messageId' VALUE `msg_id`,
+    'correlationId' VALUE `correlation_id`,
+    'causationId' VALUE `message_id`,
+    'agentId' VALUE 'flink:dtm-a2a-task-router',
+    'agentVersion' VALUE 'dtm-a2a-task-router',
+    'configVersion' VALUE 'n/a',
+    'eventTime' VALUE `event_time_ms`,
+    'deviceId' VALUE `device_id`,
+    'customerId' VALUE `customer_id`,
+    'deviceSeq' VALUE `device_seq`,
+    'requiredContextSeq' VALUE `device_seq`,
+    'mode' VALUE `mode`,
+    'replayRunId' VALUE `replay_run_id`
+    ABSENT ON NULL) ABSENT ON NULL),
+    'parts' VALUE JSON_ARRAY(
+    JSON_OBJECT('data' VALUE JSON_OBJECT(
+    'taskType' VALUE `task_type`,
+    'deviceId' VALUE `device_id`,
+    'customerId' VALUE `customer_id`,
+    'enrolmentTaskId' VALUE `task_id`,
+    'challengeResult' VALUE `challenge_result`
+    ABSENT ON NULL), 'mediaType' VALUE 'application/json' ABSENT ON NULL),
+    JSON_OBJECT('text' VALUE `summary` ABSENT ON NULL)
+    ABSENT ON NULL)
+    ABSENT ON NULL) ABSENT ON NULL)
+    ABSENT ON NULL) AS BYTES),
+    MAP[
+    CAST('a2a-correlation-id' AS STRING), CAST(`correlation_id` AS BYTES),
+    CAST('a2a-message-id' AS STRING), CAST(`msg_id` AS BYTES),
+    CAST('a2a-reply-topic' AS STRING), CAST('agent.task-events' AS BYTES),
+    CAST('dtm-agent-id' AS STRING), CAST('flink:dtm-a2a-task-router' AS BYTES),
+    CAST('dtm-mode' AS STRING), CAST(`mode` AS BYTES)
+    ]
+    FROM (
+    SELECT *,
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)) AS `msg_id`,
+    CASE WHEN `challenge_result` IS NULL THEN CONCAT('Remove trust for ', `device_id`)
+    ELSE CONCAT('Resolve challenge ', `challenge_result`, ' for ', `device_id`, ' (enrolment task ', `task_id`, ')') END AS `summary`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    CAST(TIMESTAMPDIFF(MINUTE, TO_TIMESTAMP_LTZ(0, 3), `envelope`.`event_time`) AS BIGINT) * 60000
+    + EXTRACT(SECOND FROM `envelope`.`event_time`) * 1000 + EXTRACT(MILLISECOND FROM `envelope`.`event_time`) AS `event_time_ms`,
+    CASE WHEN `event_type` = 'UNENROL_REQUESTED' THEN CAST('REMOVE_TRUST' AS STRING) ELSE CAST('RESOLVE_CHALLENGE' AS STRING) END AS `task_type`,
+    CASE WHEN `event_type` = 'UNENROL_REQUESTED' THEN CAST(NULL AS STRING) ELSE `enrolment_task_id` END AS `task_id`,
+    CASE WHEN `event_type` = 'CHALLENGE_PASSED' THEN CAST('PASSED' AS STRING)
+    WHEN `event_type` = 'CHALLENGE_FAILED' THEN CAST('FAILED' AS STRING) END AS `challenge_result`,
+    SHA1(CONCAT_WS('|', 'dtm-a2a-task-router', 'device.events', CAST(`kafka_partition` AS STRING), CAST(`kafka_offset` AS STRING))) AS `h`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `event_type` = 'UNENROL_REQUESTED'
+    OR (`event_type` IN ('CHALLENGE_PASSED', 'CHALLENGE_FAILED') AND `enrolment_task_id` IS NOT NULL AND `enrolment_task_id` <> '')
+    )
+    );
+    END;
   parallelism: 1
   stopped: false
   cmfRestClassRef:

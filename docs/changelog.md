@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A2A task router** ([#449](https://github.com/osowski/confluent-platform-gitops/issues/449)): Flink turns device events into A2A v1.0 `SendMessage` requests for the risk and enrolment agents.
 - **Device risk signals in Flink** ([#448](https://github.com/osowski/confluent-platform-gitops/issues/448)): `dtm-risk-signals` writes `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT` and `IMPOSSIBLE_TRAVEL` records to `device.risk-signals` as device events arrive.
 - **Device and customer context in Flink** ([#447](https://github.com/osowski/confluent-platform-gitops/issues/447)): `dtm-device-context` and `dtm-customer-context` keep `device.context` (trust status, latest fingerprint and geo, `context_seq` watermark) and `customer.context` up to date from device events and policy commands.
 - **Device Trust Mesh schemas and Flink tables** ([#446](https://github.com/osowski/confluent-platform-gitops/issues/446)): registers Avro and A2A v1.0.1 JSON Schemas and declares typed Flink tables over the A2A topics.

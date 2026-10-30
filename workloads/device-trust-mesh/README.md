@@ -309,6 +309,20 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
 - **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over the signal type and the causing event's `message_id`, which is also `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
 
+`dtm-a2a-task-router` (same file, wave 70) is the bank's A2A client. It is one `EXECUTE STATEMENT SET` with one `INSERT` per request topic, and it writes one plain-JSON `SendMessage` request per routed device event, keyed by `device_id`:
+
+| Device event | Request topic | `parts[0].data` | `message.taskId` | `parts[1].text` |
+|---|---|---|---|---|
+| `ENROL_REQUESTED` with `customer_id` and `device_seq` | `agent.tasks.risk` | `AssessEnrolmentRequest`: `deviceId`, `customerId`, `requiredContextSeq` = `device_seq`, `fingerprintSummary` (`IOS 18.1, rooted=false, network=WIFI, country=GB`) | absent | `Assess enrolment risk for <device> (customer <customer>)` |
+| `UNENROL_REQUESTED` | `agent.tasks.enrolment` | `DecideEnrolmentRequest` `REMOVE_TRUST`: `deviceId`, `customerId` | absent | `Remove trust for <device>` |
+| `CHALLENGE_PASSED` / `CHALLENGE_FAILED` with an `enrolment_task_id` | `agent.tasks.enrolment` | `DecideEnrolmentRequest` `RESOLVE_CHALLENGE`: `deviceId`, `customerId`, `enrolmentTaskId`, `challengeResult` `PASSED` / `FAILED` | `enrolment_task_id` | `Resolve challenge <result> for <device> (enrolment task <id>)` |
+
+- **Not routed.** An `ENROL_REQUESTED` without `customer_id` or `device_seq`, because `AssessEnrolmentRequest` requires both. A challenge result without an `enrolment_task_id` (null or empty), because there is no task to resume.
+- **Ids.** `messageId` is the JSON-RPC `id`, `params.message.messageId` and the envelope `messageId`. It is `DTM_ID` over `dtm-a2a-task-router|device.events|<partition>|<offset>` of the causing event. A re-read from the earliest offset (a statement restart or a `-v2`) reproduces the same ids, so agents dedupe on `messageId`. A re-produced event lands at a new offset and gets a new id.
+- **Envelope.** `agentId` `flink:dtm-a2a-task-router`, `agentVersion` `dtm-a2a-task-router`, `configVersion` `n/a`. `contextId` and `correlationId` come from the event's `correlation_id`, `causationId` from its `message_id`, and `eventTime` from its `event_time` (epoch millis). `requiredContextSeq` and `deviceSeq` both carry the event's `device_seq`, which is the `device.context` `context_seq` an agent waits for before it reads context. `customerId`, `deviceSeq`, `requiredContextSeq` and `replayRunId` are left out when the event has no value. Members are never `null`, and `taskId` is never empty.
+- **Headers.** `a2a-correlation-id` (the `contextId`), `a2a-message-id` (the `messageId`), `a2a-reply-topic` (`agent.task-events`), `dtm-agent-id` (`flink:dtm-a2a-task-router`) and `dtm-mode` (the event's `mode`).
+- **Validation.** Flink writes the raw topics without validating against the `<topic>-a2a` subjects. The SQL builds each request to match `agent.tasks.risk-a2a` / `agent.tasks.enrolment-a2a`, and nothing downstream re-validates it, so check the output of any `-v2` against those subjects (for example with `kafka-json-schema-console-producer` and `json.fail.invalid.schema=true`).
+
 ### Ad-hoc Queries
 
 Run these from the Flink SQL shell or the CMF UI against `dtm-catalog`.`dtm-database`:
