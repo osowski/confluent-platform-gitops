@@ -331,7 +331,7 @@ The `dtm-view-*` statements (same file, wave 70) flatten the A2A topics into the
 | View | One row per | Columns after `envelope` |
 |---|---|---|
 | `agent.tasks_human_readable` | `SendMessage` request on `agent.tasks.*` | `from_agent`, `to_agent` (the request topic's agent), `task_type`, `task_id`, `message_id`, `reference_task_ids` (JSON array text), `summary` (`parts[1].text`) |
-| `agent.decisions_human_readable` | `artifactUpdate` on `agent.task-events` | `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `risk_score` (`score` or `riskScore`), `rationale`, `signal_ids` (JSON array text), `method` |
+| `agent.decisions_human_readable` | `artifactUpdate` on `agent.task-events` | `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `risk_score` (`score` or `riskScore`; `NULL` when not a number in `INT` range, a decimal truncates), `rationale`, `signal_ids` (JSON array text), `method` |
 | `agent.task-status_human_readable` | `task` or `statusUpdate` on `agent.task-events` | `agent`, `task_id`, `state` (`TASK_STATE_*`), `status_time` (the A2A ISO-8601 string), `status_text` |
 | `agent.cards_human_readable` (upsert, key `agent`) | agent with a current Agent Card | `version`, `description`, `skills` (JSON array text of skill names), `request_topic`, `protocol_binding` |
 

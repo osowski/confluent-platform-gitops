@@ -142,6 +142,10 @@
 #   * dtm-view-decisions: one row per artifactUpdate on agent.task-events.
 #     outcome, policy_action, risk_score (score or riskScore), rationale,
 #     signal_ids (JSON array text) and method come from parts[0].data.
+#     risk_score is TRY_CAST(JSON_VALUE(...) AS INT): JSON_VALUE ... RETURNING
+#     INT throws ClassCastException on a decimal, a quoted number or a value
+#     above INT range, which fails the job. TRY_CAST makes a non-numeric or
+#     out-of-range score NULL and truncates a decimal such as 72.5 to 72.
 #   * dtm-view-task-status: one row per task or statusUpdate on
 #     agent.task-events. status_time is the A2A ISO-8601 string as sent.
 #   * The three append views copy the record's own envelope, with event_time
@@ -895,7 +899,7 @@ spec:
     `artifact_name`,
     JSON_VALUE(`artifact_data_json`, '$.outcome'),
     JSON_VALUE(`artifact_data_json`, '$.policyAction'),
-    COALESCE(JSON_VALUE(`artifact_data_json`, '$.score' RETURNING INT), JSON_VALUE(`artifact_data_json`, '$.riskScore' RETURNING INT)),
+    COALESCE(TRY_CAST(JSON_VALUE(`artifact_data_json`, '$.score') AS INT), TRY_CAST(JSON_VALUE(`artifact_data_json`, '$.riskScore') AS INT)),
     JSON_VALUE(`artifact_data_json`, '$.rationale'),
     JSON_QUERY(`artifact_data_json`, '$.signalIds'),
     JSON_VALUE(`artifact_data_json`, '$.method')
