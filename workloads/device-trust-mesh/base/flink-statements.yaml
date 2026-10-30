@@ -1,0 +1,281 @@
+---
+# Flink SQL statements: long-running INSERT INTOs that maintain the
+# device-trust-mesh context tables.
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT: spec.statement is immutable once the statement is running
+# ---------------------------------------------------------------------------
+# The CRD carries a CEL validation rule:
+#
+#   rule:    self.statement == oldSelf.statement || oldSelf.statement == ''
+#   message: statement is immutable once running
+#
+# Editing the SQL below and syncing FAILS PERMANENTLY - the API server rejects
+# the update and retrying never helps. To change the SQL, add a new CR with a
+# versioned name (`dtm-device-context-v2`) and remove the old one once it has
+# drained. Neither `spec.stopped: true` nor
+# `argocd.argoproj.io/sync-options: Force=true,Replace=true` is a way round
+# it: the first does not unlock spec.statement, the second silently discards
+# job state, including savepoints. See docs/architecture.md for the full set
+# of Flink SQL CR constraints.
+# ---------------------------------------------------------------------------
+#
+# dtm-device-context and dtm-customer-context fold device.events and
+# device.policy-commands into the compacted device.context and
+# customer.context upsert tables. Both are pure aggregates:
+#
+#   * LAST_VALUE follows arrival order, not event time, across the two input
+#     topics; acceptable at demo rates. LAST_VALUE does not accept
+#     TIMESTAMP_LTZ, so event times use MAX.
+#   * device.context.context_seq is MAX(envelope.device_seq) over the device's
+#     events: the watermark context readers compare against
+#     required_context_seq.
+#   * The required envelope fields are non-null by construction (taken from
+#     the latest event, falling back to the latest command for a device that
+#     has only commands), so no filter follows an aggregate. A filter there
+#     makes the planner emit update-before rows, which the upsert sink writes
+#     as tombstones ahead of every update.
+#   * For the same reason dtm-customer-context INNER JOINs its event and
+#     command aggregates, and seeds the command aggregate with one zero row per
+#     event so it exists for every customer with events and never empties. A
+#     LEFT JOIN, or a per-customer group that empties while a device's latest
+#     action is retracted, emits a DELETE, which the sink writes as a
+#     tombstone.
+#
+# Envelope message ids are DTM_ID: a UUIDv5-formatted SHA-1 of the statement
+# name, the key and the context position, deterministic under replay.
+# SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
+
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-device-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `device.context`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`device_id`, `envelope`, `customer_id`, `context_seq`, `trust_status`,
+    `platform`, `os_version`, `rooted`, `last_country`, `last_lat`, `last_lon`,
+    `last_event_type`, `last_event_time`)
+    SELECT
+    `device_id`,
+    ROW(
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)),
+    `env_correlation_id`, `env_causation_id`,
+    CAST('flink:dtm-device-context' AS STRING), CAST('dtm-device-context' AS STRING), CAST('n/a' AS STRING),
+    `env_event_time`, `device_id`, `customer_id`, `context_seq`, CAST(NULL AS BIGINT), `env_mode`, `env_replay_run_id`
+    ),
+    `customer_id`, `context_seq`,
+    COALESCE(`command_status`, CASE WHEN `enrol_requests` > 0 THEN CAST('PENDING' AS STRING) ELSE CAST('UNKNOWN' AS STRING) END),
+    `platform`, `os_version`, `rooted`, `last_country`, `last_lat`, `last_lon`,
+    `last_event_type`, `last_event_time`
+    FROM (
+    SELECT *,
+    SHA1(CONCAT_WS('|', 'dtm-device-context', `device_id`, CAST(`context_seq` AS STRING))) AS `h`
+    FROM (
+    SELECT
+    `device_id`,
+    LAST_VALUE(`customer_id`) AS `customer_id`,
+    MAX(`device_seq`) AS `context_seq`,
+    LAST_VALUE(CASE
+    WHEN `action` = 'ALLOW' THEN CAST('TRUSTED' AS STRING)
+    WHEN `action` = 'READ_ONLY' THEN CAST('READ_ONLY' AS STRING)
+    WHEN `action` = 'CHALLENGE' THEN CAST('CHALLENGED' AS STRING)
+    WHEN `action` = 'BLOCK' AND `reason` = 'UNENROLLED' THEN CAST('UNENROLLED' AS STRING)
+    WHEN `action` = 'BLOCK' THEN CAST('BLOCKED' AS STRING)
+    END) AS `command_status`,
+    SUM(CASE WHEN `event_type` = 'ENROL_REQUESTED' THEN 1 ELSE 0 END) AS `enrol_requests`,
+    LAST_VALUE(`platform`) AS `platform`,
+    LAST_VALUE(`os_version`) AS `os_version`,
+    LAST_VALUE(`rooted`) AS `rooted`,
+    LAST_VALUE(`country`) AS `last_country`,
+    LAST_VALUE(`lat`) AS `last_lat`,
+    LAST_VALUE(`lon`) AS `last_lon`,
+    LAST_VALUE(`event_type`) AS `last_event_type`,
+    MAX(CASE WHEN `src` = 'event' THEN `event_time` END) AS `last_event_time`,
+    COALESCE(MAX(CASE WHEN `src` = 'event' THEN `event_time` END), MAX(`event_time`)) AS `env_event_time`,
+    COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `message_id` END), LAST_VALUE(`message_id`)) AS `env_causation_id`,
+    COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `correlation_id` END), LAST_VALUE(`correlation_id`)) AS `env_correlation_id`,
+    COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `mode` END), LAST_VALUE(`mode`)) AS `env_mode`,
+    NULLIF(LAST_VALUE(CASE WHEN `src` = 'event' THEN COALESCE(`replay_run_id`, '') END), '') AS `env_replay_run_id`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    CAST('event' AS STRING) AS `src`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `event_type`,
+    `fingerprint`.`platform` AS `platform`,
+    `fingerprint`.`os_version` AS `os_version`,
+    `fingerprint`.`rooted` AS `rooted`,
+    `geo`.`country` AS `country`,
+    `geo`.`lat` AS `lat`,
+    `geo`.`lon` AS `lon`,
+    CAST(NULL AS STRING) AS `action`,
+    CAST(NULL AS STRING) AS `reason`,
+    `envelope`.`event_time` AS `event_time`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-device-context', 'scan.startup.mode' = 'earliest-offset') */
+    UNION ALL
+    SELECT
+    `envelope`.`device_id`,
+    `envelope`.`customer_id`,
+    CAST('command' AS STRING),
+    CAST(NULL AS BIGINT),
+    CAST(NULL AS STRING),
+    CAST(NULL AS STRING),
+    CAST(NULL AS STRING),
+    CAST(NULL AS BOOLEAN),
+    CAST(NULL AS STRING),
+    CAST(NULL AS DOUBLE),
+    CAST(NULL AS DOUBLE),
+    `action`,
+    `reason`,
+    `envelope`.`event_time`,
+    `envelope`.`message_id`,
+    `envelope`.`correlation_id`,
+    `envelope`.`mode`,
+    `envelope`.`replay_run_id`
+    FROM `device.policy-commands`
+    /*+ OPTIONS('properties.group.id' = 'dtm-device-context', 'scan.startup.mode' = 'earliest-offset') */
+    )
+    GROUP BY `device_id`
+    )
+    )
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-customer-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `customer.context`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`customer_id`, `envelope`, `device_count`, `trusted_device_count`, `known_countries`,
+    `recent_anomaly_count`, `account_age_days`, `last_country`, `last_event_time`)
+    SELECT
+    `ev`.`customer_id`,
+    ROW(
+    CONCAT(SUBSTR(`ev`.`h`, 1, 8), '-', SUBSTR(`ev`.`h`, 9, 4), '-5', SUBSTR(`ev`.`h`, 14, 3), '-8', SUBSTR(`ev`.`h`, 18, 3), '-', SUBSTR(`ev`.`h`, 21, 12)),
+    `ev`.`env_correlation_id`, `ev`.`env_causation_id`,
+    CAST('flink:dtm-customer-context' AS STRING), CAST('dtm-customer-context' AS STRING), CAST('n/a' AS STRING),
+    `ev`.`last_event_time`, `ev`.`env_device_id`, `ev`.`customer_id`, `ev`.`env_device_seq`, CAST(NULL AS BIGINT),
+    `ev`.`env_mode`, `ev`.`env_replay_run_id`
+    ),
+    `ev`.`device_count`,
+    `cmd`.`trusted_device_count`,
+    `ev`.`known_countries`,
+    `cmd`.`recent_anomaly_count`,
+    `ev`.`account_age_days`, `ev`.`last_country`, `ev`.`last_event_time`
+    FROM (
+    SELECT *,
+    SHA1(CONCAT_WS('|', 'dtm-customer-context', `customer_id`, `env_causation_id`)) AS `h`
+    FROM (
+    SELECT
+    `customer_id`,
+    CAST(COUNT(DISTINCT `device_id`) AS INT) AS `device_count`,
+    LISTAGG(DISTINCT `country`) AS `known_countries`,
+    LAST_VALUE(`account_age_days`) AS `account_age_days`,
+    LAST_VALUE(`country`) AS `last_country`,
+    MAX(`event_time`) AS `last_event_time`,
+    LAST_VALUE(`message_id`) AS `env_causation_id`,
+    LAST_VALUE(`correlation_id`) AS `env_correlation_id`,
+    LAST_VALUE(`device_id`) AS `env_device_id`,
+    NULLIF(LAST_VALUE(COALESCE(`device_seq`, -1)), -1) AS `env_device_seq`,
+    LAST_VALUE(`mode`) AS `env_mode`,
+    NULLIF(LAST_VALUE(COALESCE(`replay_run_id`, '')), '') AS `env_replay_run_id`
+    FROM (
+    SELECT
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`event_time` AS `event_time`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    `geo`.`country` AS `country`,
+    `account_age_days`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    )
+    GROUP BY `customer_id`
+    )
+    ) AS `ev`
+    JOIN (
+    SELECT
+    `customer_id`,
+    CAST(SUM(CASE WHEN `latest_action` = 'ALLOW' THEN 1 ELSE 0 END) AS INT) AS `trusted_device_count`,
+    CAST(SUM(`anomaly`) AS INT) AS `recent_anomaly_count`
+    FROM (
+    SELECT
+    `envelope`.`customer_id` AS `customer_id`,
+    CAST(NULL AS STRING) AS `latest_action`,
+    0 AS `anomaly`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    UNION ALL
+    SELECT
+    `envelope`.`customer_id`,
+    CAST(NULL AS STRING),
+    CASE WHEN `action` <> 'ALLOW' THEN 1 ELSE 0 END
+    FROM `device.policy-commands`
+    /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    UNION ALL
+    SELECT
+    `customer_id`,
+    LAST_VALUE(`action`),
+    0
+    FROM (
+    SELECT
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`device_id` AS `device_id`,
+    `action`
+    FROM `device.policy-commands`
+    /*+ OPTIONS('properties.group.id' = 'dtm-customer-context', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    )
+    GROUP BY `customer_id`, `device_id`
+    )
+    GROUP BY `customer_id`
+    ) AS `cmd`
+    ON `ev`.`customer_id` = `cmd`.`customer_id`
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
