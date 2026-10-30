@@ -263,7 +263,7 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 | Statement | Input → Output | Logic | Story |
 |---|---|---|---|
 | `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq` (max `device_seq`), `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
-| `dtm-customer-context` | same → `customer.context` | Device count, trusted device count (latest action `ALLOW`), known countries, non-`ALLOW` command count | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
+| `dtm-customer-context` | same → `customer.context` | Device count, trusted device count (latest action `ALLOW`), known countries, distinct non-`ALLOW` command count | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
 | `dtm-risk-signals` | `device.events` → `device.risk-signals` | `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT`, `IMPOSSIBLE_TRAVEL` | [#448](https://github.com/osowski/confluent-platform-gitops/issues/448) |
 | `dtm-a2a-task-router` | `device.events` → `agent.tasks.risk`, `agent.tasks.enrolment` | The bank's A2A client: builds `SendMessage` requests | [#449](https://github.com/osowski/confluent-platform-gitops/issues/449) |
 | `dtm-view-tasks` | `agent.tasks.*` → `agent.tasks_human_readable` | Unnests JSON-RPC and `parts` | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
@@ -289,7 +289,7 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
 - **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
 - **Ignored commands.** `dtm-customer-context` only counts commands that carry a `customer_id`.
 - **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
-- **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair (`trusted_device_count` updated, `recent_anomaly_count` not yet) within one commit. The pair converges.
+- **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair within one commit (for example `recent_anomaly_count` rises before `trusted_device_count` falls). The pair converges.
 - **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
 - **No tombstones.** Neither statement writes tombstones to the compacted topics: every update is an upsert. The header comment in `base/flink-statements.yaml` explains how.
 
