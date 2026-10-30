@@ -45,11 +45,15 @@
 #     duplicate or re-produced command is counted once.
 #
 # Envelope message ids are DTM_ID: a UUIDv5-formatted SHA-1 over the record's
-# content, so the id changes whenever the content does. The device id hashes
-# the statement name, device_id, context_seq and trust_status; the customer id
-# hashes the statement name, customer_id, the latest event's message id and the
-# two command counts. The device id is deterministic under replay; the
-# customer id depends on arrival order across a customer's devices.
+# content and the latest input message ids, so every event- or command-driven
+# transition gets a new id, including a return to earlier content
+# (TRUSTED -> CHALLENGED -> TRUSTED). The device id hashes the statement name,
+# device_id, context_seq, trust_status, the latest event's message id and the
+# latest command's message id. The customer id hashes the statement name,
+# customer_id, the latest event's message id, the two command counts and the
+# latest command's message id. Re-producing the same input records yields the
+# same device ids; the customer id also depends on arrival order across a
+# customer's devices.
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
 apiVersion: platform.confluent.io/v1beta1
@@ -88,7 +92,8 @@ spec:
     `last_event_type`, `last_event_time`
     FROM (
     SELECT *,
-    SHA1(CONCAT_WS('|', 'dtm-device-context', `device_id`, CAST(`context_seq` AS STRING), `trust_status`)) AS `h`
+    SHA1(CONCAT_WS('|', 'dtm-device-context', `device_id`, CAST(`context_seq` AS STRING), `trust_status`,
+    `env_causation_id`, `latest_command_id`)) AS `h`
     FROM (
     SELECT *,
     COALESCE(`command_status`, CASE WHEN `enrol_requests` > 0 THEN CAST('PENDING' AS STRING) ELSE CAST('UNKNOWN' AS STRING) END) AS `trust_status`
@@ -117,7 +122,8 @@ spec:
     COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `message_id` END), LAST_VALUE(`message_id`)) AS `env_causation_id`,
     COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `correlation_id` END), LAST_VALUE(`correlation_id`)) AS `env_correlation_id`,
     COALESCE(LAST_VALUE(CASE WHEN `src` = 'event' THEN `mode` END), LAST_VALUE(`mode`)) AS `env_mode`,
-    NULLIF(LAST_VALUE(CASE WHEN `src` = 'event' THEN COALESCE(`replay_run_id`, '') END), '') AS `env_replay_run_id`
+    NULLIF(LAST_VALUE(CASE WHEN `src` = 'event' THEN COALESCE(`replay_run_id`, '') END), '') AS `env_replay_run_id`,
+    LAST_VALUE(CASE WHEN `src` = 'command' THEN `message_id` END) AS `latest_command_id`
     FROM (
     SELECT
     `envelope`.`device_id` AS `device_id`,
@@ -208,12 +214,14 @@ spec:
     FROM (
     SELECT *,
     SHA1(CONCAT_WS('|', 'dtm-customer-context', `customer_id`, `env_causation_id`,
-    CAST(`trusted_device_count` AS STRING), CAST(`recent_anomaly_count` AS STRING))) AS `h`
+    CAST(`trusted_device_count` AS STRING), CAST(`recent_anomaly_count` AS STRING),
+    `latest_command_id`)) AS `h`
     FROM (
     SELECT
     `ev`.*,
     `cmd`.`trusted_device_count`,
-    `cmd`.`recent_anomaly_count`
+    `cmd`.`recent_anomaly_count`,
+    `cmd`.`latest_command_id`
     FROM (
     SELECT
     `customer_id`,
@@ -250,7 +258,8 @@ spec:
     SELECT
     `customer_id`,
     CAST(SUM(CASE WHEN `latest_action` = 'ALLOW' THEN 1 ELSE 0 END) AS INT) AS `trusted_device_count`,
-    CAST(COUNT(DISTINCT CASE WHEN `action` <> 'ALLOW' THEN `message_id` END) AS INT) AS `recent_anomaly_count`
+    CAST(COUNT(DISTINCT CASE WHEN `action` <> 'ALLOW' THEN `message_id` END) AS INT) AS `recent_anomaly_count`,
+    LAST_VALUE(`message_id`) AS `latest_command_id`
     FROM (
     SELECT
     `envelope`.`customer_id` AS `customer_id`,
