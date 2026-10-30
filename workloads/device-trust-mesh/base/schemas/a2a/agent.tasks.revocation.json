@@ -1,0 +1,403 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent.tasks.revocation",
+  "description": "A2A v1.0.1 SendMessage JSON-RPC request on agent.tasks.revocation (mesh Kafka binding).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "jsonrpc",
+    "id",
+    "method",
+    "params"
+  ],
+  "properties": {
+    "jsonrpc": {
+      "const": "2.0"
+    },
+    "id": {
+      "description": "Equals params.message.messageId.",
+      "type": "string"
+    },
+    "method": {
+      "const": "SendMessage"
+    },
+    "params": {
+      "additionalProperties": false,
+      "description": "Represents a request for the `SendMessage` method.",
+      "properties": {
+        "configuration": {
+          "$ref": "#/$defs/SendMessageConfiguration",
+          "description": "Configuration for the send request."
+        },
+        "message": {
+          "additionalProperties": false,
+          "description": "`Message` is one unit of communication between client and server. It can be\n associated with a context and/or a task. For server messages, `context_id` must\n be provided, and `task_id` only if a task was created. For client messages, both\n fields are optional, with the caveat that if both are provided, they have to\n match (the `context_id` has to be the one that is set on the task). If only\n `task_id` is provided, the server will infer `context_id` from it.",
+          "properties": {
+            "contextId": {
+              "default": "",
+              "description": "Optional. The context id of the message. If set, the message will be associated with the given context.",
+              "type": "string"
+            },
+            "extensions": {
+              "description": "The URIs of extensions that are present or contributed to this Message.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "messageId": {
+              "default": "",
+              "description": "The unique identifier (e.g. UUID) of the message. This is created by the message creator.",
+              "type": "string"
+            },
+            "metadata": {
+              "description": "Carries the mesh envelope.",
+              "type": "object",
+              "required": [
+                "urn:device-trust-mesh:envelope:v1"
+              ],
+              "properties": {
+                "urn:device-trust-mesh:envelope:v1": {
+                  "$ref": "#/$defs/Envelope"
+                }
+              }
+            },
+            "parts": {
+              "description": "parts[0] is the typed data part, parts[1] the text summary.",
+              "type": "array",
+              "prefixItems": [
+                {
+                  "additionalProperties": false,
+                  "description": "`Part` represents a container for a section of communication content.\n Parts can be purely textual, some sort of file (image, video, etc) or\n a structured data blob (i.e. JSON).",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/RevocationRequest"
+                    },
+                    "filename": {
+                      "default": "",
+                      "description": "An optional `filename` for the file (e.g., \"document.pdf\").",
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "default": "",
+                      "description": "The `media_type` (MIME type) of the part content (e.g., \"text/plain\", \"application/json\", \"image/png\").\n This field is available for all part types.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "$ref": "#/$defs/Struct",
+                      "description": "Optional. metadata associated with this part."
+                    },
+                    "raw": {
+                      "description": "The `raw` byte content of a file. In JSON serialization, this is encoded as a base64 string.",
+                      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+                      "type": "string"
+                    },
+                    "text": {
+                      "description": "The string content of the `text` part.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "A `url` pointing to the file's content.",
+                      "type": "string"
+                    }
+                  },
+                  "title": "Part",
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "`Part` represents a container for a section of communication content.\n Parts can be purely textual, some sort of file (image, video, etc) or\n a structured data blob (i.e. JSON).",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/Value",
+                      "description": "Arbitrary structured `data` as a JSON value (object, array, string, number, boolean, or null)."
+                    },
+                    "filename": {
+                      "default": "",
+                      "description": "An optional `filename` for the file (e.g., \"document.pdf\").",
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "default": "",
+                      "description": "The `media_type` (MIME type) of the part content (e.g., \"text/plain\", \"application/json\", \"image/png\").\n This field is available for all part types.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "$ref": "#/$defs/Struct",
+                      "description": "Optional. metadata associated with this part."
+                    },
+                    "raw": {
+                      "description": "The `raw` byte content of a file. In JSON serialization, this is encoded as a base64 string.",
+                      "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+                      "type": "string"
+                    },
+                    "text": {
+                      "description": "The string content of the `text` part.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "A `url` pointing to the file's content.",
+                      "type": "string"
+                    }
+                  },
+                  "title": "Part",
+                  "type": "object",
+                  "required": [
+                    "text"
+                  ]
+                }
+              ],
+              "minItems": 2
+            },
+            "referenceTaskIds": {
+              "description": "A list of task IDs that this message references for additional context.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "role": {
+              "anyOf": [
+                {
+                  "pattern": "^ROLE_UNSPECIFIED$",
+                  "type": "string"
+                },
+                {
+                  "enum": [
+                    "ROLE_USER",
+                    "ROLE_AGENT"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "maximum": 2147483647,
+                  "minimum": -2147483648,
+                  "type": "integer"
+                }
+              ],
+              "default": 0,
+              "description": "Identifies the sender of the message.",
+              "title": "Role"
+            },
+            "taskId": {
+              "default": "",
+              "description": "Optional. The task id of the message. If set, the message will be associated with the given task.",
+              "type": "string"
+            }
+          },
+          "title": "Message",
+          "type": "object",
+          "required": [
+            "messageId",
+            "contextId",
+            "role",
+            "extensions",
+            "metadata",
+            "parts"
+          ]
+        },
+        "metadata": {
+          "$ref": "#/$defs/Struct",
+          "description": "A flexible key-value map for passing additional context or parameters."
+        },
+        "tenant": {
+          "default": "",
+          "description": "Optional. Opaque routing identifier. Must match the `tenant` value from\n the selected `AgentInterface` in the Agent Card when that field is set.",
+          "type": "string"
+        }
+      },
+      "title": "Send Message Request",
+      "type": "object",
+      "required": [
+        "message"
+      ]
+    }
+  },
+  "$defs": {
+    "AuthenticationInfo": {
+      "additionalProperties": false,
+      "description": "Defines authentication details, used for push notifications.",
+      "properties": {
+        "credentials": {
+          "default": "",
+          "description": "Push Notification credentials. Format depends on the scheme (e.g., token for Bearer).",
+          "type": "string"
+        },
+        "scheme": {
+          "default": "",
+          "description": "HTTP Authentication Scheme from the [IANA registry](https://www.iana.org/assignments/http-authschemes/).\n Examples: `Bearer`, `Basic`, `Digest`.\n Scheme names are case-insensitive per [RFC 9110 Section 11.1](https://www.rfc-editor.org/rfc/rfc9110#section-11.1).",
+          "type": "string"
+        }
+      },
+      "title": "Authentication Info",
+      "type": "object"
+    },
+    "Envelope": {
+      "title": "Envelope",
+      "description": "Mesh envelope under metadata[\"urn:device-trust-mesh:envelope:v1\"]. Same fields as the Avro io.confluent.dtm.Envelope record, in camelCase.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "correlationId",
+        "agentId",
+        "agentVersion",
+        "configVersion",
+        "eventTime",
+        "deviceId",
+        "mode"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string"
+        },
+        "correlationId": {
+          "type": "string"
+        },
+        "causationId": {
+          "type": "string"
+        },
+        "agentId": {
+          "description": "flink:<statement>, agent:<name> or simulator.",
+          "type": "string"
+        },
+        "agentVersion": {
+          "type": "string"
+        },
+        "configVersion": {
+          "description": "Hash of the effective agent config; n/a for Flink.",
+          "type": "string"
+        },
+        "eventTime": {
+          "description": "Producer-assigned epoch millis.",
+          "type": "integer"
+        },
+        "deviceId": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "deviceSeq": {
+          "type": "integer"
+        },
+        "requiredContextSeq": {
+          "type": "integer"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "LIVE",
+            "REPLAY"
+          ]
+        },
+        "replayRunId": {
+          "type": "string"
+        }
+      }
+    },
+    "RevocationRequest": {
+      "title": "RevocationRequest",
+      "description": "agent.tasks.revocation request payload.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "reason"
+      ],
+      "properties": {
+        "deviceId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "SendMessageConfiguration": {
+      "additionalProperties": false,
+      "description": "Configuration of a send message request.",
+      "properties": {
+        "acceptedOutputModes": {
+          "description": "A list of media types the client is prepared to accept for response parts.\n Agents SHOULD use this to tailor their output.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "historyLength": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": -2147483648,
+              "type": "integer"
+            },
+            {
+              "pattern": "^-?[0-9]+$",
+              "type": "string"
+            }
+          ],
+          "description": "The maximum number of most recent messages from the task's history to retrieve in\n the response. An unset value means the client does not impose any limit. A\n value of zero is a request to not include any messages. The server MUST NOT\n return more messages than the provided value, but MAY apply a lower limit."
+        },
+        "returnImmediately": {
+          "default": false,
+          "description": "If `true`, the operation returns immediately after creating the task,\n even if processing is still in progress.\n If `false` (default), the operation MUST wait until the task reaches a\n terminal (`COMPLETED`, `FAILED`, `CANCELED`, `REJECTED`) or interrupted\n (`INPUT_REQUIRED`, `AUTH_REQUIRED`) state before returning.",
+          "type": "boolean"
+        },
+        "taskPushNotificationConfig": {
+          "$ref": "#/$defs/TaskPushNotificationConfig",
+          "description": "Configuration for the agent to send push notifications for task updates.\n Task id should be empty when sending this configuration in a `SendMessage` request."
+        }
+      },
+      "title": "Send Message Configuration",
+      "type": "object"
+    },
+    "Struct": {
+      "title": "Struct",
+      "type": "object"
+    },
+    "TaskPushNotificationConfig": {
+      "additionalProperties": false,
+      "description": "A container associating a push notification configuration with a specific task.",
+      "properties": {
+        "authentication": {
+          "$ref": "#/$defs/AuthenticationInfo",
+          "description": "Authentication information required to send the notification."
+        },
+        "id": {
+          "default": "",
+          "description": "The push notification configuration details.\n A unique identifier (e.g. UUID) for this push notification configuration.",
+          "type": "string"
+        },
+        "taskId": {
+          "default": "",
+          "description": "The ID of the task this configuration is associated with.",
+          "type": "string"
+        },
+        "tenant": {
+          "default": "",
+          "description": "Optional. Opaque routing identifier. Must match the `tenant` value from\n the selected `AgentInterface` in the Agent Card when that field is set.",
+          "type": "string"
+        },
+        "token": {
+          "default": "",
+          "description": "A token unique for this task or session.",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "description": "The URL where the notification should be sent.",
+          "type": "string"
+        }
+      },
+      "title": "Task Push Notification Config",
+      "type": "object"
+    },
+    "Value": {
+      "title": "Value"
+    }
+  }
+}

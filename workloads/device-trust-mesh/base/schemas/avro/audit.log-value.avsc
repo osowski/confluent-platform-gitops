@@ -1,0 +1,170 @@
+{
+  "type": "record",
+  "name": "AuditRecord",
+  "namespace": "io.confluent.dtm",
+  "doc": "Compliance record of one agent decision artifact.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": {
+        "type": "record",
+        "name": "Envelope",
+        "namespace": "io.confluent.dtm",
+        "doc": "Mesh envelope carried on every device-trust-mesh record. Mirrors the A2A metadata extension urn:device-trust-mesh:envelope:v1.",
+        "fields": [
+          {
+            "name": "message_id",
+            "type": "string"
+          },
+          {
+            "name": "correlation_id",
+            "type": "string"
+          },
+          {
+            "name": "causation_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "agent_id",
+            "type": "string",
+            "doc": "flink:<statement>, agent:<name> or simulator"
+          },
+          {
+            "name": "agent_version",
+            "type": "string"
+          },
+          {
+            "name": "config_version",
+            "type": "string",
+            "doc": "Hash of the effective agent config; n/a for Flink"
+          },
+          {
+            "name": "event_time",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "device_id",
+            "type": "string"
+          },
+          {
+            "name": "customer_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "device_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "required_context_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "mode",
+            "type": {
+              "type": "enum",
+              "name": "Mode",
+              "symbols": [
+                "LIVE",
+                "REPLAY"
+              ]
+            }
+          },
+          {
+            "name": "replay_run_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "audit_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "subject_task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "subject_agent",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "artifact_name",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "outcome",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "policy_action",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "rationale",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "recorded_at",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null
+    }
+  ]
+}

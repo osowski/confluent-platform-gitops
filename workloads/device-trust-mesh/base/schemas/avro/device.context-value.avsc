@@ -1,0 +1,207 @@
+{
+  "type": "record",
+  "name": "DeviceContext",
+  "namespace": "io.confluent.dtm",
+  "doc": "Current per-device context maintained by Flink.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": {
+        "type": "record",
+        "name": "Envelope",
+        "namespace": "io.confluent.dtm",
+        "doc": "Mesh envelope carried on every device-trust-mesh record. Mirrors the A2A metadata extension urn:device-trust-mesh:envelope:v1.",
+        "fields": [
+          {
+            "name": "message_id",
+            "type": "string"
+          },
+          {
+            "name": "correlation_id",
+            "type": "string"
+          },
+          {
+            "name": "causation_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "agent_id",
+            "type": "string",
+            "doc": "flink:<statement>, agent:<name> or simulator"
+          },
+          {
+            "name": "agent_version",
+            "type": "string"
+          },
+          {
+            "name": "config_version",
+            "type": "string",
+            "doc": "Hash of the effective agent config; n/a for Flink"
+          },
+          {
+            "name": "event_time",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "device_id",
+            "type": "string"
+          },
+          {
+            "name": "customer_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "device_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "required_context_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "mode",
+            "type": {
+              "type": "enum",
+              "name": "Mode",
+              "symbols": [
+                "LIVE",
+                "REPLAY"
+              ]
+            }
+          },
+          {
+            "name": "replay_run_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "customer_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "context_seq",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Highest envelope.device_seq applied; the context watermark"
+    },
+    {
+      "name": "trust_status",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "TrustStatus",
+          "symbols": [
+            "UNKNOWN",
+            "PENDING",
+            "TRUSTED",
+            "READ_ONLY",
+            "CHALLENGED",
+            "BLOCKED",
+            "UNENROLLED"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "platform",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "os_version",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "rooted",
+      "type": [
+        "null",
+        "boolean"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_country",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_lat",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_lon",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_event_type",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_event_time",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null
+    }
+  ]
+}

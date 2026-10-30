@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "DeviceContextKey",
+  "namespace": "io.confluent.dtm",
+  "doc": "Record key of device.context.",
+  "fields": [
+    {
+      "name": "device_id",
+      "type": "string"
+    }
+  ]
+}

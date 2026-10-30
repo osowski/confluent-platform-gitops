@@ -1,0 +1,152 @@
+{
+  "type": "record",
+  "name": "RiskSignal",
+  "namespace": "io.confluent.dtm",
+  "doc": "Anomaly signal derived from device events by Flink.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": {
+        "type": "record",
+        "name": "Envelope",
+        "namespace": "io.confluent.dtm",
+        "doc": "Mesh envelope carried on every device-trust-mesh record. Mirrors the A2A metadata extension urn:device-trust-mesh:envelope:v1.",
+        "fields": [
+          {
+            "name": "message_id",
+            "type": "string"
+          },
+          {
+            "name": "correlation_id",
+            "type": "string"
+          },
+          {
+            "name": "causation_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "agent_id",
+            "type": "string",
+            "doc": "flink:<statement>, agent:<name> or simulator"
+          },
+          {
+            "name": "agent_version",
+            "type": "string"
+          },
+          {
+            "name": "config_version",
+            "type": "string",
+            "doc": "Hash of the effective agent config; n/a for Flink"
+          },
+          {
+            "name": "event_time",
+            "type": {
+              "type": "long",
+              "logicalType": "timestamp-millis"
+            }
+          },
+          {
+            "name": "device_id",
+            "type": "string"
+          },
+          {
+            "name": "customer_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "device_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "required_context_seq",
+            "type": [
+              "null",
+              "long"
+            ],
+            "default": null
+          },
+          {
+            "name": "mode",
+            "type": {
+              "type": "enum",
+              "name": "Mode",
+              "symbols": [
+                "LIVE",
+                "REPLAY"
+              ]
+            }
+          },
+          {
+            "name": "replay_run_id",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "signal_id",
+      "type": "string"
+    },
+    {
+      "name": "signal_type",
+      "type": {
+        "type": "enum",
+        "name": "SignalType",
+        "symbols": [
+          "COMPROMISED_OS",
+          "OUTDATED_OS",
+          "NEW_DEVICE_ESTABLISHED_ACCOUNT",
+          "IMPOSSIBLE_TRAVEL"
+        ]
+      }
+    },
+    {
+      "name": "severity",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "Severity",
+          "symbols": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "detail",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "source_event_type",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}
