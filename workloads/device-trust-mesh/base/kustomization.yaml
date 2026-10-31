@@ -4,11 +4,12 @@ kind: Kustomization
 resources:
   # device-trust-mesh namespace is owned by workloads/namespaces (flink-demo
   # overlay) - not declared here.
-  # Flink SQL CR chain, applied in dependency order via sync waves 5-65
+  # Flink SQL CR chain, applied in dependency order via sync waves 5-70
   - flink-environment.yaml
   - flink-catalog-database.yaml
   - flink-compute-pool.yaml
   - flink-ddl.yaml
+  - flink-statements.yaml
   - config.yaml
   - topics.yaml
   - schemas.yaml

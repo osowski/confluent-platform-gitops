@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
+> This workload is scaffolding. The topics, schemas, Flink tables, the device and customer context statements, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The remaining Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
 
 ---
 
@@ -137,6 +137,8 @@ The mesh envelope rides inside A2A's own extension points. Messages declare `ext
 
 The envelope's `messageId` and `correlationId` equal the record's A2A `messageId` and `contextId` where those exist, so every envelope is self-contained; status and artifact events have no A2A `messageId` of their own. Kafka headers mirror `a2a-correlation-id`, `a2a-message-id`, `a2a-reply-topic`, `dtm-agent-id` and `dtm-mode`. Business-plane Avro records carry the same envelope as a typed `envelope` field, so device events, context, the A2A conversation and the audit trail all join on the correlation id.
 
+Ids that a Flink statement derives are a `DTM_ID`: the SHA-1 of the statement name and the record's identifying inputs joined with `|`, laid out as a UUID (`h[1..8]-h[9..12]-5h[14..16]-8h[18..20]-h[21..32]`). The `5` and `8` give it the UUIDv5 shape, but it is not an RFC 9562 UUIDv5, because no namespace is hashed. A `DTM_ID` is a fingerprint. The same inputs always give the same id, so consumers dedupe and cross-reference on it: a risk assessment's `signalIds[]` match `signal_id` in `device.risk-signals`. Nothing can be decoded from the id, and the meaning is in the record's own fields. Each statement's inputs are listed with that statement in this README and in `base/flink-statements.yaml`.
+
 ### Task Lifecycle
 
 Each agent owns one A2A `Task` per request:
@@ -262,14 +264,36 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 
 | Statement | Input → Output | Logic | Story |
 |---|---|---|---|
-| `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq`, `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
-| `dtm-customer-context` | same → `customer.context` | Trusted device count, known countries, recent anomalies | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
+| `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq` (max `device_seq`), `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
+| `dtm-customer-context` | same → `customer.context` | Device count, trusted device count (latest action `ALLOW`), known countries, distinct non-`ALLOW` command count | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
 | `dtm-risk-signals` | `device.events` → `device.risk-signals` | `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT`, `IMPOSSIBLE_TRAVEL` | [#448](https://github.com/osowski/confluent-platform-gitops/issues/448) |
 | `dtm-a2a-task-router` | `device.events` → `agent.tasks.risk`, `agent.tasks.enrolment` | The bank's A2A client: builds `SendMessage` requests | [#449](https://github.com/osowski/confluent-platform-gitops/issues/449) |
 | `dtm-view-tasks` | `agent.tasks.*` → `agent.tasks_human_readable` | Unnests JSON-RPC and `parts` | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-decisions` | `agent.task-events` → `agent.decisions_human_readable` | One row per artifact | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-task-status` | `agent.task-events` → `agent.task-status_human_readable` | One row per state change | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-cards` | `agent.cards` → `agent.cards_human_readable` | Flattened Agent Cards | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
+
+The context statements ([`base/flink-statements.yaml`](base/flink-statements.yaml), wave 70) are pure `GROUP BY` aggregates:
+
+- **Ordering.** `LAST_VALUE` follows arrival order across the two input topics, not event time. That is acceptable at demo rates. Event times (`last_event_time`, `envelope.event_time`) use `MAX`, because `LAST_VALUE` does not accept `TIMESTAMP_LTZ` on Flink 1.19.
+- **`trust_status`** comes from the device's latest policy command:
+
+  | Latest command | `trust_status` |
+  |---|---|
+  | `ALLOW` | `TRUSTED` |
+  | `READ_ONLY` | `READ_ONLY` |
+  | `CHALLENGE` | `CHALLENGED` |
+  | `BLOCK`, reason `UNENROLLED` | `UNENROLLED` |
+  | other `BLOCK` | `BLOCKED` |
+  | none yet, `ENROL_REQUESTED` seen | `PENDING` |
+  | none yet, no enrolment request | `UNKNOWN` |
+
+- **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
+- **Commands carry `customer_id`.** Every `device.policy-commands` record an agent produces must carry `envelope.customer_id`; `dtm-customer-context` ignores a command without one, so it never counts toward `trusted_device_count` or `recent_anomaly_count`.
+- **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
+- **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair within one commit (for example `recent_anomaly_count` rises before `trusted_device_count` falls). The pair converges.
+- **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
+- **No tombstones.** Neither statement writes tombstones to the compacted topics: every update is an upsert. The header comment in `base/flink-statements.yaml` explains how.
 
 ### Ad-hoc Queries
 
@@ -412,7 +436,7 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
    kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
-   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* phase COMPLETED
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, dtm-*-context RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:
