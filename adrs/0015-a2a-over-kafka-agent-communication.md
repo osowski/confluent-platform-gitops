@@ -61,7 +61,7 @@ Alternatives considered:
 
 - The A2A JSON nests the business fields (`params.message.parts[].data`). Readability depends on the `*_human_readable` views, which are four more Flink statements on the shared pool.
 - The Kafka binding is the mesh's own convention, not part of the A2A spec. It is documented in the use-case README.
-- Whether the CMF Flink catalog can infer tables from the A2A JSON Schemas is unverified. If it can't, Flink reads and writes those topics as `raw` and uses JSON functions ([#449](https://github.com/osowski/confluent-platform-gitops/issues/449)).
+- The CMF Flink catalog cannot map the A2A JSON Schema's tuple arrays (`prefixItems`), so the A2A schemas are registered under `<topic>-a2a` subjects the catalog never reads. Flink reads and writes those topics as `raw` bytes, with typed computed columns declared by the `dtm-ddl-*` statements ([#449](https://github.com/osowski/confluent-platform-gitops/issues/449)).
 
 **Neutral**
 

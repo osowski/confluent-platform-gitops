@@ -1,0 +1,53 @@
+{
+  "type": "record",
+  "name": "TaskStatusHumanReadable",
+  "namespace": "io.confluent.dtm",
+  "doc": "One row per A2A task state change on agent.task-events.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "agent",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "state",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "status_time",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "ISO-8601 timestamp from the A2A TaskStatus"
+    },
+    {
+      "name": "status_text",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "title": "RevocationRequest",
+  "description": "agent.tasks.revocation request payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deviceId",
+    "reason"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}

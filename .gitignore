@@ -27,6 +27,7 @@ credentials/
 # Local testing output
 test-output/
 *.log
+__pycache__/
 
 # Helm charts
 charts/*.tgz

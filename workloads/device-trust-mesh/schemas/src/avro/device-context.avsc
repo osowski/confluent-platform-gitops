@@ -1,0 +1,116 @@
+{
+  "type": "record",
+  "name": "DeviceContext",
+  "namespace": "io.confluent.dtm",
+  "doc": "Current per-device context maintained by Flink.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "customer_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "context_seq",
+      "type": [
+        "null",
+        "long"
+      ],
+      "default": null,
+      "doc": "Highest envelope.device_seq applied; the context watermark"
+    },
+    {
+      "name": "trust_status",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "TrustStatus",
+          "symbols": [
+            "UNKNOWN",
+            "PENDING",
+            "TRUSTED",
+            "READ_ONLY",
+            "CHALLENGED",
+            "BLOCKED",
+            "UNENROLLED"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "platform",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "os_version",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "rooted",
+      "type": [
+        "null",
+        "boolean"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_country",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_lat",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_lon",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_event_type",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "last_event_time",
+      "type": [
+        "null",
+        {
+          "type": "long",
+          "logicalType": "timestamp-millis"
+        }
+      ],
+      "default": null
+    }
+  ]
+}

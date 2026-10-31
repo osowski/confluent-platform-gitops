@@ -1,0 +1,99 @@
+{
+  "type": "record",
+  "name": "DeviceEvent",
+  "namespace": "io.confluent.dtm",
+  "doc": "Device activity produced by the simulator.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "event_type",
+      "type": {
+        "type": "enum",
+        "name": "EventType",
+        "symbols": [
+          "ENROL_REQUESTED",
+          "UNENROL_REQUESTED",
+          "CHALLENGE_PASSED",
+          "CHALLENGE_FAILED"
+        ]
+      }
+    },
+    {
+      "name": "fingerprint",
+      "type": {
+        "type": "record",
+        "name": "Fingerprint",
+        "fields": [
+          {
+            "name": "platform",
+            "type": {
+              "type": "enum",
+              "name": "Platform",
+              "symbols": [
+                "IOS",
+                "ANDROID"
+              ]
+            }
+          },
+          {
+            "name": "os_version",
+            "type": "string"
+          },
+          {
+            "name": "rooted",
+            "type": "boolean"
+          },
+          {
+            "name": "browser_signals",
+            "type": [
+              "null",
+              "string"
+            ],
+            "default": null
+          },
+          {
+            "name": "network_type",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "geo",
+      "type": {
+        "type": "record",
+        "name": "Geo",
+        "fields": [
+          {
+            "name": "country",
+            "type": "string"
+          },
+          {
+            "name": "lat",
+            "type": "double"
+          },
+          {
+            "name": "lon",
+            "type": "double"
+          }
+        ]
+      }
+    },
+    {
+      "name": "account_age_days",
+      "type": "int"
+    },
+    {
+      "name": "enrolment_task_id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Enrolment task a challenge result resumes"
+    }
+  ]
+}

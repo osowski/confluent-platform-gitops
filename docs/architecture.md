@@ -200,7 +200,7 @@ Apply in that order and delete in reverse, so each CMF-side resource is removed 
 |---|---|
 | `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50 (RBAC clusters additionally use waves 10/20/30 for a `default`-env Secret/FlinkSecret/mapping chain via a Kustomize Component — coexists with the reference application at wave 10 since neither depends on the other) |
 | `colors-and-shapes` | environment 5; catalog 40; database 50; pool 60; statement 70; application 80 (waves 10/20/30 are reserved for the Secret/FlinkSecret/mapping chain a Kustomize Component adds on RBAC clusters — not present in the anonymous base) |
-| `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; statements 70; RayService 80; simulator 90 |
+| `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; DDL 65; statements 70; RayService 80; simulator 90 |
 
 `FlinkApplication` must come after `FlinkEnvironment` rather than sharing its wave. Unwaved they race, and CFK reports `FlinkEnvironment "<env>" not found` on the application. Without a health check that failure is invisible — ArgoCD marks the application Healthy on creation and CFK retries in the background — but once health is evaluated it fails the sync outright.
 

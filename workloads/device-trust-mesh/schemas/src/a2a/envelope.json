@@ -1,0 +1,64 @@
+{
+  "title": "Envelope",
+  "description": "Mesh envelope under metadata[\"urn:device-trust-mesh:envelope:v1\"]. Same fields as the Avro io.confluent.dtm.Envelope record, in camelCase.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "messageId",
+    "correlationId",
+    "agentId",
+    "agentVersion",
+    "configVersion",
+    "eventTime",
+    "deviceId",
+    "mode"
+  ],
+  "properties": {
+    "messageId": {
+      "type": "string"
+    },
+    "correlationId": {
+      "type": "string"
+    },
+    "causationId": {
+      "type": "string"
+    },
+    "agentId": {
+      "description": "flink:<statement>, agent:<name> or simulator.",
+      "type": "string"
+    },
+    "agentVersion": {
+      "type": "string"
+    },
+    "configVersion": {
+      "description": "Hash of the effective agent config; n/a for Flink.",
+      "type": "string"
+    },
+    "eventTime": {
+      "description": "Producer-assigned epoch millis.",
+      "type": "integer"
+    },
+    "deviceId": {
+      "type": "string"
+    },
+    "customerId": {
+      "type": "string"
+    },
+    "deviceSeq": {
+      "type": "integer"
+    },
+    "requiredContextSeq": {
+      "type": "integer"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "REPLAY"
+      ]
+    },
+    "replayRunId": {
+      "type": "string"
+    }
+  }
+}

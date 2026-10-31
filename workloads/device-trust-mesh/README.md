@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, the runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The Flink statements, schemas, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
+> This workload is scaffolding. The topics, schemas, Flink tables, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
 
 ---
 
@@ -87,6 +87,36 @@ A2A v1.0 defines JSON-RPC, gRPC and HTTP+JSON transports but no Kafka binding, s
 | Task continuation | A follow-up `SendMessage` carrying an existing `taskId` |
 | Discovery | `AgentCard` per agent on compacted `agent.cards` (key = agent name): published when the agent is enabled, tombstoned when disabled |
 | Record key | `device_id` (per-device ordering); agent name on `agent.cards` |
+| Wire format | Plain JSON (UTF-8), **no** Schema Registry wire prefix. Producers validate against the topic's `<topic>-a2a` subject before producing |
+
+### Record Shapes
+
+Field names are protojson camelCase and enums are strings (`ROLE_USER`, `TASK_STATE_COMPLETED`). Optional members are omitted, never `null`.
+
+| Topic | Record value |
+|---|---|
+| `agent.tasks.<agent>` | `{"jsonrpc":"2.0","id":<messageId>,"method":"SendMessage","params":{"message":{…}}}`. The `message` carries `messageId`, `contextId`, `role`, `extensions: ["urn:device-trust-mesh:envelope:v1"]`, `metadata` with the envelope, `parts`, and optionally `taskId` and `referenceTaskIds` |
+| `agent.task-events` | `{"jsonrpc":"2.0","id":<request id>,"result":{…}}`, where `result` holds exactly one of `task`, `statusUpdate` or `artifactUpdate`, each with the envelope in its own `metadata` |
+| `agent.cards` | An A2A `AgentCard`. `supportedInterfaces[0]` is `{"url":"kafka://kafka.kafka.svc.cluster.local:9071/agent.tasks.<name>","protocolBinding":"urn:device-trust-mesh:kafka:v1","protocolVersion":"1.0"}`, and `capabilities.extensions` lists the envelope URI |
+
+**Part order is part of the binding.** On every request message and every artifact, `parts[0]` is the typed `data` part (`"mediaType":"application/json"`) and `parts[1]` is a `text` summary. The JSON Schemas pin the order with `prefixItems`, and the Flink tables and views read the parts by position.
+
+### Payloads
+
+`parts[0].data` per topic and artifact name. Required fields are **bold**.
+
+| Payload | Carried on | Fields |
+|---|---|---|
+| `AssessEnrolmentRequest` | `agent.tasks.risk` | **deviceId**, **customerId**, **requiredContextSeq**, **fingerprintSummary** |
+| `DecideEnrolmentRequest` | `agent.tasks.enrolment` | **taskType** (`DECIDE_ENROLMENT` / `REMOVE_TRUST` / `RESOLVE_CHALLENGE`), **deviceId**, customerId, riskAssessment {score, rationale, signalIds[], llmInteractionId}, enrolmentTaskId, challengeResult (`PASSED` / `FAILED`) |
+| `StepUpRequest` | `agent.tasks.step-up` | **enrolmentTaskId**, **reason**, signalIds[] |
+| `RevocationRequest` | `agent.tasks.revocation` | **deviceId**, **reason** |
+| `risk-assessment` | `agent.task-events` artifact | **score** (0–100), **rationale**, **signalIds[]**, **asOf** {contextSeq, materializedAt (epoch millis), sourceOffsets [{topic, partition, offset}]} |
+| `enrolment-decision` | `agent.task-events` artifact | **outcome** (`GRANTED` / `DENIED` / `CHALLENGED` / `READ_ONLY` / `REMOVED`), **policyAction** (`ALLOW` / `BLOCK` / `READ_ONLY` / `CHALLENGE`), **rationale**, riskScore, guardrails[], asOf |
+| `step-up-challenge` | `agent.task-events` artifact | **method** (`MFA_PUSH` / `BIOMETRIC` / `OTP`), **enrolmentTaskId** |
+| `audit-record` | `agent.task-events` artifact | **auditId**, **subjectTaskId** |
+
+The `agent.task-events` schema selects the artifact payload by `artifact.name`.
 
 ### Envelope
 
@@ -105,7 +135,7 @@ The mesh envelope rides inside A2A's own extension points. Messages declare `ext
 | `deviceId`, `customerId`, `deviceSeq`, `requiredContextSeq` | Filtering and the context watermark |
 | `mode`, `replayRunId` | `LIVE` / `REPLAY` |
 
-Kafka headers mirror `a2a-correlation-id`, `a2a-message-id`, `a2a-reply-topic`, `dtm-agent-id` and `dtm-mode`. Business-plane Avro records carry the same envelope as a typed `envelope` field, so device events, context, the A2A conversation and the audit trail all join on the correlation id.
+The envelope's `messageId` and `correlationId` equal the record's A2A `messageId` and `contextId` where those exist, so every envelope is self-contained; status and artifact events have no A2A `messageId` of their own. Kafka headers mirror `a2a-correlation-id`, `a2a-message-id`, `a2a-reply-topic`, `dtm-agent-id` and `dtm-mode`. Business-plane Avro records carry the same envelope as a typed `envelope` field, so device events, context, the A2A conversation and the audit trail all join on the correlation id.
 
 ### Task Lifecycle
 
@@ -164,9 +194,34 @@ Kubernetes object names can't contain `_`, so each `KafkaTopic` uses a DNS-safe 
 | `agent.cards_human_readable` | `agent-cards-human-readable` | derived | Avro | 1 | compact |
 | `simulator.control` | `simulator-control` | control | Avro | 1 | delete, 1d |
 
-- **Business and derived topics:** Avro, with a typed `envelope` record and enums for closed sets (`PolicyAction`, `EnrolmentOutcome`, `SignalType`, `EventType`, `TrustStatus`).
-- **A2A topics:** JSON Schema derived from the A2A v1.0 schema, with `parts[].data` narrowed to each agent's typed payload.
-- Schemas are registered as CFK `Schema` CRs ([#446](https://github.com/osowski/confluent-platform-gitops/issues/446)).
+### Schemas
+
+Every subject is a CFK `Schema` CR (wave 35) in [`base/schemas.yaml`](base/schemas.yaml), backed by a generated ConfigMap. 21 subjects in all, `BACKWARD` compatibility:
+
+| Topics | Subjects | Format | Producer wire format |
+|---|---|---|---|
+| All business and derived topics | `<topic>-value` | Avro, namespace `io.confluent.dtm` | Schema Registry (Avro serializer) |
+| `device.context`, `customer.context`, `agent.cards_human_readable` | also `<topic>-key`: a record holding `device_id` / `customer_id` / `agent` | Avro | Schema Registry |
+| `agent.tasks.*`, `agent.task-events`, `agent.cards` | `<topic>-a2a` | JSON Schema draft 2020-12 | Plain JSON |
+
+- **Avro.** Every value schema starts with the shared `envelope` record, and enums cover the closed sets (`EventType`, `PolicyAction`, `TrustStatus`, `SignalType`, `Severity`, `Mode`, …). Fields written by Flink are nullable. Key fields live only in the `-key` subject, so inferred column names never collide.
+- **A2A.** Schemas are derived from the pinned A2A v1.0.1 JSON Schema bundle. Each is narrowed to the mesh binding: the JSON-RPC wrapper, envelope metadata required, `parts` pinned to `[data, text]`, and `data` typed per topic or per artifact name. The snake_case aliases are dropped because the mesh emits camelCase only.
+- **Why `-a2a` and not `-value`.** The Flink catalog only infers tables from `<topic>-value`, and CMF can't map JSON Schema tuple arrays (`prefixItems`). A `-value` subject would make the catalog fail to load the table at all. Under `-a2a` the A2A tables infer as `raw` instead (see [Tables](#tables)).
+
+Schemas are generated, never hand-edited:
+
+| Path | Contents |
+|---|---|
+| `schemas/upstream/a2a-v1.0.1.json` | Unmodified bundle from `https://a2a-protocol.org/v1.0.1/spec/a2a.json`. The generator checks its SHA-256 |
+| `schemas/src/avro/*.avsc` | Avro sources. `envelope.avsc` is inlined wherever a field has type `io.confluent.dtm.Envelope` |
+| `schemas/src/a2a/*.json` | The envelope and payload JSON Schemas used to narrow A2A |
+| `base/schemas/{avro,a2a}/*` | Generated output, committed, consumed by `configMapGenerator` |
+
+```bash
+python3 -I scripts/generate-dtm-schemas.py           # regenerate base/schemas/
+python3 -I scripts/generate-dtm-schemas.py --check   # exit 1 and list drifted files
+python3 -I -m unittest discover -s scripts/tests -v  # generator tests
+```
 
 ---
 
@@ -181,6 +236,27 @@ Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived F
 - `spec.type` can't be changed after creation.
 - Pool updates are blocked while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`.
 - If one statement starves the others, move it to its own `DEDICATED` pool with a new versioned statement.
+
+### Tables
+
+`dtm-catalog` infers one table per topic from its Schema Registry subjects. The `dtm-ddl-*` statements (wave 65, in [`base/flink-ddl.yaml`](base/flink-ddl.yaml)) each run one `ALTER TABLE … ADD` and finish `COMPLETED`.
+
+| Table | Structure | Key / changelog | Added by `dtm-ddl-*` |
+|---|---|---|---|
+| `device.events` | Inferred Avro | raw `key`, append | `kafka_partition`, `kafka_offset` (metadata), `proc_time AS PROCTIME()` |
+| `device.policy-commands`, `device.risk-signals`, `audit.log`, `agent.llm-interactions`, `simulator.control`, `agent.tasks_human_readable`, `agent.decisions_human_readable`, `agent.task-status_human_readable` | Inferred Avro | raw `key`, append | — |
+| `device.context`, `customer.context`, `agent.cards_human_readable` | Inferred Avro with a typed key | PK `device_id` / `customer_id` / `agent`, upsert | — |
+| `agent.tasks.{risk,enrolment,step-up,revocation}` | `raw` `key` / `val` + computed columns | raw `key`, append | `headers MAP<STRING, BYTES> METADATA`, task columns, `proc_time` |
+| `agent.task-events` | `raw` + computed columns | raw `key`, append | event columns, `proc_time` |
+| `agent.cards` | `raw` + computed columns | PK `key`, upsert (compacted) | card columns |
+
+Computed columns are `JSON_VALUE` / `JSON_QUERY` over `CAST(val AS STRING)`. `env_event_time`, `env_device_seq` and `env_required_context_seq` are `BIGINT` via `TRY_CAST(JSON_VALUE(…) AS BIGINT)`, so text that is not a plain number (an ISO timestamp, or a float that `JSON_VALUE` renders as `1.79332393777E12`) becomes `NULL` instead of failing the job (the views drop a record with a `NULL` `env_event_time` and pass a `NULL` sequence through); `*_json` and `reference_task_ids` hold JSON text; everything else is `STRING`:
+
+- **Task tables:** `rpc_id`, `rpc_method`, `message_id`, `context_id`, `task_id`, `role`, `reference_task_ids`, `data_json` (`parts[0].data`), `summary` (`parts[1].text`), and the 13 envelope fields as `env_message_id` … `env_replay_run_id`.
+- **`agent.task-events`:** `rpc_id`, `kind` (`task` / `statusUpdate` / `artifactUpdate`), `task_id`, `context_id`, `state`, `status_time` (ISO-8601 string), `status_text`, `artifact_id`, `artifact_name`, `artifact_data_json`, `artifact_text`, and the 13 `env_*` columns. Each is coalesced across the three result shapes.
+- **`agent.cards`:** `card_name`, `card_version`, `card_description`, `skills_json` (skill names), `interface_url`, `protocol_binding`.
+
+A DDL statement runs once and its CR is immutable. Re-creating it against a table that already has the columns fails, so table changes ship as a new `-v2` DDL CR that alters only the delta. If a `dtm-ddl-*` CR is deleted, Argo CD re-creates it and it fails; the recovery (drop the CR's columns, then re-sync) is in the [`base/flink-ddl.yaml`](base/flink-ddl.yaml) header.
 
 ### Statements
 
@@ -335,6 +411,8 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    ```bash
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
+   kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* phase COMPLETED
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:

@@ -1,0 +1,23 @@
+{
+  "title": "StepUpChallenge",
+  "description": "step-up-challenge artifact payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "method",
+    "enrolmentTaskId"
+  ],
+  "properties": {
+    "method": {
+      "type": "string",
+      "enum": [
+        "MFA_PUSH",
+        "BIOMETRIC",
+        "OTP"
+      ]
+    },
+    "enrolmentTaskId": {
+      "type": "string"
+    }
+  }
+}

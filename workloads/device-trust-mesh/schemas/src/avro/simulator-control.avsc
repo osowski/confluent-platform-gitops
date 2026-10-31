@@ -1,0 +1,64 @@
+{
+  "type": "record",
+  "name": "SimulatorControl",
+  "namespace": "io.confluent.dtm",
+  "doc": "Presenter command to the device simulator.",
+  "fields": [
+    {
+      "name": "envelope",
+      "type": "io.confluent.dtm.Envelope"
+    },
+    {
+      "name": "scenario",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "Scenario",
+          "symbols": [
+            "CLEAN",
+            "COMPROMISED_OS",
+            "OUTDATED_OS",
+            "NEW_DEVICE_ESTABLISHED_ACCOUNT",
+            "IMPOSSIBLE_TRAVEL",
+            "CHALLENGE",
+            "UNENROL"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "command",
+      "type": [
+        "null",
+        {
+          "type": "enum",
+          "name": "ControlCommand",
+          "symbols": [
+            "START",
+            "STOP",
+            "INJECT"
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "rate_per_sec",
+      "type": [
+        "null",
+        "double"
+      ],
+      "default": null
+    },
+    {
+      "name": "count",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    }
+  ]
+}
