@@ -137,6 +137,8 @@ The mesh envelope rides inside A2A's own extension points. Messages declare `ext
 
 The envelope's `messageId` and `correlationId` equal the record's A2A `messageId` and `contextId` where those exist, so every envelope is self-contained; status and artifact events have no A2A `messageId` of their own. Kafka headers mirror `a2a-correlation-id`, `a2a-message-id`, `a2a-reply-topic`, `dtm-agent-id` and `dtm-mode`. Business-plane Avro records carry the same envelope as a typed `envelope` field, so device events, context, the A2A conversation and the audit trail all join on the correlation id.
 
+Ids that a Flink statement derives are a `DTM_ID`: the SHA-1 of the statement name and the record's identifying inputs joined with `|`, laid out as a UUID (`h[1..8]-h[9..12]-5h[14..16]-8h[18..20]-h[21..32]`). The `5` and `8` give it the UUIDv5 shape, but it is not an RFC 9562 UUIDv5, because no namespace is hashed. A `DTM_ID` is a fingerprint. The same inputs always give the same id, so consumers dedupe and cross-reference on it: a risk assessment's `signalIds[]` match `signal_id` in `device.risk-signals`. Nothing can be decoded from the id, and the meaning is in the record's own fields. Each statement's inputs are listed with that statement in this README and in `base/flink-statements.yaml`.
+
 ### Task Lifecycle
 
 Each agent owns one A2A `Task` per request:
@@ -308,7 +310,7 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   - `NEW_DEVICE_ESTABLISHED_ACCOUNT` only remembers `ALLOW`s inside that window. An established customer whose only `ALLOW` is older than 7 days raises no signal.
   - The per-device and per-customer states expire independently, so a device's own re-enrolment after expiry can be miscounted as another device's `ALLOW`.
   - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
-- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over the signal type and the causing event's `message_id`, which is also `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
+- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over `dtm-risk-signals|<signal_type>|<causing event message_id>`; that `message_id` is also the signal's `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
 - **Committed visibility.** CMF Kafka sinks are transactional, so a `read_committed` consumer sees a statement's output only once that statement's checkpoint commits, and each Flink hop adds up to about one checkpoint interval (10 s on `dtm-shared-pool`) of latency. `device.context` and `device.risk-signals` are produced by separate statements that commit independently, so reaching the context watermark (`requiredContextSeq`) does not guarantee the matching risk signal is visible yet. [#468](https://github.com/osowski/confluent-platform-gitops/issues/468) tracks tightening this.
 
 `dtm-a2a-task-router` (same file, wave 70) is the bank's A2A client. It is one `EXECUTE STATEMENT SET` with one `INSERT` per request topic, and it writes one plain-JSON `SendMessage` request per routed device event, keyed by `device_id`:
