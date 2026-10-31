@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables, the device and customer context statements, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The remaining Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
+> This workload is scaffolding. The topics, schemas, Flink tables, the context and risk-signal statements, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The remaining Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
 
 ---
 
@@ -238,6 +238,7 @@ Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived F
 - `spec.type` can't be changed after creation.
 - Pool updates are blocked while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`.
 - If one statement starves the others, move it to its own `DEDICATED` pool with a new versioned statement.
+- Checkpoints run every 10 s (`execution.checkpointing.interval`, 5 s `min-pause`). Kafka sinks commit on checkpoint, so this bounds how soon `read_committed` consumers see each statement's output (see **Committed visibility** under [Statements](#statements)).
 
 ### Tables
 
@@ -266,7 +267,7 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 |---|---|---|---|
 | `dtm-device-context` | `device.events` ∪ `device.policy-commands` → `device.context` | Latest fingerprint, last geo, `context_seq` (max `device_seq`), `trust_status` | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
 | `dtm-customer-context` | same → `customer.context` | Device count, trusted device count (latest action `ALLOW`), known countries, distinct non-`ALLOW` command count | [#447](https://github.com/osowski/confluent-platform-gitops/issues/447) |
-| `dtm-risk-signals` | `device.events` → `device.risk-signals` | `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT`, `IMPOSSIBLE_TRAVEL` | [#448](https://github.com/osowski/confluent-platform-gitops/issues/448) |
+| `dtm-risk-signals` | `device.events` ∪ `device.policy-commands` (`ALLOW`) → `device.risk-signals` | `COMPROMISED_OS`, `OUTDATED_OS`, `NEW_DEVICE_ESTABLISHED_ACCOUNT`, `IMPOSSIBLE_TRAVEL` (thresholds below) | [#448](https://github.com/osowski/confluent-platform-gitops/issues/448) |
 | `dtm-a2a-task-router` | `device.events` → `agent.tasks.risk`, `agent.tasks.enrolment` | The bank's A2A client: builds `SendMessage` requests | [#449](https://github.com/osowski/confluent-platform-gitops/issues/449) |
 | `dtm-view-tasks` | `agent.tasks.*` → `agent.tasks_human_readable` | Unnests JSON-RPC and `parts` | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-decisions` | `agent.task-events` → `agent.decisions_human_readable` | One row per artifact | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
@@ -289,11 +290,28 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   | none yet, no enrolment request | `UNKNOWN` |
 
 - **Command-only devices.** A device with commands but no events still gets a `device.context` row. Its fingerprint, geo and `context_seq` are null and its envelope comes from the latest command.
-- **Commands carry `customer_id`.** Every `device.policy-commands` record an agent produces must carry `envelope.customer_id`; `dtm-customer-context` ignores a command without one, so it never counts toward `trusted_device_count` or `recent_anomaly_count`.
+- **Commands carry `customer_id`.** Every `device.policy-commands` record an agent produces must carry `envelope.customer_id`; `dtm-customer-context` ignores a command without one (it never counts toward `trusted_device_count` or `recent_anomaly_count`), and so does the `NEW_DEVICE_ESTABLISHED_ACCOUNT` check in `dtm-risk-signals`.
 - **Duplicate commands.** `recent_anomaly_count` counts distinct non-`ALLOW` command message ids, so a re-produced command is counted once.
 - **Intermediate counts.** One command can change both of a customer's counts. `customer.context` may then briefly show an in-between pair within one commit (for example `recent_anomaly_count` rises before `trusted_device_count` falls). The pair converges.
 - **State TTL.** Statement state expires after 7 days without input for a key (`table.exec.state.ttl`). After more than 7 days without commands for a device, that device can stay counted in `trusted_device_count`, and the device's `trust_status` reverts once its next event arrives.
 - **No tombstones.** Neither statement writes tombstones to the compacted topics: every update is an upsert. The header comment in `base/flink-statements.yaml` explains how.
+
+`dtm-risk-signals` (same file, wave 70) appends one `device.risk-signals` record per anomaly, keyed by `device_id`:
+
+| Signal | Severity | Fires when |
+|---|---|---|
+| `COMPROMISED_OS` | `HIGH` | `fingerprint.rooted` is true |
+| `OUTDATED_OS` | `MEDIUM` | OS major version below **17** on `IOS` or **13** on `ANDROID` (an unparseable version raises nothing) |
+| `NEW_DEVICE_ESTABLISHED_ACCOUNT` | `MEDIUM` | `ENROL_REQUESTED` with `account_age_days` above **90** and at least one *other* device of the customer already `ALLOW`ed within the state TTL. A device blocked after its `ALLOW` still counts. An `ALLOW` without `envelope.customer_id` is ignored, so it never counts as another device of the customer |
+| `IMPOSSIBLE_TRAVEL` | `HIGH` | Haversine distance from the customer's previous event (within the state TTL) above **900 km/h** of elapsed `envelope.event_time`; elapsed time must be at least **1 s**, since it is counted in whole seconds |
+
+- **Ordering.** "Previous" and "already" mean processed earlier (processing time). A replay, backfill or re-read from the earliest offset can interleave events and commands differently from the live run, so it can omit, or newly add, `NEW_DEVICE_ESTABLISHED_ACCOUNT` and `IMPOSSIBLE_TRAVEL` signals.
+- **State TTL.** Window state expires after 7 days without input (`table.exec.state.ttl`):
+  - `NEW_DEVICE_ESTABLISHED_ACCOUNT` only remembers `ALLOW`s inside that window. An established customer whose only `ALLOW` is older than 7 days raises no signal.
+  - The per-device and per-customer states expire independently, so a device's own re-enrolment after expiry can be miscounted as another device's `ALLOW`.
+  - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
+- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over `dtm-risk-signals|<signal_type>|<causing event message_id>`; that `message_id` is also the signal's `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
+- **Committed visibility.** CMF Kafka sinks are transactional, so a `read_committed` consumer sees a statement's output only once that statement's checkpoint commits, and each Flink hop adds up to about one checkpoint interval (10 s on `dtm-shared-pool`) of latency. `device.context` and `device.risk-signals` are produced by separate statements that commit independently, so reaching the context watermark (`requiredContextSeq`) does not guarantee the matching risk signal is visible yet. [#468](https://github.com/osowski/confluent-platform-gitops/issues/468) tracks tightening this.
 
 ### Ad-hoc Queries
 
@@ -436,7 +454,7 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
    kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
-   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, dtm-*-context RUNNING
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, dtm-*-context and dtm-risk-signals RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:

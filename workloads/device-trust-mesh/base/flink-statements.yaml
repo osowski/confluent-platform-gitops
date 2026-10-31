@@ -1,6 +1,6 @@
 ---
 # Flink SQL statements: long-running INSERT INTOs that maintain the
-# device-trust-mesh context tables.
+# device-trust-mesh context tables and derive risk signals.
 #
 # ---------------------------------------------------------------------------
 # IMPORTANT: spec.statement is immutable once the statement is running
@@ -54,6 +54,45 @@
 # latest command's message id. Re-producing the same input records yields the
 # same device ids; the customer id also depends on arrival order across a
 # customer's devices.
+#
+# dtm-risk-signals appends one device.risk-signals row per detected anomaly,
+# as one INSERT over a UNION ALL of four branches:
+#
+#   * COMPROMISED_OS (HIGH): fingerprint.rooted. OUTDATED_OS (MEDIUM): OS
+#     major version below 17 on IOS or 13 on ANDROID. Both are per-event
+#     filters; TRY_CAST makes an unparseable os_version raise no signal.
+#   * NEW_DEVICE_ESTABLISHED_ACCOUNT (MEDIUM): an ENROL_REQUESTED with
+#     account_age_days above 90 while at least one other device of the
+#     customer has been ALLOWed. Events and ALLOW commands are unioned; an
+#     inner OVER per device marks whether the device itself was allowed, an
+#     outer OVER per customer counts distinct allowed devices (Flink allows
+#     one window spec per SELECT). A device blocked after its ALLOW still
+#     counts.
+#   * IMPOSSIBLE_TRAVEL (HIGH): LAG over the customer's events; haversine
+#     distance above 900 km/h of elapsed envelope.event_time. The previous
+#     event must exist and elapsed time must be at least 1 s
+#     (TIMESTAMPDIFF(SECOND) truncates), so a re-produced older event raises
+#     nothing.
+#   * OVER clauses order by processing time (proc_time on device.events,
+#     PROCTIME() on device.policy-commands). "Previously" means processed
+#     earlier, so a replay, backfill or re-read from earliest-offset can
+#     interleave events and commands differently from the live run, and so
+#     omit, or newly add, NEW_DEVICE_ESTABLISHED_ACCOUNT and
+#     IMPOSSIBLE_TRAVEL signals.
+#   * OVER state expires with table.exec.state.ttl (7 d of no input per
+#     partition). NEW_DEVICE_ESTABLISHED_ACCOUNT only remembers ALLOWs inside
+#     that window, and the per-device and per-customer states expire
+#     independently, so a device's own re-enrolment after expiry can be
+#     miscounted. IMPOSSIBLE_TRAVEL has no previous event after 7 idle days
+#     for the customer.
+#   * signal_id (also envelope.message_id) is DTM_ID over the statement name,
+#     signal_type and the causing event's message id, so it is deterministic
+#     per (signal_type, causing event) and a duplicate dedupes on signal_id.
+#     The envelope copies the event's correlation, event_time, device,
+#     customer, device_seq, mode and replay_run_id fields, so every required
+#     field is non-null by construction.
+#   * detail literals are ASCII: non-ASCII literals reach the job mangled.
+#
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
 apiVersion: platform.confluent.io/v1beta1
@@ -298,6 +337,181 @@ spec:
     GROUP BY `customer_id`
     ) AS `cmd`
     ON `ev`.`customer_id` = `cmd`.`customer_id`
+    )
+    )
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-risk-signals
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `device.risk-signals`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `envelope`, `signal_id`, `signal_type`, `severity`, `detail`, `source_event_type`)
+    SELECT
+    CAST(`device_id` AS BYTES),
+    ROW(
+    `signal_id`, `correlation_id`, `message_id`,
+    CAST('flink:dtm-risk-signals' AS STRING), CAST('dtm-risk-signals' AS STRING), CAST('n/a' AS STRING),
+    `event_time`, `device_id`, `customer_id`, `device_seq`, CAST(NULL AS BIGINT), `mode`, `replay_run_id`
+    ),
+    `signal_id`, `signal_type`, `severity`, `detail`, `source_event_type`
+    FROM (
+    SELECT *,
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)) AS `signal_id`
+    FROM (
+    SELECT *,
+    SHA1(CONCAT_WS('|', 'dtm-risk-signals', `signal_type`, `message_id`)) AS `h`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`event_time` AS `event_time`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    CAST('COMPROMISED_OS' AS STRING) AS `signal_type`,
+    CAST('HIGH' AS STRING) AS `severity`,
+    CONCAT(`fingerprint`.`platform`, ' ', `fingerprint`.`os_version`, ' rooted') AS `detail`,
+    `event_type` AS `source_event_type`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-risk-signals', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `fingerprint`.`rooted` = TRUE
+    UNION ALL
+    SELECT
+    `envelope`.`device_id`,
+    `envelope`.`customer_id`,
+    `envelope`.`message_id`,
+    `envelope`.`correlation_id`,
+    `envelope`.`event_time`,
+    `envelope`.`device_seq`,
+    `envelope`.`mode`,
+    `envelope`.`replay_run_id`,
+    CAST('OUTDATED_OS' AS STRING),
+    CAST('MEDIUM' AS STRING),
+    CONCAT(`fingerprint`.`platform`, ' ', `fingerprint`.`os_version`, ' below minimum ',
+    CASE WHEN `fingerprint`.`platform` = 'IOS' THEN CAST('17' AS STRING) ELSE CAST('13' AS STRING) END),
+    `event_type`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-risk-signals', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE (`fingerprint`.`platform` = 'IOS' AND TRY_CAST(SPLIT_INDEX(`fingerprint`.`os_version`, '.', 0) AS INT) < 17)
+    OR (`fingerprint`.`platform` = 'ANDROID' AND TRY_CAST(SPLIT_INDEX(`fingerprint`.`os_version`, '.', 0) AS INT) < 13)
+    UNION ALL
+    SELECT
+    `device_id`, `customer_id`, `message_id`, `correlation_id`, `event_time`, `device_seq`, `mode`, `replay_run_id`,
+    CAST('NEW_DEVICE_ESTABLISHED_ACCOUNT' AS STRING),
+    CAST('MEDIUM' AS STRING),
+    CONCAT('account ', CAST(`account_age_days` AS STRING), ' days old, ',
+    CAST(`allowed` - `self_allowed` AS STRING), ' other device(s) allowed'),
+    `event_type`
+    FROM (
+    SELECT *,
+    COUNT(DISTINCT CASE WHEN `src` = 'cmd' THEN `device_id` END) OVER (
+    PARTITION BY `customer_id` ORDER BY `proc_time` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `allowed`
+    FROM (
+    SELECT *,
+    MAX(CASE WHEN `src` = 'cmd' THEN 1 ELSE 0 END) OVER (
+    PARTITION BY `device_id` ORDER BY `proc_time` ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `self_allowed`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    CAST('event' AS STRING) AS `src`,
+    `event_type`,
+    `account_age_days`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`event_time` AS `event_time`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    `proc_time`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-risk-signals', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    UNION ALL
+    SELECT
+    `envelope`.`device_id`,
+    `envelope`.`customer_id`,
+    CAST('cmd' AS STRING),
+    CAST(NULL AS STRING),
+    CAST(NULL AS INT),
+    `envelope`.`message_id`,
+    `envelope`.`correlation_id`,
+    `envelope`.`event_time`,
+    `envelope`.`device_seq`,
+    `envelope`.`mode`,
+    `envelope`.`replay_run_id`,
+    PROCTIME()
+    FROM `device.policy-commands`
+    /*+ OPTIONS('properties.group.id' = 'dtm-risk-signals', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `action` = 'ALLOW' AND `envelope`.`customer_id` IS NOT NULL
+    )
+    )
+    )
+    WHERE `src` = 'event' AND `event_type` = 'ENROL_REQUESTED' AND `account_age_days` > 90
+    AND `allowed` - `self_allowed` >= 1
+    UNION ALL
+    SELECT
+    `device_id`, `customer_id`, `message_id`, `correlation_id`, `event_time`, `device_seq`, `mode`, `replay_run_id`,
+    CAST('IMPOSSIBLE_TRAVEL' AS STRING),
+    CAST('HIGH' AS STRING),
+    CONCAT(`prev_country`, '->', `country`, ' ', CAST(CAST(ROUND(`km`, 0) AS BIGINT) AS STRING), ' km in ',
+    CAST(ROUND(CAST(`elapsed_s` AS DOUBLE) / 3600, 1) AS STRING), ' h'),
+    `event_type`
+    FROM (
+    SELECT *,
+    6371 * 2 * ASIN(SQRT(POWER(SIN(RADIANS(`lat` - `prev_lat`) / 2), 2)
+    + COS(RADIANS(`prev_lat`)) * COS(RADIANS(`lat`)) * POWER(SIN(RADIANS(`lon` - `prev_lon`) / 2), 2))) AS `km`,
+    TIMESTAMPDIFF(SECOND, `prev_event_time`, `event_time`) AS `elapsed_s`
+    FROM (
+    SELECT *,
+    LAG(`lat`) OVER (PARTITION BY `customer_id` ORDER BY `proc_time`) AS `prev_lat`,
+    LAG(`lon`) OVER (PARTITION BY `customer_id` ORDER BY `proc_time`) AS `prev_lon`,
+    LAG(`country`) OVER (PARTITION BY `customer_id` ORDER BY `proc_time`) AS `prev_country`,
+    LAG(`event_time`) OVER (PARTITION BY `customer_id` ORDER BY `proc_time`) AS `prev_event_time`
+    FROM (
+    SELECT
+    `envelope`.`device_id` AS `device_id`,
+    `envelope`.`customer_id` AS `customer_id`,
+    `envelope`.`message_id` AS `message_id`,
+    `envelope`.`correlation_id` AS `correlation_id`,
+    `envelope`.`event_time` AS `event_time`,
+    `envelope`.`device_seq` AS `device_seq`,
+    `envelope`.`mode` AS `mode`,
+    `envelope`.`replay_run_id` AS `replay_run_id`,
+    `event_type`,
+    `geo`.`country` AS `country`,
+    `geo`.`lat` AS `lat`,
+    `geo`.`lon` AS `lon`,
+    `proc_time`
+    FROM `device.events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-risk-signals', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `envelope`.`customer_id` IS NOT NULL
+    )
+    )
+    )
+    WHERE `prev_lat` IS NOT NULL AND `elapsed_s` > 0 AND `km` > 900 * CAST(`elapsed_s` AS DOUBLE) / 3600
+    )
     )
     )
   parallelism: 1
