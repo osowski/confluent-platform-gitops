@@ -125,7 +125,7 @@ The mesh envelope rides inside A2A's own extension points. Messages declare `ext
 | Field | Meaning |
 |---|---|
 | `messageId` | Deterministic for agent outputs: UUIDv5 of `(agent_id, causation_id, config_version, output_index)` |
-| `contextId` | Correlation id minted by the simulator per device request |
+| `contextId` | Correlation id minted by the simulator when a device flow starts (`ENROL_REQUESTED`, `UNENROL_REQUESTED`); later events in the flow, such as a challenge result, echo it |
 | `taskId` | Deterministic: UUIDv5 of `(agent_id, first input messageId)` |
 | `referenceTaskIds` | Task(s) that caused this one |
 | `causationId` | `messageId` of the message that caused this one |
@@ -312,6 +312,21 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
 - **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over `dtm-risk-signals|<signal_type>|<causing event message_id>`; that `message_id` is also the signal's `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
 - **Committed visibility.** CMF Kafka sinks are transactional, so a `read_committed` consumer sees a statement's output only once that statement's checkpoint commits, and each Flink hop adds up to about one checkpoint interval (10 s on `dtm-shared-pool`) of latency. `device.context` and `device.risk-signals` are produced by separate statements that commit independently, so reaching the context watermark (`requiredContextSeq`) does not guarantee the matching risk signal is visible yet. [#468](https://github.com/osowski/confluent-platform-gitops/issues/468) tracks tightening this.
+
+`dtm-a2a-task-router` (same file, wave 70) is the bank's A2A client. It is one `EXECUTE STATEMENT SET` with one `INSERT` per request topic, and it writes one plain-JSON `SendMessage` request per routed device event, keyed by `device_id`:
+
+| Device event | Request topic | `parts[0].data` | `message.taskId` | `parts[1].text` |
+|---|---|---|---|---|
+| `ENROL_REQUESTED` with `customer_id` and `device_seq` | `agent.tasks.risk` | `AssessEnrolmentRequest`: `deviceId`, `customerId`, `requiredContextSeq` = `device_seq`, `fingerprintSummary` (`IOS 18.1, rooted=false, network=WIFI, country=GB`) | absent | `Assess enrolment risk for <device> (customer <customer>)` |
+| `UNENROL_REQUESTED` | `agent.tasks.enrolment` | `DecideEnrolmentRequest` `REMOVE_TRUST`: `deviceId`, `customerId` (if known) | absent | `Remove trust for <device>` |
+| `CHALLENGE_PASSED` / `CHALLENGE_FAILED` with an `enrolment_task_id` | `agent.tasks.enrolment` | `DecideEnrolmentRequest` `RESOLVE_CHALLENGE`: `deviceId`, `customerId` (if known), `enrolmentTaskId`, `challengeResult` `PASSED` / `FAILED` | `enrolment_task_id` | `Resolve challenge <result> for <device> (enrolment task <id>)` |
+
+- **Not routed.** An `ENROL_REQUESTED` without `customer_id` or `device_seq`, because `AssessEnrolmentRequest` requires both. A challenge result without an `enrolment_task_id` (null or empty), because there is no task to resume.
+- **Ids.** `messageId` is the JSON-RPC `id`, `params.message.messageId` and the envelope `messageId`. It is `DTM_ID` over `dtm-a2a-task-router|device.events|<partition>|<offset>` of the causing event. A router restart from its checkpoint reproduces the same ids, and a re-produced event lands at a new offset and gets a new id. Agents are stateless per message, so a `-v2` must not start from the earliest offset, where they would re-run every historical request: start it from `latest-offset` (or the old statement's offsets) and keep the `dtm-a2a-task-router` literal in the id input, so any overlap reproduces the same ids.
+- **Envelope.** `agentId` `flink:dtm-a2a-task-router`, `agentVersion` `dtm-a2a-task-router`, `configVersion` `n/a`. `contextId` and `correlationId` come from the event's `correlation_id`, `causationId` from its `message_id`, and `eventTime` from its `event_time` (epoch millis). `requiredContextSeq` and `deviceSeq` both carry the event's `device_seq`, which is the `device.context` `context_seq` an agent waits for before it reads context. `customerId`, `deviceSeq`, `requiredContextSeq` and `replayRunId` are left out when the event has no value. Members are never `null`, and `taskId` is never empty.
+- **Challenge events.** A `RESOLVE_CHALLENGE` request carries `taskId` = `enrolment_task_id` and `contextId` = the challenge event's `correlation_id`, and A2A requires them to match the task's context. A `CHALLENGE_PASSED` / `CHALLENGE_FAILED` event must therefore echo the enrolment's `correlation_id`, as it echoes `enrolment_task_id`.
+- **Headers.** `a2a-correlation-id` (the `contextId`), `a2a-message-id` (the `messageId`), `a2a-reply-topic` (`agent.task-events`), `dtm-agent-id` (`flink:dtm-a2a-task-router`) and `dtm-mode` (the event's `mode`).
+- **Validation.** Flink writes the raw topics without validating against the `<topic>-a2a` subjects. The SQL builds each request to match `agent.tasks.risk-a2a` / `agent.tasks.enrolment-a2a`, and nothing downstream re-validates it, so check the output of any `-v2` against those subjects (for example with `kafka-json-schema-console-producer` and `json.fail.invalid.schema=true`).
 
 ### Ad-hoc Queries
 
