@@ -1,7 +1,8 @@
 ---
 # Flink SQL statements: long-running INSERT INTOs that maintain the
-# device-trust-mesh context tables, derive risk signals and route device
-# events to the agents as A2A requests.
+# device-trust-mesh context tables, derive risk signals, route device events
+# to the agents as A2A requests and flatten the A2A topics into
+# human-readable views.
 #
 # ---------------------------------------------------------------------------
 # IMPORTANT: spec.statement is immutable once the statement is running
@@ -129,6 +130,50 @@
 #   * The record key is the device_id. Headers: a2a-correlation-id,
 #     a2a-message-id, a2a-reply-topic (agent.task-events), dtm-agent-id and
 #     dtm-mode. Map keys are CAST to STRING so CHAR literals are not padded.
+#
+# The dtm-view-* statements flatten the A2A topics into the Avro
+# *_human_readable topics for Control Center and ad-hoc SQL:
+#
+#   * dtm-view-tasks: one row per SendMessage request on agent.tasks.*, as a
+#     UNION ALL over the four request topics. to_agent is the topic's agent.
+#     task_type is ASSESS_ENROLMENT (risk), STEP_UP (step-up), or the
+#     payload's taskType (enrolment, default DECIDE_ENROLMENT; revocation,
+#     default REVOKE).
+#   * dtm-view-decisions: one row per artifactUpdate on agent.task-events.
+#     outcome, policy_action, risk_score (score or riskScore), rationale,
+#     signal_ids (JSON array text) and method come from parts[0].data.
+#     risk_score is TRY_CAST(JSON_VALUE(...) AS INT): JSON_VALUE ... RETURNING
+#     INT throws ClassCastException on a decimal, a quoted number or a value
+#     above INT range, which fails the job. TRY_CAST makes a non-numeric or
+#     out-of-range score NULL and truncates a decimal such as 72.5 to 72.
+#   * dtm-view-task-status: one row per task or statusUpdate on
+#     agent.task-events. status_time is the A2A ISO-8601 string as sent.
+#   * The three append views copy the record's own envelope, with event_time
+#     converted from epoch millis, and key the row by its device id.
+#     from_agent and agent are agentId without its agent: or flink: prefix.
+#   * Each source is deduplicated on its message id (messageId on requests,
+#     the envelope messageId on agent.task-events), keeping the first row by
+#     processing time, so a redelivered or re-produced record adds no row.
+#     Keep-first on processing time is append-only. The dedupe state expires
+#     7 d after an id's first row (table.exec.state.ttl); a duplicate after
+#     that adds a row.
+#   * A record with a required envelope field missing, or a mode other than
+#     LIVE or REPLAY, is filtered out before the dedupe. The not-null
+#     enforcer only checks top-level columns; a null or an unknown enum
+#     symbol inside the envelope would fail the job at the Avro serializer.
+#     The tasks view also drops requests without a messageId, which would
+#     otherwise share one dedupe key.
+#   * dtm-view-cards mirrors the compacted agent.cards as an upsert per agent;
+#     a card tombstone becomes a tombstone. An Agent Card carries no
+#     envelope, so the view writes one: message_id and correlation_id are
+#     DTM_ID over the statement name, the agent and the card JSON, agent_id
+#     flink:dtm-view-cards, event_time the card record's Kafka timestamp,
+#     device_id n/a, mode LIVE.
+#   * dtm-view-cards runs without a state TTL (table.exec.state.ttl 0 ms).
+#     The upsert source keeps each agent's last card in state, and a
+#     tombstone that arrives after that state has expired is dropped, which
+#     would leave a disabled agent's row behind. The state is one row per
+#     agent.
 #
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
@@ -722,6 +767,237 @@ spec:
     )
     );
     END;
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-view-tasks
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.tasks_human_readable`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `envelope`, `from_agent`, `to_agent`, `task_type`, `task_id`, `message_id`, `reference_task_ids`, `summary`)
+    SELECT
+    CAST(`env_device_id` AS BYTES),
+    ROW(`env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    TO_TIMESTAMP_LTZ(`env_event_time`, 3), `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`),
+    REGEXP_REPLACE(`env_agent_id`, '^(agent|flink):', ''),
+    `to_agent`, `task_type`, `task_id`, `message_id`, `reference_task_ids`, `summary`
+    FROM (
+    SELECT
+    `env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    `env_event_time`, `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`,
+    `task_id`, `message_id`, `reference_task_ids`, `summary`,
+    CAST('risk' AS STRING) AS `to_agent`,
+    CAST('ASSESS_ENROLMENT' AS STRING) AS `task_type`
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.tasks.risk`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-tasks', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `message_id` IS NOT NULL AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+    UNION ALL
+    SELECT
+    `env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    `env_event_time`, `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`,
+    `task_id`, `message_id`, `reference_task_ids`, `summary`,
+    CAST('enrolment' AS STRING) AS `to_agent`,
+    COALESCE(JSON_VALUE(`data_json`, '$.taskType'), CAST('DECIDE_ENROLMENT' AS STRING)) AS `task_type`
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.tasks.enrolment`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-tasks', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `message_id` IS NOT NULL AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+    UNION ALL
+    SELECT
+    `env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    `env_event_time`, `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`,
+    `task_id`, `message_id`, `reference_task_ids`, `summary`,
+    CAST('step-up' AS STRING) AS `to_agent`,
+    CAST('STEP_UP' AS STRING) AS `task_type`
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.tasks.step-up`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-tasks', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `message_id` IS NOT NULL AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+    UNION ALL
+    SELECT
+    `env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    `env_event_time`, `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`,
+    `task_id`, `message_id`, `reference_task_ids`, `summary`,
+    CAST('revocation' AS STRING) AS `to_agent`,
+    COALESCE(JSON_VALUE(`data_json`, '$.taskType'), CAST('REVOKE' AS STRING)) AS `task_type`
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.tasks.revocation`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-tasks', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `message_id` IS NOT NULL AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+    )
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-view-decisions
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.decisions_human_readable`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `envelope`, `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `risk_score`, `rationale`, `signal_ids`, `method`)
+    SELECT
+    CAST(`env_device_id` AS BYTES),
+    ROW(`env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    TO_TIMESTAMP_LTZ(`env_event_time`, 3), `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`),
+    REGEXP_REPLACE(`env_agent_id`, '^(agent|flink):', ''),
+    `task_id`,
+    `artifact_name`,
+    JSON_VALUE(`artifact_data_json`, '$.outcome'),
+    JSON_VALUE(`artifact_data_json`, '$.policyAction'),
+    COALESCE(TRY_CAST(JSON_VALUE(`artifact_data_json`, '$.score') AS INT), TRY_CAST(JSON_VALUE(`artifact_data_json`, '$.riskScore') AS INT)),
+    JSON_VALUE(`artifact_data_json`, '$.rationale'),
+    JSON_QUERY(`artifact_data_json`, '$.signalIds'),
+    JSON_VALUE(`artifact_data_json`, '$.method')
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `env_message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.task-events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-decisions', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `kind` = 'artifactUpdate' AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-view-task-status
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "7 d"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.task-status_human_readable`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `envelope`, `agent`, `task_id`, `state`, `status_time`, `status_text`)
+    SELECT
+    CAST(`env_device_id` AS BYTES),
+    ROW(`env_message_id`, `env_correlation_id`, `env_causation_id`, `env_agent_id`, `env_agent_version`, `env_config_version`,
+    TO_TIMESTAMP_LTZ(`env_event_time`, 3), `env_device_id`, `env_customer_id`, `env_device_seq`, `env_required_context_seq`, `env_mode`, `env_replay_run_id`),
+    REGEXP_REPLACE(`env_agent_id`, '^(agent|flink):', ''),
+    `task_id`, `state`, `status_time`, `status_text`
+    FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY `env_message_id` ORDER BY `proc_time`) AS `rn`
+    FROM `agent.task-events`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-task-status', 'scan.startup.mode' = 'earliest-offset') */
+    WHERE `kind` IN ('statusUpdate', 'task') AND `env_message_id` IS NOT NULL AND `env_correlation_id` IS NOT NULL AND `env_agent_id` IS NOT NULL
+    AND `env_agent_version` IS NOT NULL AND `env_config_version` IS NOT NULL AND `env_event_time` IS NOT NULL
+    AND `env_device_id` IS NOT NULL AND `env_mode` IN ('LIVE', 'REPLAY')
+    )
+    WHERE `rn` = 1
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-view-cards
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "0 ms"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.cards_human_readable`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`agent`, `envelope`, `version`, `description`, `skills`, `request_topic`, `protocol_binding`)
+    SELECT
+    `agent`,
+    ROW(`msg_id`, `msg_id`, CAST(NULL AS STRING), CAST('flink:dtm-view-cards' AS STRING), CAST('dtm-view-cards' AS STRING),
+    CAST('n/a' AS STRING), `card_time`, CAST('n/a' AS STRING), CAST(NULL AS STRING), CAST(NULL AS BIGINT), CAST(NULL AS BIGINT),
+    CAST('LIVE' AS STRING), CAST(NULL AS STRING)),
+    `card_version`, `card_description`, `skills_json`, REGEXP_EXTRACT(`interface_url`, '([^/]+)$', 1), `protocol_binding`
+    FROM (
+    SELECT `agent`, `card_time`, `card_version`, `card_description`, `skills_json`, `interface_url`, `protocol_binding`,
+    CONCAT(SUBSTR(`h`, 1, 8), '-', SUBSTR(`h`, 9, 4), '-5', SUBSTR(`h`, 14, 3), '-8', SUBSTR(`h`, 18, 3), '-', SUBSTR(`h`, 21, 12)) AS `msg_id`
+    FROM (
+    SELECT
+    CAST(`key` AS STRING) AS `agent`,
+    `$rowtime` AS `card_time`,
+    `card_version`, `card_description`, `skills_json`, `interface_url`, `protocol_binding`,
+    SHA1(CONCAT_WS('|', 'dtm-view-cards', CAST(`key` AS STRING), CAST(`val` AS STRING))) AS `h`
+    FROM `agent.cards`
+    /*+ OPTIONS('properties.group.id' = 'dtm-view-cards', 'scan.startup.mode' = 'earliest-offset') */
+    )
+    )
   parallelism: 1
   stopped: false
   cmfRestClassRef:

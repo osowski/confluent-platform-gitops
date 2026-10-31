@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables, the context and risk-signal statements, runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool deploy today. The remaining Flink statements, `RayService` and simulator arrive in the Epic's follow-up stories. Measured results are marked *to be recorded*.
+> This workload is scaffolding. The topics, schemas, Flink tables and Flink statements deploy today, together with the runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool. The `RayService` and simulator arrive with [#451](https://github.com/osowski/confluent-platform-gitops/issues/451). Measured results are marked *to be recorded*.
 
 ---
 
@@ -328,6 +328,23 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
 - **Headers.** `a2a-correlation-id` (the `contextId`), `a2a-message-id` (the `messageId`), `a2a-reply-topic` (`agent.task-events`), `dtm-agent-id` (`flink:dtm-a2a-task-router`) and `dtm-mode` (the event's `mode`).
 - **Validation.** Flink writes the raw topics without validating against the `<topic>-a2a` subjects. The SQL builds each request to match `agent.tasks.risk-a2a` / `agent.tasks.enrolment-a2a`, and nothing downstream re-validates it, so check the output of any `-v2` against those subjects (for example with `kafka-json-schema-console-producer` and `json.fail.invalid.schema=true`).
 
+The `dtm-view-*` statements (same file, wave 70) flatten the A2A topics into the Avro `*_human_readable` topics for Control Center and ad-hoc SQL:
+
+| View | One row per | Columns after `envelope` |
+|---|---|---|
+| `agent.tasks_human_readable` | `SendMessage` request on `agent.tasks.*` | `from_agent`, `to_agent` (the request topic's agent), `task_type`, `task_id`, `message_id`, `reference_task_ids` (JSON array text), `summary` (`parts[1].text`) |
+| `agent.decisions_human_readable` | `artifactUpdate` on `agent.task-events` | `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `risk_score` (`score` or `riskScore`; `NULL` when not a number in `INT` range, a decimal truncates), `rationale`, `signal_ids` (JSON array text), `method` |
+| `agent.task-status_human_readable` | `task` or `statusUpdate` on `agent.task-events` | `agent`, `task_id`, `state` (`TASK_STATE_*`), `status_time` (the A2A ISO-8601 string), `status_text` |
+| `agent.cards_human_readable` (upsert, key `agent`) | agent with a current Agent Card | `version`, `description`, `skills` (JSON array text of skill names), `request_topic`, `protocol_binding` |
+
+- **`task_type`.** `ASSESS_ENROLMENT` on `agent.tasks.risk` and `STEP_UP` on `agent.tasks.step-up`. On `agent.tasks.enrolment` and `agent.tasks.revocation` it is the payload's `taskType`, defaulting to `DECIDE_ENROLMENT` and `REVOKE`.
+- **Agent names.** `from_agent` and `agent` are the envelope `agentId` without its `agent:` / `flink:` prefix, so router requests show `dtm-a2a-task-router`.
+- **Envelope and key.** The three append views copy the A2A record's envelope (`event_time` converted from epoch millis) and are keyed by its `deviceId`.
+- **Duplicates.** Each source is deduplicated on its message id (`messageId` on requests, the envelope `messageId` on `agent.task-events`), keeping the first copy, so an at-least-once redelivery or a re-produced record adds no row. Dedupe state expires 7 days after an id's first copy (`table.exec.state.ttl`); a duplicate after that adds a row. A `-v2` of an append view that reads from the earliest offset starts with empty dedupe state, so it writes every row again.
+- **Malformed records.** A record missing a required envelope field, or with a `mode` other than `LIVE` / `REPLAY`, produces no row. A request without a `messageId` produces no row either. The statements keep running.
+- **Cards.** `agent.cards_human_readable` follows the compacted `agent.cards`: a new card upserts its agent's row and a card tombstone deletes it. An Agent Card has no envelope, so the view writes one: `message_id` and `correlation_id` are a `DTM_ID` over the statement name, agent and card JSON, `agent_id` is `flink:dtm-view-cards`, `event_time` is the card record's Kafka timestamp, `device_id` is `n/a` and `mode` is `LIVE`.
+- **Cards state.** `dtm-view-cards` runs without a state TTL. The upsert source keeps each agent's last card in state, and a tombstone that arrives after that state has expired is dropped, which would leave a disabled agent's row behind. The state is one row per agent.
+
 ### Ad-hoc Queries
 
 Run these from the Flink SQL shell or the CMF UI against `dtm-catalog`.`dtm-database`:
@@ -338,14 +355,21 @@ SELECT envelope.device_id, agent, outcome, policy_action, risk_score, rationale
 FROM `agent.decisions_human_readable`
 WHERE envelope.device_id = 'dev-0007';
 
--- The A2A conversation for one request
+-- The A2A requests in one conversation (correlation id = the device event's correlation_id)
 SELECT envelope.event_time, from_agent, to_agent, task_type, summary
 FROM `agent.tasks_human_readable`
 WHERE envelope.correlation_id = '<correlation id>';
 
+-- A task's state changes, in order
+SELECT envelope.event_time, agent, state, status_time, status_text
+FROM `agent.task-status_human_readable`
+WHERE task_id = '<task id>';
+
 -- Which agents are in the mesh right now
 SELECT agent, version, description, request_topic FROM `agent.cards_human_readable`;
 ```
+
+`agent.cards_human_readable` is an upsert table, so a streaming query over it returns a changelog: a disabled agent's row arrives and is then retracted. The materialized result lists only the current agents.
 
 ---
 
@@ -469,7 +493,7 @@ Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `thin
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
    kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
-   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, dtm-*-context and dtm-risk-signals RUNNING
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, the 8 other statements RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    ```
 6. **Watch the mesh** once the runtime stories land:
