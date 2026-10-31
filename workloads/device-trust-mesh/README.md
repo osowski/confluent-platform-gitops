@@ -310,7 +310,7 @@ The context statements ([`base/flink-statements.yaml`](base/flink-statements.yam
   - `NEW_DEVICE_ESTABLISHED_ACCOUNT` only remembers `ALLOW`s inside that window. An established customer whose only `ALLOW` is older than 7 days raises no signal.
   - The per-device and per-customer states expire independently, so a device's own re-enrolment after expiry can be miscounted as another device's `ALLOW`.
   - `IMPOSSIBLE_TRAVEL` has no previous event after 7 idle days for the customer.
-- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over the signal type and the causing event's `message_id`, which is also `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
+- **Ids.** `signal_id` (also `envelope.message_id`) is a `DTM_ID` over `dtm-risk-signals|<signal_type>|<causing event message_id>`; that `message_id` is also the signal's `causation_id`. It is deterministic per (signal type, causing event), so consumers dedupe duplicates on `signal_id`. The envelope `event_time` is the causing event's.
 - **Committed visibility.** CMF Kafka sinks are transactional, so a `read_committed` consumer sees a statement's output only once that statement's checkpoint commits, and each Flink hop adds up to about one checkpoint interval (10 s on `dtm-shared-pool`) of latency. `device.context` and `device.risk-signals` are produced by separate statements that commit independently, so reaching the context watermark (`requiredContextSeq`) does not guarantee the matching risk signal is visible yet. [#468](https://github.com/osowski/confluent-platform-gitops/issues/468) tracks tightening this.
 
 ### Ad-hoc Queries
