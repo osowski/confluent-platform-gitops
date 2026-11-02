@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Device Trust Mesh runtime on `flink-demo`** ([#451](https://github.com/osowski/confluent-platform-gitops/issues/451)): the RayService (context-mcp and the agents) and device simulator run the `v1.0.0` images, with the prompts packaged in the image.
 - **Device Trust Mesh model measurement** ([#453](https://github.com/osowski/confluent-platform-gitops/issues/453)): records `qwen3:4b` and `qwen3:8b` latency and schema-valid rate on native macOS Ollama; `qwen3:4b` stays the default.
 - **Human-readable agent views** ([#450](https://github.com/osowski/confluent-platform-gitops/issues/450)): flattened Avro views of A2A tasks, decisions, task status and Agent Cards for Control Center and ad-hoc Flink SQL.
 - **A2A task router** ([#449](https://github.com/osowski/confluent-platform-gitops/issues/449)): Flink turns device events into A2A v1.0 `SendMessage` requests for the risk and enrolment agents.

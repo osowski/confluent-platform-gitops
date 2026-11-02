@@ -1,7 +1,7 @@
 # Device simulator Deployment
 # Produces device.events for a device pool bounded by DEVICE_CAP and consumes
-# device.policy-commands to close the loop. The image tag is a placeholder
-# until the device-trust-mesh-simulator image is published.
+# device.policy-commands to close the loop. The image is built from
+# osowski/flink-sandbox.
 # Default replicas: 0 (scale to 1 to start a run)
 apiVersion: apps/v1
 kind: Deployment
@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: simulator
-          image: quay.io/osowski/device-trust-mesh-simulator:0.0.0-placeholder
+          image: quay.io/osowski/device-trust-mesh-simulator:v1.0.0-202611021732
           imagePullPolicy: IfNotPresent
           env:
             # Kafka connection (internal listener)

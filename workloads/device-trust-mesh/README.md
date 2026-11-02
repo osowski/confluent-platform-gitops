@@ -428,7 +428,7 @@ All set per overlay.
 | `device-trust-mesh-config` | `DEVICE_CAP` | `"20"` | Upper bound on unique devices per run |
 | `device-trust-mesh-config` | `LLM_ENDPOINT` | `http://host.docker.internal:11434` | Interpolated into `agents.yaml` |
 | `device-trust-mesh-agents` | `agents.yaml` | see below | LLM, per-agent enablement, bus and context settings |
-| `device-trust-mesh-prompts` | `risk.v1`, `enrolment.v1`, `revocation.v1` | placeholders | Versioned prompts |
+| `device-trust-mesh-prompts` | `risk.v1`, `enrolment.v1`, `revocation.v1` | none (the prompts packaged in the image) | A key overrides the packaged prompt of that name |
 
 ```yaml
 llm:
@@ -452,7 +452,7 @@ bus:
 
 | Component | Effect |
 |---|---|
-| `components/mesh-runtime` | Adds the `RayService` and simulator, and the `DEVICE_CAP` replacements. Add it to the overlay once `kuberay-operator` is applied and images are published ([#451](https://github.com/osowski/confluent-platform-gitops/issues/451)). |
+| `components/mesh-runtime` | Adds the `RayService` (`device-trust-mesh-ray`, Ray 2.59.0) and the simulator (`device-trust-mesh-simulator`), and the `DEVICE_CAP` replacements. Included in `flink-demo`; it needs `kuberay-operator` applied first. |
 | `components/ollama-in-cluster-mode` | Switches `LLM_ENDPOINT` to `http://ollama.ollama.svc.cluster.local:11434` |
 
 ### Model Recommendation
@@ -499,8 +499,9 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    kubectl get schema -n device-trust-mesh          # 21 subjects, STATUS SUCCEEDED
    kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, the 8 other statements RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
+   kubectl get rayservice device-trust-mesh -n device-trust-mesh   # Ready once all six Serve apps run
    ```
-6. **Watch the mesh** once the runtime stories land:
+6. **Watch the mesh:**
    - Control Center topic browser: `agent.tasks.*`, `agent.task-events`, `*_human_readable`
    - The Ray dashboard
    - The ad-hoc queries above

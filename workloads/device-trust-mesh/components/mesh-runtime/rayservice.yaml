@@ -1,10 +1,11 @@
 # RayService hosting the device-trust-mesh Ray Serve application:
 # context-mcp (materializer + FastMCP context tools) and the A2A agents.
 #
-# The image tag is a placeholder until the device-trust-mesh-ray image is
-# published from osowski/flink-sandbox; rayVersion must match the Ray version
-# in that image. Serve applications map 1:1 to the agents in agents.yaml, and
-# num_replicas must stay <= the topic partition count (6).
+# The device-trust-mesh-ray image is built from osowski/flink-sandbox;
+# rayVersion must match the Ray version in that image. Serve applications map
+# 1:1 to the agents in agents.yaml, and num_replicas must stay <= the topic
+# partition count (6). The prompts projection is optional, so every prompt
+# missing from device-trust-mesh-prompts falls back to the one in the image.
 #
 # KubeRay exposes Serve on the device-trust-mesh-serve-svc Service (port 8000);
 # agents reach context-mcp at /context-mcp/mcp on that Service.
@@ -55,7 +56,7 @@ spec:
           - name: RevocationAgent
             num_replicas: 1
   rayClusterConfig:
-    rayVersion: "2.46.0"
+    rayVersion: "2.59.0"
     headGroupSpec:
       rayStartParams:
         dashboard-host: "0.0.0.0"
@@ -63,7 +64,7 @@ spec:
         spec:
           containers:
             - name: ray-head
-              image: quay.io/osowski/device-trust-mesh-ray:0.0.0-placeholder
+              image: quay.io/osowski/device-trust-mesh-ray:v1.0.0-202611021732
               imagePullPolicy: IfNotPresent
               ports:
                 - containerPort: 6379
@@ -101,6 +102,7 @@ spec:
                       name: device-trust-mesh-agents
                   - configMap:
                       name: device-trust-mesh-prompts
+                      optional: true
                       items:
                         - key: risk.v1
                           path: prompts/risk.v1
@@ -118,7 +120,7 @@ spec:
           spec:
             containers:
               - name: ray-worker
-                image: quay.io/osowski/device-trust-mesh-ray:0.0.0-placeholder
+                image: quay.io/osowski/device-trust-mesh-ray:v1.0.0-202611021732
                 imagePullPolicy: IfNotPresent
                 env:
                   - name: DEVICE_CAP
@@ -147,6 +149,7 @@ spec:
                         name: device-trust-mesh-agents
                     - configMap:
                         name: device-trust-mesh-prompts
+                        optional: true
                         items:
                           - key: risk.v1
                             path: prompts/risk.v1
