@@ -459,10 +459,14 @@ bus:
 
 Every agent uses the same Ollama model. The default is **`qwen3:4b`** with `think: false`; turning off Qwen3's thinking mode matters more for latency than model size. The fallback is **`qwen3:8b`**, the model [Flink Agents](../flink-agents/README.md) uses. `temperature: 0`, a fixed `seed` and schema-constrained output (`format`) keep decisions reproducible.
 
-| Model | p50 / p95 (risk + enrolment) | Schema-valid rate |
-|---|---|---|
-| `qwen3:4b` | *to be recorded* ([osowski/flink-sandbox#31](https://github.com/osowski/flink-sandbox/issues/31)) | *to be recorded* |
-| `qwen3:8b` | *to be recorded* | *to be recorded* |
+Measured on an Apple M5 Max (36 GB) with native Ollama 0.35.0, using the base options above. Each scenario ran 10 times: `CLEAN` plus the four injected scenarios, built from the facts the agents send. The benchmark is [`scripts/benchmark_models.py`](https://github.com/osowski/flink-sandbox/blob/main/device-trust-mesh/scripts/benchmark_models.py) in `flink-sandbox`.
+
+| Model | Risk p50 / p95 | Enrolment p50 / p95 | Schema-valid rate |
+|---|---|---|---|
+| `qwen3:4b` | 480 / 788 ms | 656 / 781 ms | 100% (90/90) |
+| `qwen3:8b` | 610 / 840 ms | 736 / 875 ms | 100% (90/90) |
+
+Both models give the same enrolment decisions except in one scenario, `NEW_DEVICE_ESTABLISHED_ACCOUNT`. There `qwen3:4b` scores the device 0 and decides `GRANT`, and `qwen3:8b` scores it 25 and decides `CHALLENGE`. Because the risk assessment carries the signal, the `UNRESOLVED_SIGNALS` guardrail still turns the `qwen3:4b` `GRANT` into `CHALLENGE`. `qwen3:4b` stays the default: it is about 20% faster at the same schema-valid rate, and the guardrails cover its weaker scoring.
 
 ---
 
