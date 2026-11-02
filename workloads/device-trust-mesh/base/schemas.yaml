@@ -270,6 +270,40 @@ spec:
 apiVersion: platform.confluent.io/v1beta1
 kind: Schema
 metadata:
+  name: agent-pair-counts-value
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  name: agent.pair_counts-value
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: dtm-schema-agent-pair-counts-value
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
+  name: agent-decision-latency-value
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  name: agent.decision_latency-value
+  schemaRegistryClusterRef:
+    name: schemaregistry
+    namespace: kafka
+  data:
+    configRef: dtm-schema-agent-decision-latency-value
+    format: avro
+  compatibilityLevel: BACKWARD
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Schema
+metadata:
   name: simulator-control-value
   namespace: device-trust-mesh
   annotations:

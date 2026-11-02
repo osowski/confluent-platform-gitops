@@ -111,8 +111,15 @@ class GeneratorTest(unittest.TestCase):
     def test_envelope_inlined_identically(self):
         envelope = gen.read_json(gen.SRC_AVRO / "envelope.avsc")
         values = {p: s for p, s in self.avro.items() if p.endswith("-value.avsc")}
-        self.assertEqual(len(values), 12)
+        self.assertEqual(len(values), 14)
+        # The UI-facing aggregates are flat records without an envelope.
+        flat = {
+            "avro/agent.pair_counts-value.avsc",
+            "avro/agent.decision_latency-value.avsc",
+        }
         for path, schema in values.items():
+            if path in flat:
+                continue
             with self.subTest(path=path):
                 field = schema["fields"][0]
                 self.assertEqual(field["name"], "envelope")

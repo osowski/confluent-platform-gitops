@@ -323,6 +323,46 @@ spec:
     name: default
     namespace: kafka
 ---
+# Derived: Flink aggregates the Device Trust Mesh UI reads. agent.pair_counts
+# holds the sliding-window message count per agent pair and is short-lived;
+# agent.decision_latency holds one row per decision with its router-to-decision
+# latency.
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-pair-counts
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.pair_counts
+  replicas: 3
+  partitionCount: 1
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "86400000"  # 1 day
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: KafkaTopic
+metadata:
+  name: agent-decision-latency
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: agent.decision_latency
+  replicas: 3
+  partitionCount: 6
+  configs:
+    cleanup.policy: "delete"
+    retention.ms: "604800000"  # 7 days
+  kafkaRestClassRef:
+    name: default
+    namespace: kafka
+---
 # Simulator control (scenario injection from the presenter CLI).
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaTopic

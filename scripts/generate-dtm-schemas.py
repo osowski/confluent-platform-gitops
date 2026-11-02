@@ -57,6 +57,8 @@ SUBJECTS = {
     "task-status-hr.avsc": "agent.task-status_human_readable-value",
     "card-hr-key.avsc": "agent.cards_human_readable-key",
     "card-hr.avsc": "agent.cards_human_readable-value",
+    "pair-count.avsc": "agent.pair_counts-value",
+    "decision-latency.avsc": "agent.decision_latency-value",
 }
 
 # A2A request topic -> source of the payload carried in parts[0].data.
