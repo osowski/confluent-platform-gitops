@@ -386,6 +386,7 @@ To validate an unmerged feature branch against a real cluster before merging its
    kubectl apply -f clusters/<cluster>/bootstrap.yaml
    kubectl apply -f clusters/<cluster>/bootstrap.yaml   # first apply can silently no-op; confirm the second reports "configured"
    ```
+   Applications commented out of `clusters/<cluster>/{infrastructure,workloads}/kustomization.yaml` (applied by hand, e.g. `device-trust-mesh`) are not managed by a parent app, so re-apply each one you are testing from the branch as well: `kubectl apply -f clusters/<cluster>/workloads/<app>.yaml -n argocd`.
 4. **Some Applications are deliberately manual-sync** (no `syncPolicy.automated` at all — e.g. `confluent-resources` and `flink-resources` on the RBAC clusters, to avoid an in-place mTLS/auth transition wedging the KRaft quorum). These need an explicit sync trigger; this is the sanctioned way those apps ever sync, not "fighting" anything:
    ```bash
    kubectl patch application <app> -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
@@ -400,7 +401,7 @@ To validate an unmerged feature branch against a real cluster before merging its
    git commit -am "chore: revert <cluster> targetRevision to HEAD before merge"
    git push
    ```
-   Re-apply `bootstrap.yaml` from `main` (twice) to point the cluster back. The feature branch's PR now merges normally — its own `targetRevision` fields are already back to `HEAD` by the time it lands.
+   Re-apply `bootstrap.yaml` from `main` (twice), plus any hand-applied Application you re-applied in step 3, to point the cluster back. The feature branch's PR now merges normally — its own `targetRevision` fields are already back to `HEAD` by the time it lands.
 
 ## Upgrading Bootstrap
 
