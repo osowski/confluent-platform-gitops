@@ -180,10 +180,9 @@
 #
 #   * dtm-agent-pair-counts counts agent-to-agent requests per (from_agent,
 #     to_agent) in 1-minute windows that slide every 5 seconds, keyed by
-#     from_agent|to_agent. It uses the HOP table function (the GROUP BY HOP
-#     group window is rejected by the planner) over a CTE that carries the
-#     source hint, and casts the window bounds to TIMESTAMP_LTZ(3) for the
-#     timestamp-millis sink. The window is on processing time
+#     from_agent|to_agent. It windows with the HOP table function over a CTE
+#     that keeps the source hint on a plain table reference, and casts the
+#     window bounds to TIMESTAMP_LTZ(3) for the timestamp-millis sink. The window is on processing time
 #     (agent.tasks_human_readable.proc_time), so it needs no watermark and
 #     buckets a request by when Flink reads it, not by when the agent sent
 #     it. It reads from latest-offset: the counts are a live rate, and a
