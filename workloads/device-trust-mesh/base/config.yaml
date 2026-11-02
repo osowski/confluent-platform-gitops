@@ -8,6 +8,11 @@
 # device-trust-mesh-agents and device-trust-mesh-prompts are mounted into the
 # Ray pods at /etc/dtm/. Agents reload them at a message boundary without a
 # pod restart and stamp the resulting configVersion on every output.
+#
+# The prompts ship inside the device-trust-mesh-ray image. A key in
+# device-trust-mesh-prompts (risk.v1, enrolment.v1 or revocation.v1)
+# overrides the packaged prompt of that name; with no keys, every agent uses
+# the packaged prompts.
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -58,10 +63,3 @@ kind: ConfigMap
 metadata:
   name: device-trust-mesh-prompts
   namespace: device-trust-mesh
-data:
-  risk.v1: |
-    Placeholder prompt; defined by the agent stories.
-  enrolment.v1: |
-    Placeholder prompt; defined by the agent stories.
-  revocation.v1: |
-    Placeholder prompt; defined by the agent stories.

@@ -7,13 +7,11 @@ resources:
 
 # Base already targets native macOS host Ollama by default. Add the
 # ollama-in-cluster-mode component to opt into in-cluster Ollama instead.
-#
-# The mesh-runtime component (RayService + simulator) is added here once the
-# kuberay-operator Application is applied and the device-trust-mesh images
-# are published:
-#
-# components:
-#   - ../../components/mesh-runtime
+
+# RayService (context-mcp + agents) and simulator. Requires the
+# kuberay-operator Application to be applied first.
+components:
+  - ../../components/mesh-runtime
 
 # Cluster-specific labels
 labels:
