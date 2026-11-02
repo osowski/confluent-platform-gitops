@@ -1069,7 +1069,7 @@ spec:
     `from_agent`, `to_agent`, COUNT(*) AS `message_count`
     FROM TABLE(HOP(TABLE `tasks`, DESCRIPTOR(`proc_time`), INTERVAL '5' SECOND, INTERVAL '1' MINUTE))
     GROUP BY `window_start`, `window_end`, `from_agent`, `to_agent`
-    )
+    ) AS `c`
   parallelism: 1
   stopped: false
   cmfRestClassRef:
