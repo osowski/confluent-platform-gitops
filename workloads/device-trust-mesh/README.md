@@ -208,7 +208,7 @@ Every subject is a CFK `Schema` CR (wave 35) in [`base/schemas.yaml`](base/schem
 | `device.context`, `customer.context`, `agent.cards_human_readable` | also `<topic>-key`: a record holding `device_id` / `customer_id` / `agent` | Avro | Schema Registry |
 | `agent.tasks.*`, `agent.task-events`, `agent.cards` | `<topic>-a2a` | JSON Schema draft 2020-12 | Plain JSON |
 
-- **Avro.** Every value schema starts with the shared `envelope` record, and enums cover the closed sets (`EventType`, `PolicyAction`, `TrustStatus`, `SignalType`, `Severity`, `Mode`, …). Fields written by Flink are nullable. Key fields live only in the `-key` subject, so inferred column names never collide.
+- **Avro.** Every value schema starts with the shared `envelope` record, except the flat `agent.pair_counts-value` and `agent.decision_latency-value`. Enums cover the closed sets (`EventType`, `PolicyAction`, `TrustStatus`, `SignalType`, `Severity`, `Mode`, …). Fields written by Flink are nullable, except in those two flat records: all of `agent.pair_counts` is non-null, and so are `device_id`, `correlation_id`, `event_time`, `decision_time` and `latency_ms` in `agent.decision_latency`. Key fields live only in the `-key` subject, so inferred column names never collide.
 - **A2A.** Schemas are derived from the pinned A2A v1.0.1 JSON Schema bundle. Each is narrowed to the mesh binding: the JSON-RPC wrapper, envelope metadata required, `parts` pinned to `[data, text]`, and `data` typed per topic or per artifact name. The snake_case aliases are dropped because the mesh emits camelCase only.
 - **Why `-a2a` and not `-value`.** The Flink catalog only infers tables from `<topic>-value`, and CMF can't map JSON Schema tuple arrays (`prefixItems`). A `-value` subject would make the catalog fail to load the table at all. Under `-a2a` the A2A tables infer as `raw` instead (see [Tables](#tables)).
 
@@ -240,8 +240,23 @@ Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived F
 - `spec.type` can't be changed after creation.
 - Pool updates are blocked while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`.
 - If one statement starves the others, move it to its own `DEDICATED` pool with a new versioned statement.
-- Growing the pool: see [Growing the shared pool](#growing-the-shared-pool).
 - Checkpoints run every 10 s (`execution.checkpointing.interval`, 5 s `min-pause`). Kafka sinks commit on checkpoint, so this bounds how soon `read_committed` consumers see each statement's output (see **Committed visibility** under [Statements](#statements)).
+
+#### Growing the shared pool
+
+Resizing `dtm-shared-pool` (slots, CPU or memory in [`base/flink-compute-pool.yaml`](base/flink-compute-pool.yaml)) is a pool update, so it is rejected while any statement is in a blocking state (listed above). Roll it out in this order:
+
+1. Delete the long-running `FlinkStatement`s in `device-trust-mesh`. Leave the `dtm-ddl-*` ones: a `COMPLETED` DDL does not block the update, and a deleted one is re-created by Argo CD and fails because its columns already exist.
+
+   ```bash
+   kubectl get flinkstatements -n device-trust-mesh -o name | grep -v 'dtm-ddl-' | xargs kubectl delete -n device-trust-mesh
+   ```
+
+2. Wait until `kubectl get flinkstatements -n device-trust-mesh` lists only `dtm-ddl-*` statements and all of them are `COMPLETED`. A leftover `FAILED` `dtm-ddl-*` also blocks the update and survives the `grep -v`; recover it as described in the [`base/flink-ddl.yaml`](base/flink-ddl.yaml) header first.
+3. Sync the `device-trust-mesh` Application. The Application is manual-sync, so nothing re-creates the statements before this. The pool updates at wave 60, then the statements are re-created at wave 70.
+4. Check that the new TaskManager has the new slot count and that every long-running statement returns to `RUNNING`.
+
+Deleting a statement discards its state, and it restarts from its configured start offsets.
 
 ### Tables
 
@@ -361,22 +376,7 @@ The `dtm-view-*` statements (same file, wave 70) flatten the A2A topics into the
 - **Pair counts window.** A processing-time `HOP` window (1 minute, sliding every 5 seconds) over `agent.tasks_human_readable.proc_time`, added by `dtm-ddl-agent-tasks-human-readable`. It needs no watermark and buckets a request by when Flink reads it, not when the agent sent it. The source reads from `latest-offset`, so a restart does not replay history into the current windows. Rows without a `from_agent` or `to_agent` are not counted.
 - **Latency join.** A regular inner join with a 1 h state TTL (`table.exec.state.ttl`). Both sources read from the earliest offset. It joins on `device_id` and `device_seq` and keeps only tasks with `from_agent` `dtm-a2a-task-router`, because the router's request starts a device's leg. `correlation_id` alone would be wrong: one correlation id spans every request and decision in a conversation, so a decision would join to each task sharing it and the latency would be measured from the wrong start.
 - **`latency_ms`.** The decision's `envelope.event_time` minus the task's, in epoch millis. Every artifact matching a router task is written, so consumers filter on `artifact_name` (the UI keeps `enrolment-decision`).
-
-#### Growing the shared pool
-
-Pool updates are rejected while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`, so resizing `dtm-shared-pool` (slots, CPU or memory in [`base/flink-compute-pool.yaml`](base/flink-compute-pool.yaml)) follows this order:
-
-1. Delete the long-running `FlinkStatement`s in `device-trust-mesh`. Leave the `dtm-ddl-*` ones: they finish `COMPLETED` and do not block the update, and a deleted one is re-created by Argo CD and fails because its columns already exist.
-
-   ```bash
-   kubectl get flinkstatements -n device-trust-mesh -o name | grep -v 'dtm-ddl-' | xargs kubectl delete -n device-trust-mesh
-   ```
-
-2. Wait until `kubectl get flinkstatements -n device-trust-mesh` lists only the `dtm-ddl-*` statements.
-3. Sync the `device-trust-mesh` Application. The Application is manual-sync, so nothing re-creates the statements before this. The pool updates at wave 60, then the statements are re-created at wave 70.
-4. Check that the new TaskManager has the new slot count and that every long-running statement returns to `RUNNING`.
-
-Deleting a statement discards its state, and it restarts from its configured start offsets.
+- **Duplicates.** It reads both views from `earliest-offset` with no dedupe, so after a statement restart or pool rollout it re-emits the backlog. Consumers must tolerate duplicate rows.
 
 ### Ad-hoc Queries
 
@@ -530,7 +530,7 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    kubectl get kafkatopic -n device-trust-mesh
    kubectl get flinkenvironment,flinkkafkacatalog,flinkkafkadatabase,flinkcomputepool -n device-trust-mesh
    kubectl get schema -n device-trust-mesh          # 23 subjects, STATUS SUCCEEDED
-   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, the 8 other statements RUNNING
+   kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, the 10 long-running statements RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
    kubectl get rayservice device-trust-mesh -n device-trust-mesh   # Ready once all six Serve apps run
    ```
