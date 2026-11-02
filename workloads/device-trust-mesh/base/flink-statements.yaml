@@ -181,8 +181,12 @@
 #   * dtm-agent-pair-counts counts agent-to-agent requests per (from_agent,
 #     to_agent) in 1-minute windows that slide every 5 seconds, keyed by
 #     from_agent|to_agent. It windows with the HOP table function over a CTE
-#     that keeps the source hint on a plain table reference, and casts the
-#     window bounds to TIMESTAMP_LTZ(3) for the timestamp-millis sink. The window is on processing time
+#     that keeps the source hint on a plain table reference. The CTE sits in
+#     a derived table, because an INSERT body must be a plain SELECT. The
+#     window bounds are cast to TIMESTAMP_LTZ(3) for the timestamp-millis sink
+#     and aliased ws and we, so the outer SELECT and the GROUP BY on the
+#     table function's window_start and window_end never share a name. The
+#     window is on processing time
 #     (agent.tasks_human_readable.proc_time), so it needs no watermark and
 #     buckets a request by when Flink reads it, not by when the agent sent
 #     it. It reads from latest-offset: the counts are a live rate, and a
@@ -1050,6 +1054,8 @@ spec:
     INSERT INTO `agent.pair_counts`
     /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
     (`key`, `window_start`, `window_end`, `from_agent`, `to_agent`, `message_count`)
+    SELECT `key`, `ws`, `we`, `from_agent`, `to_agent`, `message_count`
+    FROM (
     WITH `tasks` AS (
     SELECT `from_agent`, `to_agent`, `proc_time`
     FROM `agent.tasks_human_readable`
@@ -1057,12 +1063,13 @@ spec:
     WHERE `from_agent` IS NOT NULL AND `to_agent` IS NOT NULL
     )
     SELECT
-    CAST(CONCAT(`from_agent`, '|', `to_agent`) AS BYTES),
-    CAST(`window_start` AS TIMESTAMP_LTZ(3)),
-    CAST(`window_end` AS TIMESTAMP_LTZ(3)),
-    `from_agent`, `to_agent`, COUNT(*)
+    CAST(CONCAT(`from_agent`, '|', `to_agent`) AS BYTES) AS `key`,
+    CAST(`window_start` AS TIMESTAMP_LTZ(3)) AS `ws`,
+    CAST(`window_end` AS TIMESTAMP_LTZ(3)) AS `we`,
+    `from_agent`, `to_agent`, COUNT(*) AS `message_count`
     FROM TABLE(HOP(TABLE `tasks`, DESCRIPTOR(`proc_time`), INTERVAL '5' SECOND, INTERVAL '1' MINUTE))
     GROUP BY `window_start`, `window_end`, `from_agent`, `to_agent`
+    )
   parallelism: 1
   stopped: false
   cmfRestClassRef:
