@@ -1,1 +1,15 @@
 # flink-demo cluster-specific configuration for cert-manager
+
+# The kind nodes share one Docker VM's CPUs. CPU requests keep cert-manager's
+# share of CPU time when workloads saturate the VM.
+resources:
+  requests:
+    cpu: 50m
+webhook:
+  resources:
+    requests:
+      cpu: 50m
+cainjector:
+  resources:
+    requests:
+      cpu: 25m

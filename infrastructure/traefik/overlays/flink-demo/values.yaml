@@ -7,3 +7,8 @@ tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Equal
     effect: NoSchedule
+# The kind nodes share one Docker VM's CPUs. A CPU request keeps each ingress
+# pod's share of CPU time when workloads saturate the VM.
+resources:
+  requests:
+    cpu: 100m
