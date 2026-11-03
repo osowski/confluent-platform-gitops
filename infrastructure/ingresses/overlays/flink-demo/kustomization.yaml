@@ -4,8 +4,10 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - vault-ingressroute.yaml  # flink-demo only: Vault endpoint
-  - vault-certificate.yaml   # flink-demo only: Vault TLS certificate
+  # Vault is disabled by default on flink-demo; uncomment with the vault Applications
+  # in clusters/flink-demo/infrastructure/kustomization.yaml.
+  # - vault-ingressroute.yaml  # flink-demo only: Vault endpoint
+  # - vault-certificate.yaml   # flink-demo only: Vault TLS certificate
 
 patches:
   - path: argocd-ingressroute-patch.yaml

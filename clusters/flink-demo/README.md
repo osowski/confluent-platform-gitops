@@ -6,10 +6,10 @@ Demo cluster for Confluent Platform with Apache Flink integration, showcasing Gi
 
 The `flink-demo` cluster demonstrates a complete Confluent Platform deployment including:
 
-- **Kafka Cluster**: KRaft-based Kafka with Schema Registry, Control Center, ksqlDB, and Connect
+- **Kafka Cluster**: KRaft-based Kafka with Schema Registry and Control Center (Kafka Connect is disabled by default)
 - **Flink Integration**: Flink Kubernetes Operator with CMF for SQL-based stream processing and out-of-box support for [rjmfernandes/cp-flink-sql](https://github.com/rjmfernandes/cp-flink-sql) exercises
 - **Monitoring**: Prometheus, Grafana, and Alertmanager with pre-configured dashboards
-- **Security**: HashiCorp Vault for secrets management, cert-manager for TLS certificates
+- **Security**: cert-manager for TLS certificates (HashiCorp Vault is disabled by default)
 - **Networking**: Traefik ingress controller with local DNS resolution
 
 **Domain**: `*.flink-demo.confluentdemo.local`
@@ -53,7 +53,6 @@ You should see:
 - `controlcenter-0` - Control Center
 - `kafka-0`, `kafka-1`, `kafka-2` - Kafka brokers
 - `schemaregistry-0` - Schema Registry
-- `connect-0` - Kafka Connect
 - `ksqldb-0` - ksqlDB server
 - `kraft-0`, `kraft-1`, `kraft-2` - KRaft controllers
 
@@ -123,11 +122,11 @@ Infrastructure applications are defined in `infrastructure/kustomization.yaml`:
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)
 - **trust-manager** (wave 30) - CA certificate distribution
 - **reflector** (wave 40) - Cross-namespace secret replication for rustfs-credentials
-- **vault** (wave 40) - HashiCorp Vault (dev mode)
-- **vault-config** (wave 50) - Vault transit engine configuration
+- **vault** (wave 40) - HashiCorp Vault (dev mode); disabled by default
+- **vault-config** (wave 50) - Vault transit engine configuration; disabled by default
 - **headlamp** (wave 50) - Kubernetes dashboard
 - **cert-manager-resources** (wave 75) - ClusterIssuer and certificates
-- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD, Vault, and Headlamp UIs
+- **infra-ingresses** (wave 80) - Traefik IngressRoutes for ArgoCD and Headlamp UIs (and Vault, when enabled)
 - **rustfs** (wave 85) - S3-compatible object storage for Flink checkpoints and savepoints
 - **argocd-config** (wave 85) - ArgoCD ConfigMap patches for custom health checks
 - **registry** (wave 85) - In-cluster image registry at pinned ClusterIP `10.96.0.50:5000`
@@ -224,7 +223,7 @@ IP for you and points these same hostnames at it.
 **Alertmanager:**
 - **URL**: http://alertmanager.flink-demo.confluentdemo.local
 
-**Vault** (dev mode):
+**Vault** (dev mode, disabled by default; uncomment it in `clusters/flink-demo/infrastructure/kustomization.yaml` and `infrastructure/ingresses/overlays/flink-demo/kustomization.yaml`):
 - **URL**: http://vault.flink-demo.confluentdemo.local
 - **Token**: `root`
 - **Warning**: Dev mode - data is not persisted across restarts
