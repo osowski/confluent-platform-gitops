@@ -1,0 +1,22 @@
+---
+# Device Trust Mesh UI. No buffering middleware: Traefik streams responses by
+# default, which the page's Server-Sent Events stream (/events) relies on.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: dtm-ui
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`device-trust-mesh.flink-demo.confluentdemo.local`)
+      kind: Rule
+      services:
+        - name: device-trust-mesh-ui
+          port: 80
+          scheme: http
+  tls:
+    secretName: dtm-ui-tls

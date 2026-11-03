@@ -41,6 +41,7 @@ Underneath the **Connect** heading, you will see a line similar to `ssh -i lab-k
 256.256.256.256  cmf-ui.flink-demo.confluentdemo.local
 256.256.256.256  cmf.flink-demo.confluentdemo.local
 256.256.256.256  controlcenter.flink-demo.confluentdemo.local
+256.256.256.256  device-trust-mesh.flink-demo.confluentdemo.local
 256.256.256.256  grafana.flink-demo.confluentdemo.local
 256.256.256.256  headlamp.flink-demo.confluentdemo.local
 256.256.256.256  kafka.flink-demo.confluentdemo.local

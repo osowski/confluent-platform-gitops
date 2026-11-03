@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Device Trust Mesh UI on `flink-demo`** ([#474](https://github.com/osowski/confluent-platform-gitops/issues/474)): a live board of device trust status, agent traffic and the busiest agent pairs at `https://device-trust-mesh.flink-demo.confluentdemo.local`.
 - **Device Trust Mesh UI outputs in Flink** ([#473](https://github.com/osowski/confluent-platform-gitops/issues/473)): `dtm-agent-pair-counts` and `dtm-decision-latency` write `agent.pair_counts` and `agent.decision_latency` for the mesh UI.
   `dtm-shared-pool` grows to one 12-slot TaskManager (3 CPU, 4.5 GiB), so resizing a live pool means deleting the long-running statements first.
 - **Device Trust Mesh runtime on `flink-demo`** ([#451](https://github.com/osowski/confluent-platform-gitops/issues/451)): the RayService (context-mcp and the agents) and device simulator run the `v1.0.0` images, with the prompts packaged in the image.

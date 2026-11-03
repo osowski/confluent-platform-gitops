@@ -7,6 +7,8 @@ resources:
   - cmf-certificate.yaml              # flink-demo only: TLS cert for HTTPS cmf route
   - cmf-ui-ingressroute.yaml          # flink-demo only: direct cmf-ui alias (no SSO)
   - schema-registry-certificate.yaml  # flink-demo only: TLS cert for HTTPS schema-registry route
+  - dtm-ui-certificate.yaml           # flink-demo only: TLS cert for the Device Trust Mesh UI route
+  - dtm-ui-ingressroute.yaml          # flink-demo only: Device Trust Mesh UI route
 
 patches:
   - path: cmf-ingressroute-patch.yaml

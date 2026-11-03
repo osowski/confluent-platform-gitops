@@ -172,6 +172,7 @@ IP for you and points these same hostnames at it.
 127.0.0.1  cmf.flink-demo.confluentdemo.local
 127.0.0.1  cmf-ui.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
+127.0.0.1  device-trust-mesh.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  headlamp.flink-demo.confluentdemo.local
 127.0.0.1  kafka.flink-demo.confluentdemo.local
@@ -190,6 +191,7 @@ IP for you and points these same hostnames at it.
 > ::1  cmf.flink-demo.confluentdemo.local
 > ::1  cmf-ui.flink-demo.confluentdemo.local
 > ::1  controlcenter.flink-demo.confluentdemo.local
+> ::1  device-trust-mesh.flink-demo.confluentdemo.local
 > ::1  grafana.flink-demo.confluentdemo.local
 > ::1  headlamp.flink-demo.confluentdemo.local
 > ::1  kafka.flink-demo.confluentdemo.local
@@ -210,6 +212,10 @@ IP for you and points these same hostnames at it.
 **Control Center:**
 - **URL**: https://controlcenter.flink-demo.confluentdemo.local
 - **Features**: Cluster monitoring, topic management, schema registry, Connect connectors, ksqlDB queries
+
+**Device Trust Mesh UI:**
+- **URL**: https://device-trust-mesh.flink-demo.confluentdemo.local
+- **Features**: Live device trust status, agent-to-agent traffic and the busiest agent pairs; see the [use-case README](../../workloads/device-trust-mesh/README.md#ui)
 
 **Grafana:**
 - **URL**: http://grafana.flink-demo.confluentdemo.local
