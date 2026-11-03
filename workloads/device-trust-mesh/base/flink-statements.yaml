@@ -1067,7 +1067,7 @@ spec:
     CAST(`window_start` AS TIMESTAMP_LTZ(3)) AS `ws`,
     CAST(`window_end` AS TIMESTAMP_LTZ(3)) AS `we`,
     `from_agent`, `to_agent`, COUNT(*) AS `message_count`
-    FROM TABLE(HOP(TABLE `tasks`, DESCRIPTOR(`proc_time`), INTERVAL '5' SECOND, INTERVAL '1' MINUTE))
+    FROM TABLE(HOP(TABLE `tasks`, DESCRIPTOR(`proc_time`), INTERVAL '5' SECOND, INTERVAL '5' MINUTE))
     GROUP BY `window_start`, `window_end`, `from_agent`, `to_agent`
     ) AS `c`
   parallelism: 1

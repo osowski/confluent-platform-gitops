@@ -257,7 +257,7 @@ Resizing `dtm-shared-pool` (slots, CPU or memory in [`base/flink-compute-pool.ya
 3. Sync the `device-trust-mesh` Application. The Application is manual-sync, so nothing re-creates the statements before this. The pool updates at wave 60, then the statements are re-created at wave 70.
 4. Check that the new TaskManager has the new slot count and that every long-running statement returns to `RUNNING`.
 
-Deleting a statement discards its state, and it restarts from its configured start offsets.
+Deleting a statement discards its state, and it restarts from its configured start offsets. The re-created `dtm-view-*` statements re-emit their backlog into the `*_human_readable` topics, so a running UI shows a burst of historical feed rows and counts it as live traffic in busiest pairs. Restart the UI once the backlog drains, or run [`reset-session.sh`](#resetting-for-a-fresh-session) instead when the history does not need to survive.
 
 ### Tables
 
@@ -293,7 +293,7 @@ A DDL statement runs once and its CR is immutable. Re-creating it against a tabl
 | `dtm-view-decisions` | `agent.task-events` → `agent.decisions_human_readable` | One row per artifact | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-task-status` | `agent.task-events` → `agent.task-status_human_readable` | One row per state change | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
 | `dtm-view-cards` | `agent.cards` → `agent.cards_human_readable` | Flattened Agent Cards | [#450](https://github.com/osowski/confluent-platform-gitops/issues/450) |
-| `dtm-agent-pair-counts` | `agent.tasks_human_readable` → `agent.pair_counts` | Request count per agent pair in 1-minute windows sliding every 5 seconds | [#473](https://github.com/osowski/confluent-platform-gitops/issues/473) |
+| `dtm-agent-pair-counts` | `agent.tasks_human_readable` → `agent.pair_counts` | Request count per agent pair in 5-minute windows sliding every 5 seconds | [#473](https://github.com/osowski/confluent-platform-gitops/issues/473) |
 | `dtm-decision-latency` | `agent.decisions_human_readable` ⋈ `agent.tasks_human_readable` → `agent.decision_latency` | Router task to decision, in milliseconds | [#473](https://github.com/osowski/confluent-platform-gitops/issues/473) |
 
 The context statements ([`base/flink-statements.yaml`](base/flink-statements.yaml), wave 70) are pure `GROUP BY` aggregates:
@@ -374,7 +374,7 @@ The `dtm-view-*` statements (same file, wave 70) flatten the A2A topics into the
 | `agent.pair_counts` | (`from_agent`, `to_agent`) pair per window | `window_start`, `window_end` (`timestamp-millis`), `from_agent`, `to_agent`, `message_count` | `from_agent\|to_agent` (raw bytes) |
 | `agent.decision_latency` | decision artifact joined to a router task | `device_id`, `customer_id`, `correlation_id`, `device_seq`, `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `rationale`, `event_time` (the task's), `decision_time` (the decision's), `latency_ms` | `device_id` (raw bytes) |
 
-- **Pair counts window.** A processing-time window from the `HOP` table function (1 minute, sliding every 5 seconds) over a CTE of `agent.tasks_human_readable` that keeps the source hint (the CTE sits in a derived table, since an `INSERT` body must be a plain `SELECT`), on `proc_time`, added by `dtm-ddl-agent-tasks-human-readable`. It needs no watermark and buckets a request by when Flink reads it, not when the agent sent it. The source reads from `latest-offset`, so a restart does not replay history into the current windows. Rows without a `from_agent` or `to_agent` are not counted.
+- **Pair counts window.** A processing-time window from the `HOP` table function (5 minutes, sliding every 5 seconds) over a CTE of `agent.tasks_human_readable` that keeps the source hint (the CTE sits in a derived table, since an `INSERT` body must be a plain `SELECT`), on `proc_time`, added by `dtm-ddl-agent-tasks-human-readable`. It needs no watermark and buckets a request by when Flink reads it, not when the agent sent it. The source reads from `latest-offset`, so a restart does not replay history into the current windows. Rows without a `from_agent` or `to_agent` are not counted.
 - **Latency join.** A regular inner join with a 1 h state TTL (`table.exec.state.ttl`). Both sources read from the earliest offset. It joins on `device_id` and `device_seq` and keeps only tasks with `from_agent` `dtm-a2a-task-router`, because the router's request starts a device's leg. `correlation_id` alone would be wrong: one correlation id spans every request and decision in a conversation, so a decision would join to each task sharing it and the latency would be measured from the wrong start.
 - **`latency_ms`.** The decision's `envelope.event_time` minus the task's, in epoch millis. Every artifact matching a router task is written, so consumers filter on `artifact_name` (the UI keeps `enrolment-decision`).
 - **Duplicates.** It reads both views from `earliest-offset` with no dedupe, so after a statement restart or pool rollout it re-emits the backlog. Consumers must tolerate duplicate rows.
@@ -573,9 +573,9 @@ A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add 
 
 | Pane | Shows | Source |
 |---|---|---|
-| **Devices · live** | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decisions_human_readable`, `agent.decision_latency` |
-| **Agent traffic** | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. | `agent.tasks_human_readable`, `agent.task-status_human_readable` |
-| **Busiest agent pairs** | Messages per 60 s window for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
+| **Devices · live** | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decision_latency` |
+| **Agent traffic** | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. | `agent.tasks_human_readable`, `agent.task-status_human_readable`, `agent.decisions_human_readable` |
+| **Busiest agent pairs** | Messages per 60 s, averaged over the last 5 minutes, for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
 
 Two latencies are shown for each device:
 
