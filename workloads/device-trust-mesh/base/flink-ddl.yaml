@@ -15,6 +15,8 @@
 #     envelope, each COALESCEd over the task, statusUpdate and artifactUpdate
 #     shapes.
 #   * agent.cards: Agent Card name, version, skills and interface.
+#   * agent.tasks_human_readable: a processing-time attribute for the
+#     dtm-agent-pair-counts window.
 #
 # parts[0] is the typed data part and parts[1] the text summary; the columns
 # rely on that order.
@@ -313,6 +315,25 @@ spec:
     `interface_url` AS JSON_VALUE(CAST(`val` AS STRING), '$.supportedInterfaces[0].url'),
     `protocol_binding` AS JSON_VALUE(CAST(`val` AS STRING), '$.supportedInterfaces[0].protocolBinding')
     )
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-ddl-agent-tasks-human-readable
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  statement: >-
+    ALTER TABLE `agent.tasks_human_readable` ADD (`proc_time` AS PROCTIME())
   cmfRestClassRef:
     name: cmf-rest-class
     namespace: flink

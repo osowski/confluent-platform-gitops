@@ -175,6 +175,37 @@
 #     would leave a disabled agent's row behind. The state is one row per
 #     agent.
 #
+# dtm-agent-pair-counts and dtm-decision-latency write the aggregates the
+# Device Trust Mesh UI reads:
+#
+#   * dtm-agent-pair-counts counts agent-to-agent requests per (from_agent,
+#     to_agent) in 1-minute windows that slide every 5 seconds, keyed by
+#     from_agent|to_agent. It windows with the HOP table function over a CTE
+#     that keeps the source hint on a plain table reference. The CTE sits in
+#     a derived table, because an INSERT body must be a plain SELECT. The
+#     window bounds are cast to TIMESTAMP_LTZ(3) for the timestamp-millis sink
+#     and aliased ws and we, so the outer SELECT and the GROUP BY on the
+#     table function's window_start and window_end never share a name. The
+#     window is on processing time
+#     (agent.tasks_human_readable.proc_time), so it needs no watermark and
+#     buckets a request by when Flink reads it, not by when the agent sent
+#     it. It reads from latest-offset: the counts are a live rate, and a
+#     restart must not replay history into the current windows. Rows without a
+#     from_agent or to_agent are not counted.
+#   * dtm-decision-latency is a regular inner join of
+#     agent.decisions_human_readable to agent.tasks_human_readable, which is
+#     append-only for two append-only inputs. Join state expires after 1 h
+#     (table.exec.state.ttl). It joins on device_id and device_seq, and keeps
+#     only the tasks the router sent (from_agent dtm-a2a-task-router): the
+#     router's request starts a device's leg, and its envelope carries the
+#     event's device_seq. correlation_id alone would be wrong, because one
+#     correlation id spans every request and decision in a conversation, so a
+#     decision would join to each task that shares it and the latency would be
+#     measured from the wrong start.
+#   * latency_ms is the decision's envelope.event_time minus the task's, in
+#     epoch millis. Every artifact that matches a router task is written, so
+#     consumers filter on artifact_name. The key is the device_id.
+#
 # SQL targets Flink 1.19 (cp-flink-sql:1.19-cp10).
 
 apiVersion: platform.confluent.io/v1beta1
@@ -998,6 +1029,89 @@ spec:
     /*+ OPTIONS('properties.group.id' = 'dtm-view-cards', 'scan.startup.mode' = 'earliest-offset') */
     )
     )
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-agent-pair-counts
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.pair_counts`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `window_start`, `window_end`, `from_agent`, `to_agent`, `message_count`)
+    SELECT `key`, `ws`, `we`, `from_agent`, `to_agent`, `message_count`
+    FROM (
+    WITH `tasks` AS (
+    SELECT `from_agent`, `to_agent`, `proc_time`
+    FROM `agent.tasks_human_readable`
+    /*+ OPTIONS('properties.group.id' = 'dtm-agent-pair-counts', 'scan.startup.mode' = 'latest-offset') */
+    WHERE `from_agent` IS NOT NULL AND `to_agent` IS NOT NULL
+    )
+    SELECT
+    CAST(CONCAT(`from_agent`, '|', `to_agent`) AS BYTES) AS `key`,
+    CAST(`window_start` AS TIMESTAMP_LTZ(3)) AS `ws`,
+    CAST(`window_end` AS TIMESTAMP_LTZ(3)) AS `we`,
+    `from_agent`, `to_agent`, COUNT(*) AS `message_count`
+    FROM TABLE(HOP(TABLE `tasks`, DESCRIPTOR(`proc_time`), INTERVAL '5' SECOND, INTERVAL '1' MINUTE))
+    GROUP BY `window_start`, `window_end`, `from_agent`, `to_agent`
+    ) AS `c`
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: dtm-decision-latency
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  flinkEnvironment: dtm-env
+  computePoolName: dtm-shared-pool
+  properties:
+    sql.current-catalog: dtm-catalog
+    sql.current-database: dtm-database
+  flinkConfiguration:
+    table.exec.state.ttl: "1 h"
+    table.exec.sink.not-null-enforcer: "DROP"
+  statement: >-
+    INSERT INTO `agent.decision_latency`
+    /*+ OPTIONS('kafka.producer.transaction.timeout.ms' = '900000') */
+    (`key`, `device_id`, `customer_id`, `correlation_id`, `device_seq`, `agent`, `task_id`, `artifact_name`, `outcome`, `policy_action`, `rationale`, `event_time`, `decision_time`, `latency_ms`)
+    SELECT
+    CAST(d.`envelope`.`device_id` AS BYTES),
+    d.`envelope`.`device_id`, d.`envelope`.`customer_id`, d.`envelope`.`correlation_id`, d.`envelope`.`device_seq`,
+    d.`agent`, d.`task_id`, d.`artifact_name`, d.`outcome`, d.`policy_action`, d.`rationale`,
+    t.`envelope`.`event_time`,
+    d.`envelope`.`event_time`,
+    CAST(TIMESTAMPDIFF(MINUTE, TO_TIMESTAMP_LTZ(0, 3), d.`envelope`.`event_time`) AS BIGINT) * 60000
+    + EXTRACT(SECOND FROM d.`envelope`.`event_time`) * 1000 + EXTRACT(MILLISECOND FROM d.`envelope`.`event_time`)
+    - (CAST(TIMESTAMPDIFF(MINUTE, TO_TIMESTAMP_LTZ(0, 3), t.`envelope`.`event_time`) AS BIGINT) * 60000
+    + EXTRACT(SECOND FROM t.`envelope`.`event_time`) * 1000 + EXTRACT(MILLISECOND FROM t.`envelope`.`event_time`))
+    FROM `agent.decisions_human_readable`
+    /*+ OPTIONS('properties.group.id' = 'dtm-decision-latency', 'scan.startup.mode' = 'earliest-offset') */ d
+    JOIN `agent.tasks_human_readable`
+    /*+ OPTIONS('properties.group.id' = 'dtm-decision-latency', 'scan.startup.mode' = 'earliest-offset') */ t
+    ON d.`envelope`.`device_id` = t.`envelope`.`device_id` AND d.`envelope`.`device_seq` = t.`envelope`.`device_seq`
+    WHERE t.`from_agent` = 'dtm-a2a-task-router'
   parallelism: 1
   stopped: false
   cmfRestClassRef:

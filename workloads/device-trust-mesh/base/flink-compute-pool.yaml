@@ -10,8 +10,8 @@
 # statement on the pool is PENDING, RUNNING, STOPPED or FAILING; stop or
 # delete the statements first, or add a new pool.
 #
-# Sizing: one 8-slot TaskManager covers the eight Phase 1 statements at
-# parallelism 1.
+# Sizing: one 12-slot TaskManager covers the ten long-running statements at
+# parallelism 1, with two slots spare.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
 metadata:
@@ -27,7 +27,7 @@ spec:
     flinkVersion: v1_19
     image: confluentinc/cp-flink-sql:1.19-cp10
     flinkConfiguration:
-      taskmanager.numberOfTaskSlots: "8"
+      taskmanager.numberOfTaskSlots: "12"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
       metrics.reporter.prom.port: "9249-9250"
       pipeline.operator-chaining.enabled: "false"
@@ -66,8 +66,8 @@ spec:
                     key: secret-key
     taskManager:
       resource:
-        cpu: 2.0
-        memory: "3072m"
+        cpu: 3.0
+        memory: "4608m"
     jobManager:
       resource:
         cpu: 1
