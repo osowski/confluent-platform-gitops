@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: ui
-          image: quay.io/osowski/device-trust-mesh-ui:v1.1.0-202611030343
+          image: quay.io/osowski/device-trust-mesh-ui:v1.1.0-202611030503
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
