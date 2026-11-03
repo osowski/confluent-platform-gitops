@@ -544,6 +544,27 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
 
 The full Phase 1 acceptance run is [#453](https://github.com/osowski/confluent-platform-gitops/issues/453).
 
+### Resetting for a Fresh Session
+
+Before a session, empty everything an audience can see (devices, the traffic feed, busiest pairs and latencies) while keeping the topics, schemas, Agent Cards, the `dtm-ddl-*` statements and the agents:
+
+```bash
+./workloads/device-trust-mesh/reset-session.sh --dry-run   # show the plan
+./workloads/device-trust-mesh/reset-session.sh             # type 'reset' to confirm, or pass --yes
+```
+
+The script only runs against the `kind-flink-demo` kube context; set `DTM_RESET_CONTEXT` to use another.
+
+**What it does, in order:**
+1. Scales the simulator to 0.
+2. Deletes the long-running statements.
+3. Purges every session topic in place with `kafka-delete-records`. The compacted `device.context` and `customer.context` topics switch to `compact,delete` for the purge, because Kafka refuses to delete records from a compaction-only topic.
+4. Restarts the Ray pods so context-mcp reloads empty tables, then purges again to catch in-flight agent writes.
+5. Runs the manual `device-trust-mesh` sync. This recreates the statements and returns the topic policies to what git declares.
+6. Restarts the UI.
+
+The statements restart against empty topics, so there is no backlog to re-read. A run takes a few minutes, most of it waiting for CMF and Ray. It ends by checking that context-mcp lists no devices and that the UI reports nothing stale. The simulator stays at 0, so start the session with `kubectl -n device-trust-mesh scale deploy device-simulator --replicas=1`.
+
 ---
 
 ## UI
