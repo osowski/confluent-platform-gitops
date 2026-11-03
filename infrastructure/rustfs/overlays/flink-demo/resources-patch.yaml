@@ -1,0 +1,18 @@
+---
+# Flink checkpoints and savepoints write to RustFS in bursts. A higher CPU
+# limit keeps those bursts from throttling it past its liveness probe.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rustfs
+  namespace: storage
+spec:
+  template:
+    spec:
+      containers:
+      - name: rustfs
+        resources:
+          requests:
+            cpu: 200m
+          limits:
+            cpu: "2"

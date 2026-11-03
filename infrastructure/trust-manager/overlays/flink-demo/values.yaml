@@ -1,2 +1,7 @@
 # Overlay configuration for trust-manager on flink-demo cluster
-# No specific overrides needed for this cluster
+
+# The kind nodes share one Docker VM's CPUs. A CPU request keeps trust-manager's
+# share of CPU time when workloads saturate the VM.
+resources:
+  requests:
+    cpu: 25m
