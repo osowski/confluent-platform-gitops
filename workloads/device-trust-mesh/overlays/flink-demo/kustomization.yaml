@@ -12,6 +12,8 @@ resources:
 # kuberay-operator Application to be applied first.
 components:
   - ../../components/mesh-runtime
+  # Live mesh UI. Reads context-mcp, so it requires mesh-runtime.
+  - ../../components/ui
 
 # Cluster-specific labels
 labels:

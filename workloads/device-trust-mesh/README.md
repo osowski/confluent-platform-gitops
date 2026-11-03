@@ -69,6 +69,7 @@ The split follows Google's [Way Back Home Level 5 codelab](https://codelabs.deve
 | Flink statements | `FlinkStatement` CRs on `dtm-shared-pool` | Context, risk signals, the A2A task router, human-readable views. |
 | `context-mcp` | Ray Serve deployment | Materializer + FastMCP context tools. Scale reads by adding replicas. |
 | Agents | Ray Serve deployments | Risk, Enrolment, Step-up, Compliance, Revocation (disabled). |
+| Mesh UI | `Deployment` `device-trust-mesh-ui` | Live board served at `https://device-trust-mesh.flink-demo.confluentdemo.local`. Reads the human-readable and aggregate topics and polls `context-mcp`; see [UI](#ui). |
 | KubeRay operator | [`kuberay-operator`](../kuberay-operator/) Application (wave 117, opt-in) | Provides `ray.io/RayService`. |
 | LLM | Native macOS Ollama (default) or in-cluster Ollama | Same pattern as [Flink Agents](../flink-agents/README.md). |
 
@@ -545,6 +546,27 @@ The full Phase 1 acceptance run is [#453](https://github.com/osowski/confluent-p
 
 ---
 
+## UI
+
+A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add the host to `/etc/hosts` with `./scripts/generate-hosts-entries.sh flink-demo`). The `ui` component deploys the `device-trust-mesh-ui` Deployment and Service, and the Certificate and IngressRoute live in [`workloads/ingresses/overlays/flink-demo`](../ingresses/overlays/flink-demo/). It requires the `mesh-runtime` component, because the device table comes from `context-mcp`. The service source is in [osowski/flink-sandbox `device-trust-mesh/dtm/ui`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh/dtm/ui).
+
+| Pane | Shows | Source |
+|---|---|---|
+| **Devices · live** | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decisions_human_readable`, `agent.decision_latency` |
+| **Agent traffic** | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. | `agent.tasks_human_readable`, `agent.task-status_human_readable` |
+| **Busiest agent pairs** | Messages per 60 s window for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
+
+Two latencies are shown for each device:
+
+| Latency | Measures |
+|---|---|
+| **Event to decision** | Time from the device event to the `enrolment-decision` artifact, from `dtm-decision-latency`. |
+| **Freshness** | How long `context-mcp` took to reflect the change in the context table, measured at a 500 ms poll interval. |
+
+The UI reads every topic with `read_committed`, and Flink Kafka sinks commit on checkpoint. `dtm-shared-pool` checkpoints every 10 s, so each Flink hop makes its output visible in batches about 10 s apart, and a decision shows up on the board within about 10-15 s. The UI adds no delay of its own. The browser never polls: the service pushes each change over Server-Sent Events, which Traefik streams without a buffering middleware.
+
+---
+
 ## Replay Design
 
 Replaying one agent from a chosen point in the stream is a later phase ([#454](https://github.com/osowski/confluent-platform-gitops/issues/454)). The architecture already supports it:
@@ -564,7 +586,6 @@ Replaying one agent from a chosen point in the stream is a later phase ([#454](h
 
 ## Later Phases
 
-- **UI layer:** agent traffic and device status via lightning-style queries against `context-mcp` ([#455](https://github.com/osowski/confluent-platform-gitops/issues/455)).
 - **External A2A gateway:** an HTTP/JSON-RPC A2A endpoint mapping external `SendMessage` calls onto `agent.tasks.*` ([#456](https://github.com/osowski/confluent-platform-gitops/issues/456)).
 - **Mesh expansion:** route compromised trusted devices to the Revocation agent ([#457](https://github.com/osowski/confluent-platform-gitops/issues/457)).
 

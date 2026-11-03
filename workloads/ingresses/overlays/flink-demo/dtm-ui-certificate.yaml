@@ -1,0 +1,22 @@
+---
+# TLS certificate for the Device Trust Mesh UI IngressRoute.
+# flink-demo only: other clusters use different TLS models.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dtm-ui-tls
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "110"
+spec:
+  commonName: device-trust-mesh.flink-demo.confluentdemo.local
+  dnsNames:
+    - device-trust-mesh.flink-demo.confluentdemo.local
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: dtm-ui-tls
+  usages:
+    - digital signature
+    - key encipherment
