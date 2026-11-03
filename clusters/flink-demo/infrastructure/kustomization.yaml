@@ -16,8 +16,10 @@ resources:
 - headlamp.yaml
 - registry.yaml
 - registry-hosts.yaml
-- vault.yaml
-- vault-config.yaml
+# Vault is disabled by default on flink-demo; uncomment to enable it, along with
+# its IngressRoute and Certificate in infrastructure/ingresses/overlays/flink-demo.
+# - vault.yaml
+# - vault-config.yaml
 
 # Infrastructure applications are deployed in sync wave order (10-85)
 # Remove any applications you don't need for your cluster
