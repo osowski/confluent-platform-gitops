@@ -33,35 +33,27 @@ The split follows Google's [Way Back Home Level 5 codelab](https://codelabs.deve
 
 ## Architecture
 
-```
-                 ┌──────────────────────────── Kafka (CFK, flink-demo) ─────────────────────────────┐
-                 │  BUSINESS-DATA PLANE                         AGENT PLANE (A2A v1.0 over Kafka)   │
- Device sim ──►  │  device.events ──► Flink SQL ──► device.context   (compact)                      │
-   ▲             │                     │            customer.context (compact)                      │
-   │             │                     │            device.risk-signals                             │
-   │             │                     └──────────────────────────────► agent.tasks.risk (SendMessage)│
-   │             │                                                     agent.tasks.enrolment         │
-   │             │                                                     agent.tasks.step-up           │
-   │             │                                                     agent.tasks.revocation        │
-   │             │                                                     agent.task-events (reply)     │
-   │             │                                                     agent.cards (compact)         │
-   │             │                                                     agent.llm-interactions        │
-   │             │  device.policy-commands ◄── agents (produce only)                                  │
-   │             │  audit.log             ◄── compliance (produce only)                               │
-   │             │  *_human_readable      ◄── Flink views over agent plane (Avro, for C3 + SQL)       │
-   │             └───────────────────────────────────────────────────────────────────────────────────┘
-   │                       │ context topics                         ▲ │  agent plane (Kafka clients)
-   │        ┌──────────────▼──────── RayService: device-trust-mesh ─┼─▼──────────────────────────┐
-   │        │ context-mcp (N replicas)                    agents (A2A servers + clients)        │
-   │        │   materializer → in-memory table  ◄─ MCP ──  risk · enrolment · step-up ·          │
-   │        │   FastMCP context tools                      compliance · revocation (disabled)    │
-   │        └───────────────────────────────────────────────────────────────────────────────────┘
-   └──────── device.policy-commands  (Flink also folds them back into device.context)
+Three views of the same mesh. The diagrams live in [`diagrams/`](diagrams/) as `.drawio.svg` files, which open for editing in draw.io (desktop, the VS Code extension, or [app.diagrams.net](https://app.diagrams.net)).
 
- Hand-off: Agent A ──produce A2A SendMessage──► agent.tasks.<B> ──consume (B's group)──► Agent B
-           Agent B ──produce Task / status / artifact events──► agent.task-events ──► requester, Compliance, Flink views
- Business data: Agent ──MCP tool call──► context-mcp   (agents never consume business topics)
-```
+### Complete Architecture
+
+Every component, topic and Flink statement, and how the business-data plane, the agent plane and the derived views connect.
+
+![Complete architecture](diagrams/complete-architecture.drawio.svg)
+
+### A2A Plumbing
+
+The A2A v1.0 binding on its own, with no device-trust specifics. Any agent pair uses the same request topic, reply topic, discovery and validation. See [A2A over Kafka](#a2a-over-kafka).
+
+![A2A plumbing over Kafka](diagrams/a2a-plumbing.drawio.svg)
+
+### Device Trust Application
+
+The use case: the specific agents, their hand-offs, their LLM calls and the policy commands they send back to devices. See [Agents](#agents).
+
+![Device trust application](diagrams/device-trust-application.drawio.svg)
+
+### Components
 
 | Component | Runtime | Notes |
 |---|---|---|
@@ -604,8 +596,6 @@ To query it the way the agents do, point an MCP client at `http://localhost:8000
 
 A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add the host to `/etc/hosts` with `./scripts/generate-hosts-entries.sh flink-demo`). The `ui` component deploys the `device-trust-mesh-ui` Deployment and Service, and the Certificate and IngressRoute live in [`workloads/ingresses/overlays/flink-demo`](../ingresses/overlays/flink-demo/). It requires the `mesh-runtime` component, because the device table comes from `context-mcp`. The service source is in [osowski/flink-sandbox `device-trust-mesh/dtm/ui`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh/dtm/ui).
 
-| Pane | Shows | Source |
-|---|---|---|
 The page has four panes, left column over right:
 
 | Pane | Shows | Source |

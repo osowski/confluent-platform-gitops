@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Device Trust Mesh architecture diagrams** ([#488](https://github.com/osowski/confluent-platform-gitops/issues/488)): the README's ASCII diagram becomes three editable draw.io views: the complete architecture, the A2A plumbing over Kafka, and the device-trust agents and hand-offs.
 - **Device Trust Mesh session reset** ([#482](https://github.com/osowski/confluent-platform-gitops/issues/482)): `workloads/device-trust-mesh/reset-session.sh` empties every UI pane before a demo session and keeps topics, schemas, Agent Cards and the agents.
 - **Device Trust Mesh UI on `flink-demo`** ([#474](https://github.com/osowski/confluent-platform-gitops/issues/474)): a live board of device trust status, agent traffic and the busiest agent pairs at `https://device-trust-mesh.flink-demo.confluentdemo.local`.
 - **Device Trust Mesh UI outputs in Flink** ([#473](https://github.com/osowski/confluent-platform-gitops/issues/473)): `dtm-agent-pair-counts` and `dtm-decision-latency` write `agent.pair_counts` and `agent.decision_latency` for the mesh UI.
