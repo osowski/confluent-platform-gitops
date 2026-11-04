@@ -33,7 +33,7 @@ The split follows Google's [Way Back Home Level 5 codelab](https://codelabs.deve
 
 ## Architecture
 
-Three views of the same mesh. The diagrams live in [`diagrams/`](diagrams/) as `.drawio.svg` files, which open for editing in draw.io (desktop, the VS Code extension, or [app.diagrams.net](https://app.diagrams.net)).
+One diagram, three views: the complete architecture, then the same picture with everything but the A2A plumbing or the device-trust application grayed out. The diagrams live in [`diagrams/`](diagrams/) as `.drawio.svg` files, which open for editing in draw.io (desktop, the VS Code extension, or [app.diagrams.net](https://app.diagrams.net)).
 
 ### Complete Architecture
 
@@ -43,15 +43,15 @@ Every component, topic and Flink statement, and how the business-data plane, the
 
 ### A2A Plumbing
 
-The A2A v1.0 binding on its own, with no device-trust specifics. Any agent pair uses the same request topic, reply topic, discovery and validation. See [A2A over Kafka](#a2a-over-kafka).
+The use-case-neutral A2A v1.0 binding: the agent-plane topics and the agents' Kafka clients. Any agent pair uses the same request topic, reply topic and Agent Card discovery. See [A2A over Kafka](#a2a-over-kafka).
 
-![A2A plumbing over Kafka](diagrams/a2a-plumbing.drawio.svg)
+![A2A plumbing over Kafka](diagrams/a2a-plumbing-highlight.drawio.svg)
 
 ### Device Trust Application
 
-The use case: the specific agents, their hand-offs, their LLM calls and the policy commands they send back to devices. See [Agents](#agents).
+The use case: the simulator, the business-data topics, the context and risk statements, the task router, `context-mcp`, the agents, the LLM and the UI. See [Agents](#agents).
 
-![Device trust application](diagrams/device-trust-application.drawio.svg)
+![Device trust application](diagrams/device-trust-application-highlight.drawio.svg)
 
 ### Components
 
