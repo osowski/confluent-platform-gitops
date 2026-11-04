@@ -179,7 +179,7 @@
 # Device Trust Mesh UI reads:
 #
 #   * dtm-agent-pair-counts counts agent-to-agent requests per (from_agent,
-#     to_agent) in 1-minute windows that slide every 5 seconds, keyed by
+#     to_agent) in 5-minute windows that slide every 5 seconds, keyed by
 #     from_agent|to_agent. It windows with the HOP table function over a CTE
 #     that keeps the source hint on a plain table reference. The CTE sits in
 #     a derived table, because an INSERT body must be a plain SELECT. The

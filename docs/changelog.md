@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentic Device Trust Mesh scaffolding on `flink-demo`** ([#441](https://github.com/osowski/confluent-platform-gitops/issues/441)): opt-in `kuberay-operator` and `device-trust-mesh` Applications (topics, shared Flink compute pool, runtime config). Agents land in follow-up stories; see the [use-case README](../workloads/device-trust-mesh/README.md).
 
 ### Changed
+- **Device Trust Mesh UI explains itself** ([#485](https://github.com/osowski/confluent-platform-gitops/issues/485)): the UI (`v1.2.0-202611031905`) adds agent speech bubbles tied to device rows, a message viewer and a "What am I looking at?" explainer.
+  The README documents inspecting the mesh through the Ray dashboard and `context-mcp` directly.
 - **Device Trust Mesh busiest pairs averaged over 5 minutes** ([#481](https://github.com/osowski/confluent-platform-gitops/issues/481)): `dtm-agent-pair-counts` counts over a 5-minute window and the UI (`v1.1.0-202611030503`) shows msgs / 60 s averaged over it, so the ranking is less spiky.
 - **Vault and Kafka Connect disabled by default on `flink-demo`** ([#478](https://github.com/osowski/confluent-platform-gitops/issues/478)): frees CPU and memory on the kind VM; uncomment them in the cluster's kustomizations to re-enable.
 - **`flink-demo` infra keeps CPU at peak** ([#476](https://github.com/osowski/confluent-platform-gitops/issues/476)): cert-manager, trust-manager and Traefik get CPU requests, and the RustFS CPU limit rises to 2, so they no longer crash-loop when workloads saturate the kind VM.

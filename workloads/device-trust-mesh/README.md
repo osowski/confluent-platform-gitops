@@ -537,7 +537,7 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    ```
 6. **Watch the mesh:**
    - Control Center topic browser: `agent.tasks.*`, `agent.task-events`, `*_human_readable`
-   - The Ray dashboard
+   - The Ray dashboard and `context-mcp` (see [Inspecting the Mesh](#inspecting-the-mesh))
    - The ad-hoc queries above
 
    Scale `device-simulator` to 1 to start a run.
@@ -565,6 +565,39 @@ The script only runs against the `kind-flink-demo` kube context; set `DTM_RESET_
 
 The statements restart against empty topics, so there is no backlog to re-read. A run takes a few minutes, most of it waiting for CMF and Ray. It ends by checking that context-mcp lists no devices and that the UI reports nothing stale. The simulator stays at 0, so start the session with `kubectl -n device-trust-mesh scale deploy device-simulator --replicas=1`.
 
+### Inspecting the Mesh
+
+**Ray dashboard.** The KubeRay operator has no UI of its own; it only reconciles the `RayService` and `RayCluster` resources. The Ray dashboard runs on the Ray head node:
+
+```bash
+kubectl -n device-trust-mesh port-forward svc/device-trust-mesh-head-svc 8265:8265
+```
+
+At `http://localhost:8265`:
+
+| Tab | Shows |
+|---|---|
+| **Serve** | The six applications (`context-mcp` and the five agents), each with its deployments, replica count, health and per-replica logs |
+| **Cluster** | The head and worker nodes, with CPU and memory use |
+| **Actors** / **Logs** | Every Serve replica's process, and stdout/stderr per node |
+
+Without the dashboard, `kubectl -n device-trust-mesh get rayservice device-trust-mesh -o yaml` shows each Serve application's status under `.status`.
+
+**`context-mcp` directly.** The context engine serves a REST mirror of its MCP tools, and requests from localhost are allowed:
+
+```bash
+kubectl -n device-trust-mesh port-forward svc/device-trust-mesh-serve-svc 8000:8000
+
+curl -s localhost:8000/context-mcp/v1/devices | jq                       # every device (filters: ?customer_id=&trust_status=)
+curl -s localhost:8000/context-mcp/v1/devices/<device_id> | jq           # one device's context + as_of
+curl -s "localhost:8000/context-mcp/v1/devices/<device_id>?min_seq=N"    # waits up to 2 s for that context sequence
+curl -s localhost:8000/context-mcp/v1/customers/<customer_id> | jq       # customer context incl. device list
+curl -s "localhost:8000/context-mcp/v1/devices/<device_id>/signals?limit=10" | jq
+curl -s localhost:8000/context-mcp/healthz                               # 503 until the materializer has caught up
+```
+
+To query it the way the agents do, point an MCP client at `http://localhost:8000/context-mcp/mcp` (streamable HTTP) through the same port-forward. For example, `npx @modelcontextprotocol/inspector` opens a browser UI that lists and calls the four tools: `get_device_context`, `get_customer_context`, `list_risk_signals` and `list_devices`.
+
 ---
 
 ## UI
@@ -573,9 +606,16 @@ A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add 
 
 | Pane | Shows | Source |
 |---|---|---|
-| **Devices · live** | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decision_latency` |
-| **Agent traffic** | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. | `agent.tasks_human_readable`, `agent.task-status_human_readable`, `agent.decisions_human_readable` |
-| **Busiest agent pairs** | Messages per 60 s, averaged over the last 5 minutes, for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
+The page has four panes, left column over right:
+
+| Pane | Shows | Source |
+|---|---|---|
+| **Devices · live** (top left) | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decision_latency` |
+| **Busiest agent pairs** (bottom left) | Messages per 60 s, averaged over the last 5 minutes, for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
+| **Agent traffic** (top right) | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. Compliance replies read `compliance → audit log`. | `agent.tasks_human_readable`, `agent.task-status_human_readable`, `agent.decisions_human_readable` |
+| **Agent activity** (bottom right) | One card per agent with a speech bubble for its latest outgoing message: who it went to, the customer, the device and the action, tinted by policy action and held for at least 4 s. Hovering a bubble highlights that device's row. | `agent.tasks_human_readable`, `agent.decisions_human_readable` |
+
+Clicking a bubble or a feed row opens the **message viewer**, which shows that message's human-readable row as sent over Kafka. The UI holds the most recent 500. **What am I looking at?** in the header opens an explainer for presenting the use case: the executive summary, the agents and their Kafka hand-offs, and the complete architecture.
 
 Two latencies are shown for each device:
 
