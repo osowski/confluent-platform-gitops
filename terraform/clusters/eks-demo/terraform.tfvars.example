@@ -9,7 +9,9 @@ vpc_cidr           = "10.0.0.0/16"
 node_instance_type = "t3.2xlarge"
 node_desired_size  = 4
 node_min_size      = 4
-node_max_size      = 6
+node_max_size      = 10
+# The device-trust-mesh demo on eks-demo requires the GPU node group (Ollama)
+gpu_node_group_enabled = true
 cflt_keep_until       = "YYYY-MM-DD"
 infra_binaries_bucket = "confluent-platform-gitops-tfstate"
 proxy_version         = "0.9.6"

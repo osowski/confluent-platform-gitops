@@ -1,3 +1,43 @@
+locals {
+  # GPU node group (Ollama). The NVIDIA AMI ships the driver; the taint keeps
+  # non-GPU pods off the node and the label lets GPU workloads select it.
+  # Pinned to one node — the cluster autoscaler never scales it.
+  gpu_node_group = {
+    gpu = {
+      instance_types = [var.gpu_node_instance_type]
+      min_size       = 1
+      max_size       = 1
+      desired_size   = 1
+
+      ami_type = "AL2023_x86_64_NVIDIA"
+
+      labels = {
+        accelerator = "nvidia"
+      }
+
+      taints = {
+        gpu = {
+          key    = "nvidia.com/gpu"
+          value  = "present"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 100
+            volume_type           = "gp3"
+            delete_on_termination = true
+            encrypted             = true
+          }
+        }
+      }
+    }
+  }
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
@@ -42,29 +82,34 @@ module "eks" {
   # Grant the Terraform caller cluster-admin via access entry so post-apply kubectl works
   enable_cluster_creator_admin_permissions = true
 
-  eks_managed_node_groups = {
-    workers-v2 = {
-      instance_types = [var.node_instance_type]
-      min_size       = var.node_min_size
-      max_size       = var.node_max_size
-      desired_size   = var.node_desired_size
+  # The cluster autoscaler scales workers-v2 between node_min_size and node_max_size.
+  # EKS tags each managed node group's ASG for autoscaler auto-discovery.
+  eks_managed_node_groups = merge(
+    {
+      workers-v2 = {
+        instance_types = [var.node_instance_type]
+        min_size       = var.node_min_size
+        max_size       = var.node_max_size
+        desired_size   = var.node_desired_size
 
-      ami_type = "AL2023_x86_64_STANDARD"
+        ami_type = "AL2023_x86_64_STANDARD"
 
-      # 20 GiB default fills rapidly under Confluent Platform image pulls + ephemeral storage.
-      block_device_mappings = {
-        xvda = {
-          device_name = "/dev/xvda"
-          ebs = {
-            volume_size           = 100
-            volume_type           = "gp3"
-            delete_on_termination = true
-            encrypted             = true
+        # 20 GiB default fills rapidly under Confluent Platform image pulls + ephemeral storage.
+        block_device_mappings = {
+          xvda = {
+            device_name = "/dev/xvda"
+            ebs = {
+              volume_size           = 100
+              volume_type           = "gp3"
+              delete_on_termination = true
+              encrypted             = true
+            }
           }
         }
       }
-    }
-  }
+    },
+    { for name, group in local.gpu_node_group : name => group if var.gpu_node_group_enabled }
+  )
 
   tags = var.common_tags
 }

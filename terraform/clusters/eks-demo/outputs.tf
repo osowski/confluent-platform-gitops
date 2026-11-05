@@ -67,3 +67,8 @@ output "aws_lb_controller_role_arn" {
   description = "IRSA role ARN for the AWS Load Balancer Controller"
   value       = module.eks_cluster.aws_lb_controller_role_arn
 }
+
+output "cluster_autoscaler_role_arn" {
+  description = "IRSA role ARN for the Cluster Autoscaler"
+  value       = module.eks_cluster.cluster_autoscaler_role_arn
+}

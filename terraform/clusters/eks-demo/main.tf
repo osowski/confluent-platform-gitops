@@ -38,18 +38,20 @@ provider "aws" {
 module "eks_cluster" {
   source = "../../modules/eks-cluster"
 
-  aws_region            = var.aws_region
-  cluster_name          = var.cluster_name
-  kubernetes_version    = var.kubernetes_version
-  platform_zone_id      = var.platform_zone_id
-  platform_domain       = var.platform_domain
-  vpc_cidr              = var.vpc_cidr
-  nat_gateway_az        = var.nat_gateway_az
-  node_instance_type    = var.node_instance_type
-  node_desired_size     = var.node_desired_size
-  node_min_size         = var.node_min_size
-  node_max_size         = var.node_max_size
-  common_tags           = var.common_tags
-  infra_binaries_bucket = var.infra_binaries_bucket
-  proxy_version         = var.proxy_version
+  aws_region             = var.aws_region
+  cluster_name           = var.cluster_name
+  kubernetes_version     = var.kubernetes_version
+  platform_zone_id       = var.platform_zone_id
+  platform_domain        = var.platform_domain
+  vpc_cidr               = var.vpc_cidr
+  nat_gateway_az         = var.nat_gateway_az
+  node_instance_type     = var.node_instance_type
+  node_desired_size      = var.node_desired_size
+  node_min_size          = var.node_min_size
+  node_max_size          = var.node_max_size
+  gpu_node_group_enabled = var.gpu_node_group_enabled
+  gpu_node_instance_type = var.gpu_node_instance_type
+  common_tags            = var.common_tags
+  infra_binaries_bucket  = var.infra_binaries_bucket
+  proxy_version          = var.proxy_version
 }

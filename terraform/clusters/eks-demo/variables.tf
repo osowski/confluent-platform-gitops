@@ -58,9 +58,21 @@ variable "node_min_size" {
 }
 
 variable "node_max_size" {
-  description = "Maximum number of worker nodes"
+  description = "Maximum number of worker nodes — the ceiling the cluster autoscaler scales the workers-v2 node group to"
   type        = number
-  default     = 6
+  default     = 10
+}
+
+variable "gpu_node_group_enabled" {
+  description = "Create a single-node GPU managed node group (label accelerator=nvidia, taint nvidia.com/gpu=present:NoSchedule). Required by the device-trust-mesh demo for Ollama."
+  type        = bool
+  default     = false
+}
+
+variable "gpu_node_instance_type" {
+  description = "EC2 instance type for the GPU node group — only used when gpu_node_group_enabled is true"
+  type        = string
+  default     = "g4dn.xlarge"
 }
 
 variable "common_tags" {

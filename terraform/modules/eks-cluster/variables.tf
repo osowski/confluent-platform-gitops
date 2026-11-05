@@ -54,6 +54,18 @@ variable "node_max_size" {
   type        = number
 }
 
+variable "gpu_node_group_enabled" {
+  description = "Create a single-node GPU managed node group (label accelerator=nvidia, taint nvidia.com/gpu=present:NoSchedule) for GPU workloads such as Ollama"
+  type        = bool
+  default     = false
+}
+
+variable "gpu_node_instance_type" {
+  description = "EC2 instance type for the GPU node group — only used when gpu_node_group_enabled is true"
+  type        = string
+  default     = "g4dn.xlarge"
+}
+
 variable "common_tags" {
   description = "Tags applied to all resources — provider default_tags adds cflt_keep_until on top of these"
   type        = map(string)
