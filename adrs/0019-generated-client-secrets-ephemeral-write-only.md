@@ -1,4 +1,4 @@
-# 17. Generated Client Secrets Use Ephemeral Resources and Write-Only Arguments
+# 19. Generated Client Secrets Use Ephemeral Resources and Write-Only Arguments
 
 Date: 2026-11-05
 

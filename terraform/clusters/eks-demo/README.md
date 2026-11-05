@@ -97,7 +97,7 @@ aws ec2 describe-instance-type-offerings --location-type availability-zone --fil
 
 ## Device Trust Mesh Secrets
 
-The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0017](../../../adrs/0017-generated-client-secrets-ephemeral-write-only.md).
+The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0019](../../../adrs/0019-generated-client-secrets-ephemeral-write-only.md).
 
 ## Outputs
 
