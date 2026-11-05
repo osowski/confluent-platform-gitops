@@ -14,6 +14,26 @@ spec:
       limits:
         cpu: 500m
         memory: 1Gi
+    # Preferred, not required: a controller's EBS volume pins it to one AZ, and
+    # a node shortage there must not leave it Pending. The zone term spreads
+    # volumes across AZs when they are first bound.
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: kraftcontroller
+                  clusterId: kafka
+          - weight: 50
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchLabels:
+                  app: kraftcontroller
+                  clusterId: kafka
 
   listeners:
     controller:
