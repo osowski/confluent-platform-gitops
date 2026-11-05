@@ -5,6 +5,8 @@
 # Operator SecretStore (ServiceAccount device-trust-mesh/dtm-eso) reads them
 # through the IRSA role below. Keycloak's client definitions consume the same
 # values through External Secrets, so the secret never lives in Git.
+# Secret names carry the cluster name, so clusters sharing an account neither
+# collide nor read each other's secrets.
 # The ServiceAccount name must match the SecretStore overlay for
 # workloads/device-trust-mesh — changing it there without updating the trust
 # policy will silently break IRSA.
@@ -32,7 +34,7 @@ ephemeral "aws_secretsmanager_random_password" "dtm_client" {
 resource "aws_secretsmanager_secret" "dtm_client" {
   for_each = toset(local.dtm_clients)
 
-  name                    = "/device-trust-mesh/${each.key}"
+  name                    = "/device-trust-mesh/${var.cluster_name}/${each.key}"
   description             = "Keycloak OAuth client credentials for ${each.key} (device-trust-mesh)"
   recovery_window_in_days = 0
 }
@@ -51,7 +53,7 @@ resource "aws_secretsmanager_secret_version" "dtm_client" {
   secret_string_wo_version = 1
 }
 
-# ── External Secrets Operator (read-only on /device-trust-mesh/*) ─────────────
+# ── External Secrets Operator (read-only on this cluster's secrets) ───────────
 
 resource "aws_iam_role" "dtm_eso" {
   name        = "dtm-eso-${var.cluster_name}"
@@ -77,7 +79,7 @@ resource "aws_iam_role_policy" "dtm_eso" {
       {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-        Resource = ["arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:/device-trust-mesh/*"]
+        Resource = ["arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:/device-trust-mesh/${var.cluster_name}/*"]
       }
     ]
   })

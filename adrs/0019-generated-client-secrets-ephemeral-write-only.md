@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Issue [#493](https://github.com/osowski/confluent-platform-gitops/issues/493): the Device Trust Mesh workloads on `eks-demo` need four Keycloak OAuth client secrets (`/device-trust-mesh/sa-dtm-*`). Terraform generates them and stores them in Secrets Manager; External Secrets Operator reads them into the cluster, so the values never live in Git.
+Issue [#493](https://github.com/osowski/confluent-platform-gitops/issues/493): the Device Trust Mesh workloads on `eks-demo` need four Keycloak OAuth client secrets (`/device-trust-mesh/<cluster_name>/sa-dtm-*`). Terraform generates them and stores them in Secrets Manager; External Secrets Operator reads them into the cluster, so the values never live in Git.
 
 The obvious generator, the `aws_secretsmanager_random_password` data source, exposes each value as its `id` and `random_password` attributes. Both land in plan output, apply logs and Terraform state, which the S3 backend stores for every operator with access to the bucket.
 

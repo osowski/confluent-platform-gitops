@@ -57,7 +57,7 @@ After migration, the `terraform/eks-demo/` directory can be removed from the rep
 | GPU Node Group (optional) | `gpu`: one g4dn.xlarge, AL2023 NVIDIA AMI, 100 GiB gp3 root volume — created when `gpu_node_group_enabled = true` |
 | Bastion Host | t3.small, no public IP, SSM + 3proxy SOCKS5, no inbound SG rules |
 | IRSA Roles | EBS CSI driver, cert-manager, ExternalDNS, AWS Load Balancer Controller, Cluster Autoscaler, `dtm-eso` (External Secrets Operator, `device-trust-mesh/dtm-eso`) |
-| Secrets Manager | 4 Device Trust Mesh client secrets under `/device-trust-mesh/` (`sa-dtm-ray`, `sa-dtm-simulator`, `sa-dtm-ui`, `sa-dtm-flink`), `recovery_window_in_days = 0` |
+| Secrets Manager | 4 Device Trust Mesh client secrets under `/device-trust-mesh/<cluster_name>/` (`sa-dtm-ray`, `sa-dtm-simulator`, `sa-dtm-ui`, `sa-dtm-flink`), `recovery_window_in_days = 0` |
 
 ## Node Groups
 
@@ -97,7 +97,7 @@ aws ec2 describe-instance-type-offerings --location-type availability-zone --fil
 
 ## Device Trust Mesh Secrets
 
-The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0019](../../../adrs/0019-generated-client-secrets-ephemeral-write-only.md).
+The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/eks-demo/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0019](../../../adrs/0019-generated-client-secrets-ephemeral-write-only.md).
 
 ## Outputs
 
