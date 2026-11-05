@@ -72,3 +72,8 @@ output "cluster_autoscaler_role_arn" {
   description = "IRSA role ARN for the Cluster Autoscaler"
   value       = module.eks_cluster.cluster_autoscaler_role_arn
 }
+
+output "dtm_eso_role_arn" {
+  description = "IRSA role ARN for External Secrets Operator in the device-trust-mesh namespace"
+  value       = aws_iam_role.dtm_eso.arn
+}
