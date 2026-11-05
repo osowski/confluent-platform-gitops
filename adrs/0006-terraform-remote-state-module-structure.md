@@ -4,7 +4,7 @@ Date: 2026-04-22
 
 ## Status
 
-Accepted
+Accepted. State locking superseded by [ADR-0020](0020-terraform-s3-native-state-locking.md).
 
 ## Context
 

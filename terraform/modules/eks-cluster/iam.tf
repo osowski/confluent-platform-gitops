@@ -139,3 +139,66 @@ resource "aws_iam_role_policy_attachment" "aws_lb_controller" {
   role       = aws_iam_role.aws_lb_controller.name
   policy_arn = aws_iam_policy.aws_lb_controller.arn
 }
+
+# ── Cluster Autoscaler ────────────────────────────────────────────────────────
+# Policy follows the AWS-documented cluster-autoscaler permissions. Scale-in and
+# desired-capacity changes are limited to ASGs tagged
+# k8s.io/cluster-autoscaler/<cluster_name>=owned, which EKS applies to managed
+# node group ASGs.
+# sa_name must match the ServiceAccount name in the Helm values for the
+# cluster-autoscaler overlay — changing it there without updating this trust
+# policy will silently break IRSA.
+
+resource "aws_iam_role" "cluster_autoscaler" {
+  name        = "ClusterAutoscaler_${var.cluster_name}"
+  description = "IRSA role for the Cluster Autoscaler (kube-system/cluster-autoscaler)"
+
+  assume_role_policy = templatefile("${path.module}/trust-policy.tpl", {
+    oidc_provider_arn = local.oidc_provider_arn
+    oidc_provider     = local.oidc_provider
+    namespace         = "kube-system"
+    sa_name           = "cluster-autoscaler"
+  })
+
+  tags = var.common_tags
+}
+
+resource "aws_iam_role_policy" "cluster_autoscaler" {
+  name = "cluster-autoscaler"
+  role = aws_iam_role.cluster_autoscaler.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "eks:DescribeNodegroup"
+        ]
+        Resource = ["*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup"
+        ]
+        Resource = ["*"]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+          }
+        }
+      }
+    ]
+  })
+}

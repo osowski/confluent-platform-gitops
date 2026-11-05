@@ -33,7 +33,7 @@ brew install --cask session-manager-plugin
 You will also need:
 
 - `assume` configured for the Confluent Commercial AWS organization
-- Access to the `confluent-platform-gitops-tfstate` S3 bucket and `confluent-platform-gitops-tflock` DynamoDB table _(ask if you do not have it)_
+- Access to the `confluent-platform-gitops-tfstate` S3 bucket, which holds both the state and its lock files _(ask if you do not have it)_
 - This repository cloned locally, with your working directory at the repository root
 
 ---
@@ -76,11 +76,11 @@ Open `terraform/clusters/new-eks-cluster/main.tf` and change the `key` in the S3
 
 ```hcl
 backend "s3" {
-  bucket         = "confluent-platform-gitops-tfstate"
-  key            = "new-eks-cluster/terraform.tfstate"   # change from eks-demo
-  region         = "us-east-1"
-  encrypt        = true
-  dynamodb_table = "confluent-platform-gitops-tflock"
+  bucket       = "confluent-platform-gitops-tfstate"
+  key          = "new-eks-cluster/terraform.tfstate"   # change from eks-demo
+  region       = "us-east-1"
+  encrypt      = true
+  use_lockfile = true
 }
 ```
 

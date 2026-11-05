@@ -1,16 +1,17 @@
 # eks-demo
 
-Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster` with cluster-specific configuration. Terraform state is stored in S3 with DynamoDB state locking.
+Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster` with cluster-specific configuration. Terraform state is stored in S3 with S3 native state locking.
 
 ## Prerequisites
 
 - [dns-bootstrap](../../dns-bootstrap/) applied (provides `platform_zone_id` output)
-- S3 bucket and DynamoDB table provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
-- AWS credentials with EKS, EC2, VPC, IAM, and Route53 permissions
+- S3 state bucket provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
+- Terraform >= 1.11 (the Device Trust Mesh client secrets use ephemeral resources and write-only arguments)
+- AWS credentials with EKS, EC2, VPC, IAM, Route53, and Secrets Manager permissions (plan and apply call `secretsmanager:GetRandomPassword`)
 
 ## Remote State Bootstrap
 
-See [terraform/REMOTE_STATE.md](../../REMOTE_STATE.md) for the one-time S3 bucket and DynamoDB table setup. The bucket and table are shared across all Terraform roots — create them once, then use the same names in the `backend "s3"` block in `main.tf`.
+See [terraform/REMOTE_STATE.md](../../REMOTE_STATE.md) for the one-time S3 bucket setup. The bucket is shared across all Terraform roots — create it once, then use the same name in the `backend "s3"` block in `main.tf`.
 
 ## Usage
 
@@ -52,9 +53,51 @@ After migration, the `terraform/eks-demo/` directory can be removed from the rep
 | VPC Interface Endpoints | SSM, SSMMessages, EC2Messages, EC2, ECR API, ECR DKR, EKS, STS, CloudWatch Logs |
 | VPC Gateway Endpoint | S3 (ECR image layer pulls) |
 | EKS Control Plane | Kubernetes 1.32, private-only API endpoint |
-| Managed Node Group | `workers-v2`: t3.2xlarge, 4–6 nodes, AL2023, 100 GiB gp3 root volume |
+| Managed Node Group | `workers-v2`: t3.2xlarge, 4–10 nodes (autoscaled), AL2023, 100 GiB gp3 root volume |
+| GPU Node Group (optional) | `gpu`: one g4dn.xlarge, AL2023 NVIDIA AMI, 100 GiB gp3 root volume — created when `gpu_node_group_enabled = true` |
 | Bastion Host | t3.small, no public IP, SSM + 3proxy SOCKS5, no inbound SG rules |
-| IRSA Roles | EBS CSI driver, cert-manager, ExternalDNS, AWS Load Balancer Controller |
+| IRSA Roles | EBS CSI driver, cert-manager, ExternalDNS, AWS Load Balancer Controller, Cluster Autoscaler, `dtm-eso` (External Secrets Operator, `device-trust-mesh/dtm-eso`) |
+| Secrets Manager | 4 Device Trust Mesh client secrets under `/device-trust-mesh/<cluster_name>/` (`sa-dtm-ray`, `sa-dtm-simulator`, `sa-dtm-ui`, `sa-dtm-flink`), `recovery_window_in_days = 0` |
+
+## Node Groups
+
+`workers-v2` runs 4 nodes at minimum and scales to `node_max_size` (default 10). The scaling is performed by the cluster autoscaler, which assumes the `ClusterAutoscaler_<cluster_name>` IRSA role (`kube-system/cluster-autoscaler`). EKS tags the Auto Scaling group behind each managed node group with `k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/<cluster_name>=owned`, so the autoscaler auto-discovers the groups and the role's scale-in permissions are scoped to them.
+
+### GPU node group
+
+Set `gpu_node_group_enabled = true` to add a single GPU node for Ollama. **The device-trust-mesh demo on eks-demo requires it.**
+
+| Setting | Value |
+|---------|-------|
+| Instance type | `gpu_node_instance_type` (default `g4dn.xlarge`) |
+| AMI | `AL2023_x86_64_NVIDIA` |
+| Size | min = max = desired = 1 (never autoscaled) |
+| Label | `accelerator=nvidia` |
+| Taint | `nvidia.com/gpu=present:NoSchedule` |
+
+GPU workloads must tolerate the taint and select the label. The default is `false`, so clusters that do not run the demo get no GPU node.
+
+New AWS accounts often have no GPU capacity. Before enabling the group, confirm these EC2 service quotas in the cluster region:
+
+| Quota code | Quota | Needed |
+|------------|-------|--------|
+| `L-DB2E81BA` | Running On-Demand G and VT instances | at least 4 vCPU (one g4dn.xlarge) |
+| `L-1216C47A` | Running On-Demand Standard (A, C, D, H, I, M, R, T, Z) instances | at least 80 vCPU of headroom (10 x t3.2xlarge at the autoscaler ceiling) |
+
+```bash
+aws service-quotas get-service-quota --service-code ec2 --quota-code L-DB2E81BA --region us-east-1
+aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A --region us-east-1
+```
+
+The GPU group uses the cluster's private-subnet AZs, so confirm the instance type is offered in them:
+
+```bash
+aws ec2 describe-instance-type-offerings --location-type availability-zone --filters Name=instance-type,Values=g4dn.xlarge --region us-east-1
+```
+
+## Device Trust Mesh Secrets
+
+The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/eks-demo/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0019](../../../adrs/0019-generated-client-secrets-ephemeral-write-only.md).
 
 ## Outputs
 
@@ -67,6 +110,8 @@ After migration, the `terraform/eks-demo/` directory can be removed from the rep
 | `cert_manager_role_arn` | IRSA role ARN for cert-manager |
 | `external_dns_role_arn` | IRSA role ARN for ExternalDNS |
 | `aws_lb_controller_role_arn` | IRSA role ARN for AWS Load Balancer Controller |
+| `cluster_autoscaler_role_arn` | IRSA role ARN for the Cluster Autoscaler |
+| `dtm_eso_role_arn` | IRSA role ARN for External Secrets Operator in the `device-trust-mesh` namespace |
 
 ## Accessing the Cluster
 

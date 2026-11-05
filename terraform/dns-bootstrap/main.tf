@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5"
+  required_version = ">= 1.11, < 2.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -10,11 +10,11 @@ terraform {
   backend "s3" {
     # Run the bootstrap steps in the README to create these resources before
     # running terraform init for the first time.
-    bucket         = "confluent-platform-gitops-tfstate"
-    key            = "dns-bootstrap/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "confluent-platform-gitops-tflock"
+    bucket       = "confluent-platform-gitops-tfstate"
+    key          = "dns-bootstrap/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
