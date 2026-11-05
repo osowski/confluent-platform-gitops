@@ -10,6 +10,7 @@ patches:
   - path: ingressroute-patch.yaml
   - path: secret-patch.yaml
   - path: pvc-patch.yaml
+  - path: deployment-patch.yaml
 
 labels:
 - includeSelectors: false
