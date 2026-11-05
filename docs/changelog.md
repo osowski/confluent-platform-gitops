@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): in-cluster Ollama is now opt-in per overlay instead of the default.
 
 ### Fixed
+- **eks-demo KRaft controllers spread across nodes** ([#500](https://github.com/osowski/confluent-platform-gitops/issues/500)): preferred pod anti-affinity keeps one node loss from taking down the whole quorum.
 - **RustFS starts on `eks-demo`** ([#491](https://github.com/osowski/confluent-platform-gitops/issues/491)): the pod sets `fsGroup: 10001` so the non-root server can write its gp3 EBS volume instead of crash-looping on `Permission denied`.
 
 ## [0.10.0] - 2026-09-29
