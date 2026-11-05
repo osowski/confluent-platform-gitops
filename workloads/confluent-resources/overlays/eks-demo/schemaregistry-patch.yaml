@@ -5,6 +5,11 @@ metadata:
   namespace: kafka
 spec:
   replicas: 2
+  # CFK's default budget is (replicas - 1) / 2, which is 0 for 2 replicas and
+  # blocks every node drain.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
   podTemplate:
     resources:
       requests:
