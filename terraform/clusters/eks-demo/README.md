@@ -1,17 +1,17 @@
 # eks-demo
 
-Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster` with cluster-specific configuration. Terraform state is stored in S3 with DynamoDB state locking.
+Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster` with cluster-specific configuration. Terraform state is stored in S3 with S3 native state locking.
 
 ## Prerequisites
 
 - [dns-bootstrap](../../dns-bootstrap/) applied (provides `platform_zone_id` output)
-- S3 bucket and DynamoDB table provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
+- S3 state bucket provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
 - Terraform >= 1.11 (the Device Trust Mesh client secrets use ephemeral resources and write-only arguments)
 - AWS credentials with EKS, EC2, VPC, IAM, Route53, and Secrets Manager permissions (plan and apply call `secretsmanager:GetRandomPassword`)
 
 ## Remote State Bootstrap
 
-See [terraform/REMOTE_STATE.md](../../REMOTE_STATE.md) for the one-time S3 bucket and DynamoDB table setup. The bucket and table are shared across all Terraform roots — create them once, then use the same names in the `backend "s3"` block in `main.tf`.
+See [terraform/REMOTE_STATE.md](../../REMOTE_STATE.md) for the one-time S3 bucket setup. The bucket is shared across all Terraform roots — create it once, then use the same name in the `backend "s3"` block in `main.tf`.
 
 ## Usage
 

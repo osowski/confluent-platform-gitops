@@ -10,11 +10,11 @@ terraform {
   backend "s3" {
     # Run the bootstrap steps in the README to create these resources before
     # running terraform init for the first time.
-    bucket         = "confluent-platform-gitops-tfstate"
-    key            = "eks-demo/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "confluent-platform-gitops-tflock"
+    bucket       = "confluent-platform-gitops-tfstate"
+    key          = "eks-demo/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 

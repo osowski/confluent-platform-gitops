@@ -1,9 +1,11 @@
 # Remote State Bootstrap
 
-Run these commands once, before the first `terraform init` in any root. The S3 bucket and DynamoDB table are shared across all Terraform roots in this repository — create them once and reuse the same names in each root's `backend "s3"` block.
+Run these commands once, before the first `terraform init` in any root. The S3 bucket is shared across all Terraform roots in this repository — create it once and reuse the same name in each root's `backend "s3"` block.
+
+State locking uses S3 native lock files (`use_lockfile = true`, Terraform >= 1.11): Terraform writes `<state key>.tflock` next to the state object while it holds the lock, so no DynamoDB table is needed. Operators need `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on both the state key and its `.tflock` key.
 
 ```bash
-# 1. Create the S3 bucket with versioning and SSE-S3 encryption
+# Create the S3 bucket with versioning and SSE-S3 encryption
 aws s3api create-bucket \
   --bucket <your-terraform-state-bucket> \
   --region us-east-1
@@ -27,16 +29,9 @@ aws s3api put-public-access-block \
   --public-access-block-configuration \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
-# 2. Create the DynamoDB table for state locking (skip if already created)
-aws dynamodb create-table \
-  --table-name <your-terraform-lock-table> \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
 ```
 
-After creating the resources, update the `backend "s3"` block in each root's `main.tf` with your actual bucket and table names.
+After creating the bucket, update the `backend "s3"` block in each root's `main.tf` with your actual bucket name.
 
 ## State Key Layout
 
