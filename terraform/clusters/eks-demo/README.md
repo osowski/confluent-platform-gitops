@@ -6,7 +6,8 @@ Terraform root for the `eks-demo` EKS cluster. Calls `../../modules/eks-cluster`
 
 - [dns-bootstrap](../../dns-bootstrap/) applied (provides `platform_zone_id` output)
 - S3 bucket and DynamoDB table provisioned (see [Remote State Bootstrap](../../REMOTE_STATE.md))
-- AWS credentials with EKS, EC2, VPC, IAM, and Route53 permissions
+- Terraform >= 1.11 (the Device Trust Mesh client secrets use ephemeral resources and write-only arguments)
+- AWS credentials with EKS, EC2, VPC, IAM, Route53, and Secrets Manager permissions (plan and apply call `secretsmanager:GetRandomPassword`)
 
 ## Remote State Bootstrap
 
@@ -55,7 +56,8 @@ After migration, the `terraform/eks-demo/` directory can be removed from the rep
 | Managed Node Group | `workers-v2`: t3.2xlarge, 4–10 nodes (autoscaled), AL2023, 100 GiB gp3 root volume |
 | GPU Node Group (optional) | `gpu`: one g4dn.xlarge, AL2023 NVIDIA AMI, 100 GiB gp3 root volume — created when `gpu_node_group_enabled = true` |
 | Bastion Host | t3.small, no public IP, SSM + 3proxy SOCKS5, no inbound SG rules |
-| IRSA Roles | EBS CSI driver, cert-manager, ExternalDNS, AWS Load Balancer Controller, Cluster Autoscaler |
+| IRSA Roles | EBS CSI driver, cert-manager, ExternalDNS, AWS Load Balancer Controller, Cluster Autoscaler, `dtm-eso` (External Secrets Operator, `device-trust-mesh/dtm-eso`) |
+| Secrets Manager | 4 Device Trust Mesh client secrets under `/device-trust-mesh/` (`sa-dtm-ray`, `sa-dtm-simulator`, `sa-dtm-ui`, `sa-dtm-flink`), `recovery_window_in_days = 0` |
 
 ## Node Groups
 
@@ -87,6 +89,16 @@ aws service-quotas get-service-quota --service-code ec2 --quota-code L-DB2E81BA 
 aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A --region us-east-1
 ```
 
+The GPU group uses the cluster's private-subnet AZs, so confirm the instance type is offered in them:
+
+```bash
+aws ec2 describe-instance-type-offerings --location-type availability-zone --filters Name=instance-type,Values=g4dn.xlarge --region us-east-1
+```
+
+## Device Trust Mesh Secrets
+
+The four client secrets are generated at apply time and never stored in Terraform state, so read them from Secrets Manager (for example `aws secretsmanager get-secret-value --secret-id /device-trust-mesh/sa-dtm-ui`). To rotate them, increment `secret_string_wo_version` in `device-trust-mesh.tf` and apply. See [ADR-0017](../../../adrs/0017-generated-client-secrets-ephemeral-write-only.md).
+
 ## Outputs
 
 | Output | Description |
@@ -99,6 +111,7 @@ aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A 
 | `external_dns_role_arn` | IRSA role ARN for ExternalDNS |
 | `aws_lb_controller_role_arn` | IRSA role ARN for AWS Load Balancer Controller |
 | `cluster_autoscaler_role_arn` | IRSA role ARN for the Cluster Autoscaler |
+| `dtm_eso_role_arn` | IRSA role ARN for External Secrets Operator in the `device-trust-mesh` namespace |
 
 ## Accessing the Cluster
 
