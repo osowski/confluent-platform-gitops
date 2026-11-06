@@ -1,0 +1,93 @@
+# Kafka and Schema Registry OAuth for the Ray head and the mesh worker group,
+# as the sa-dtm-ray client (agents and context-mcp share one principal). The
+# image's dtm/common/kafka.py (osowski/flink-sandbox) builds both clients from
+# these variables and refuses to start when only some of the required ones are
+# set.
+#
+# RayService is a CRD with no merge keys, so a strategic-merge patch would
+# replace each env list wholesale and drop DEVICE_CAP and LLM_ENDPOINT. These
+# JSON6902 ops append instead. The test ops pin the indices to the ray-head
+# container and the mesh worker group's ray-worker container, so a reordering
+# in components/mesh-runtime fails the build rather than patching the wrong
+# container.
+- op: test
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/name
+  value: ray-head
+- op: test
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/groupName
+  value: mesh
+- op: test
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/name
+  value: ray-worker
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SECURITY_PROTOCOL
+    value: "SASL_PLAINTEXT"
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SASL_MECHANISM
+    value: "OAUTHBEARER"
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_SCOPE
+    value: "profile email"
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: dtm-ray-oauth
+        key: client-id
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dtm-ray-oauth
+        key: client-secret
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SECURITY_PROTOCOL
+    value: "SASL_PLAINTEXT"
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_SASL_MECHANISM
+    value: "OAUTHBEARER"
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_SCOPE
+    value: "profile email"
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: dtm-ray-oauth
+        key: client-id
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
+  value:
+    name: KAFKA_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: dtm-ray-oauth
+        key: client-secret

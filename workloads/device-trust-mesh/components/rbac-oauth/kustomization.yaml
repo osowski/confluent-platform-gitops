@@ -24,3 +24,25 @@ resources:
   - external-secrets.yaml
   - keycloak-service-account-job.yaml
   - confluentrolebindings.yaml
+  # CMF credential chain: FlinkSecret + FlinkEnvironmentSecretMapping for
+  # the dtm-cmf-* Secrets synced in external-secrets.yaml.
+  - flink-secrets.yaml
+
+# Requires the base plus the mesh-runtime and ui components ahead of this one
+# in the overlay's components list: these patches target the RayService and
+# Deployments those components declare.
+patches:
+  # Strategic-merge, self-identifying by apiVersion/kind/metadata. The Flink
+  # CRs' fields touched here are maps or scalars, and Deployment env merges
+  # by name, so each file lists only the OAuth additions.
+  - path: flink-catalog-database-oauth-patch.yaml
+  - path: flink-compute-pool-oauth-patch.yaml
+  - path: simulator-oauth-patch.yaml
+  - path: ui-oauth-patch.yaml
+  # JSON6902 append: RayService env lists have no merge key.
+  - path: rayservice-oauth-patch.yaml
+    target:
+      group: ray.io
+      version: v1
+      kind: RayService
+      name: device-trust-mesh

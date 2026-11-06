@@ -1,0 +1,34 @@
+# Kafka and Schema Registry OAuth for the mesh UI, as the sa-dtm-ui client.
+# The image's dtm/common/kafka.py (osowski/flink-sandbox) builds both clients
+# from these variables and refuses to start when only some of the required
+# ones are set. Deployment env merges by name, so only the OAuth entries are
+# listed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-trust-mesh-ui
+  namespace: device-trust-mesh
+spec:
+  template:
+    spec:
+      containers:
+        - name: ui
+          env:
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: "SASL_PLAINTEXT"
+            - name: KAFKA_SASL_MECHANISM
+              value: "OAUTHBEARER"
+            - name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
+              value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+            - name: KAFKA_OAUTH_SCOPE
+              value: "profile email"
+            - name: KAFKA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dtm-ui-oauth
+                  key: client-id
+            - name: KAFKA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dtm-ui-oauth
+                  key: client-secret
