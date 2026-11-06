@@ -1,0 +1,4 @@
+# GPU node group label set by Terraform. The chart's default tolerations
+# already cover the group's nvidia.com/gpu=present:NoSchedule taint.
+nodeSelector:
+  accelerator: nvidia

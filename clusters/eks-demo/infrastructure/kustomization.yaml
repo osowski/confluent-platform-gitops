@@ -10,6 +10,8 @@ resources:
 - kube-prometheus-stack-crds.yaml
 - kube-prometheus-stack.yaml
 - metrics-server.yaml
+- cluster-autoscaler.yaml
+- nvidia-device-plugin.yaml
 - aws-ebs-csi-driver.yaml
 - aws-load-balancer-controller.yaml
 - external-dns.yaml

@@ -1,5 +1,5 @@
 controller:
   serviceAccount:
     annotations:
-      # Obtain from: terraform -chdir=terraform/eks-demo output -raw ebs_csi_driver_role_arn
+      # Obtain from: terraform -chdir=terraform/clusters/eks-demo output -raw ebs_csi_driver_role_arn
       eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/AmazonEKS_EBS_CSI_DriverRole_eks-demo

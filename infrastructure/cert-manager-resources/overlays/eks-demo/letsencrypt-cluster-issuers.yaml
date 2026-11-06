@@ -8,7 +8,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    # Obtain from: terraform -chdir=terraform/eks-demo output platform_zone_id
+    # Obtain from: terraform -chdir=terraform/clusters/eks-demo output platform_zone_id
     # Replace with the email that should receive Let's Encrypt expiry notices.
     email: letsencrypt@dspdemos.com
     privateKeySecretRef:

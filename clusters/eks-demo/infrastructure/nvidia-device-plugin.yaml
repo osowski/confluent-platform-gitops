@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nvidia-device-plugin
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "5" # After CRDs (2), before infrastructure (10+)
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://nvidia.github.io/k8s-device-plugin
+      targetRevision: 0.20.1 # Pin to specific version
+      chart: nvidia-device-plugin
+      helm:
+        ignoreMissingValueFiles: true
+        valueFiles:
+          - $values/infrastructure/nvidia-device-plugin/base/values.yaml
+          - $values/infrastructure/nvidia-device-plugin/overlays/eks-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false # kube-system already exists
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

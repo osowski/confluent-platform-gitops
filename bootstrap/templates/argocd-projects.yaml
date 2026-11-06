@@ -26,6 +26,8 @@ spec:
     - https://aws.github.io/eks-charts
     - https://kubernetes-sigs.github.io/aws-ebs-csi-driver
     - https://charts.external-secrets.io
+    - https://kubernetes.github.io/autoscaler
+    - https://nvidia.github.io/k8s-device-plugin
 
   # Allow deploying to all namespaces
   destinations:

@@ -1,0 +1,10 @@
+# Discovers every node group ASG tagged k8s.io/cluster-autoscaler/eks-demo
+autoDiscovery:
+  clusterName: eks-demo
+
+awsRegion: us-east-1
+
+rbac:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/ClusterAutoscaler_eks-demo

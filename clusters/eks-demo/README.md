@@ -52,7 +52,7 @@ aws eks update-kubeconfig --region us-east-1 --name eks-demo
 # Start the SOCKS5 tunnel (keep this running in a separate terminal)
 aws ssm start-session \
   --region us-east-1 \
-  --target $(terraform -chdir=terraform/eks-demo output -raw bastion_instance_id) \
+  --target $(terraform -chdir=terraform/clusters/eks-demo output -raw bastion_instance_id) \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["1080"],"localPortNumber":["1080"]}'
 
@@ -89,10 +89,11 @@ Several infrastructure components use IRSA (IAM Roles for Service Accounts) for 
 
 ```bash
 # Get all IRSA role ARNs from Terraform output
-terraform -chdir=terraform/eks-demo output ebs_csi_driver_role_arn
-terraform -chdir=terraform/eks-demo output cert_manager_role_arn
-terraform -chdir=terraform/eks-demo output external_dns_role_arn
-terraform -chdir=terraform/eks-demo output aws_lb_controller_role_arn
+terraform -chdir=terraform/clusters/eks-demo output ebs_csi_driver_role_arn
+terraform -chdir=terraform/clusters/eks-demo output cert_manager_role_arn
+terraform -chdir=terraform/clusters/eks-demo output external_dns_role_arn
+terraform -chdir=terraform/clusters/eks-demo output aws_lb_controller_role_arn
+terraform -chdir=terraform/clusters/eks-demo output cluster_autoscaler_role_arn
 ```
 
 Update the placeholder in `infrastructure/aws-ebs-csi-driver/overlays/eks-demo/values.yaml`:
@@ -265,6 +266,8 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs
 - **aws-ebs-csi-driver** (wave 3) - EBS CSI driver and gp3 StorageClass
 - **metrics-server** (wave 5) - Kubernetes Metrics Server
+- **cluster-autoscaler** (wave 5) - Scales the `workers-v2` node group between its Terraform min and max (IRSA)
+- **nvidia-device-plugin** (wave 5) - Advertises `nvidia.com/gpu` on the tainted GPU node group
 - **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning
 - **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS
 - **traefik** (wave 10) - Ingress controller deployed on internal AWS NLB
@@ -452,7 +455,7 @@ kubectl get crd | grep platform.confluent.io
 Destroy Terraform resources in reverse order:
 
 ```bash
-terraform -chdir=terraform/eks-demo destroy
+terraform -chdir=terraform/clusters/eks-demo destroy
 terraform -chdir=terraform/dns-bootstrap destroy
 ```
 
