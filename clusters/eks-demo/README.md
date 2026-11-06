@@ -290,14 +290,17 @@ Defined in `clusters/eks-demo/workloads/kustomization.yaml`:
 - **keycloak** (wave 102) - Keycloak OIDC provider for MDS RBAC
 - **cfk-operator** (wave 105) - Confluent for Kubernetes operator
 - **mds-keygen** (wave 106) - MDS token key generation job
+- **ollama** (wave 106) - In-cluster Ollama on the GPU node with a `gp3` model cache — **manual sync**
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
+- **kuberay-operator** (wave 117) - KubeRay operator providing `RayService` for the Device Trust Mesh
 - **cmf-operator-secrets** (wave 117) - CMF operator secrets
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 119) - Core CMFRestClass + single `default` FlinkEnvironment + generic Flink SQL demo, with OAuth layered on via the `oauth` component — **manual sync** — see [Flink Resources README](../../workloads/flink-resources/README.md)
 - **colors-and-shapes** (wave 120) - Two-tenant Flink demo (JAR + SQL), with Kubernetes RBAC and Keycloak OAuth layered on via the `rbac-oauth` component — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
+- **device-trust-mesh** (wave 122) - Agentic Device Trust Mesh at 100 devices, with Secrets Manager-backed OAuth through the `rbac-oauth` component — **manual sync** — see [Device Trust Mesh README](../../workloads/device-trust-mesh/README.md#running-on-eks-demo)
 
 ## Cluster Specific Use Cases
 

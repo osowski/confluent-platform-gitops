@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Device Trust Mesh on `eks-demo`** ([#495](https://github.com/osowski/confluent-platform-gitops/issues/495)): a 100-device mesh with two replicas per agent, OAuth for every client and Ollama on the GPU node, served at `https://dtm.eks-demo.platform.dspdemos.com`.
+  The README adds prerequisites, the secret flow and a "Scaling the fleet" guide.
 - **eks-demo node autoscaling and GPU scheduling** ([#494](https://github.com/osowski/confluent-platform-gitops/issues/494)): cluster-autoscaler grows `workers-v2` between 4 and 10 nodes on demand, and the NVIDIA device plugin makes the GPU node's `nvidia.com/gpu` schedulable.
 - **eks-demo capacity and Device Trust Mesh credentials** ([#493](https://github.com/osowski/confluent-platform-gitops/issues/493)): Terraform adds an optional GPU node group, a 10-node ceiling with a cluster-autoscaler IRSA role, and generated Secrets Manager client secrets plus a read-only ESO role for the Device Trust Mesh.
 - **Device Trust Mesh architecture diagrams** ([#488](https://github.com/osowski/confluent-platform-gitops/issues/488)): the README's ASCII diagram becomes an editable draw.io architecture diagram, with views that highlight the A2A plumbing and the device-trust application.
