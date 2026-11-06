@@ -15,6 +15,11 @@
 # <topic>- so one pattern covers that topic's -key, -value and -a2a subjects
 # and nothing else. The Python clients never auto-register schemas, so their
 # subject grants are DeveloperRead only.
+#
+# Schema Registry: each subject grant is bound to both the dtm-* group and
+# the matching sa-dtm-* user principal (the client_id claim), as
+# colors-and-shapes binds both for its service accounts. Kafka and CMF
+# bindings are group-only.
 
 # ==============================================================================
 # dtm-ray - agents and context-mcp
@@ -150,6 +155,49 @@ spec:
     - patternType: PREFIXED
       name: device.risk-signals-
       resourceType: Subject
+---
+# sa-dtm-ray - same subject grant as the dtm-ray group, bound to the user
+# principal as well (see the Schema Registry note at the top).
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-dtm-ray-subjects-read
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-dtm-ray
+  role: DeveloperRead
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: agent.tasks.
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.llm-interactions-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.policy-commands-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: audit.log-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: customer.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.risk-signals-
+      resourceType: Subject
 
 # ==============================================================================
 # dtm-simulator - device simulator
@@ -235,6 +283,31 @@ spec:
     - patternType: PREFIXED
       name: simulator.control-
       resourceType: Subject
+---
+# sa-dtm-simulator - same subject grant as the dtm-simulator group, bound to the user
+# principal as well (see the Schema Registry note at the top).
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-dtm-simulator-subjects-read
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-dtm-simulator
+  role: DeveloperRead
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: device.events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.policy-commands-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: simulator.control-
+      resourceType: Subject
 
 # ==============================================================================
 # dtm-ui - mesh UI (read-only)
@@ -301,6 +374,40 @@ spec:
   principal:
     type: group
     name: dtm-ui
+  role: DeveloperRead
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: agent.tasks_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decisions_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-status_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.pair_counts-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decision_latency-
+      resourceType: Subject
+---
+# sa-dtm-ui - same subject grant as the dtm-ui group, bound to the user
+# principal as well (see the Schema Registry note at the top).
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-dtm-ui-subjects-read
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-dtm-ui
   role: DeveloperRead
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka
@@ -683,6 +790,82 @@ spec:
       name: simulator.control-
       resourceType: Subject
 ---
+# sa-dtm-flink - same subject grant as the dtm-flink group, bound to the user
+# principal as well (see the Schema Registry note at the top).
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-dtm-flink-subjects-read
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-dtm-flink
+  role: DeveloperRead
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: device.events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: customer.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.risk-signals-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.policy-commands-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: audit.log-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.risk-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.enrolment-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.step-up-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.revocation-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.llm-interactions-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decisions_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-status_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.pair_counts-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decision_latency-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: simulator.control-
+      resourceType: Subject
+---
 # Schema registration by the Avro sinks and catalog DDL.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
@@ -693,6 +876,82 @@ spec:
   principal:
     type: group
     name: dtm-flink
+  role: DeveloperWrite
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: device.events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: customer.context-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.risk-signals-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: device.policy-commands-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: audit.log-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.risk-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.enrolment-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.step-up-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks.revocation-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-events-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.llm-interactions-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.tasks_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decisions_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.task-status_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.cards_human_readable-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.pair_counts-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: agent.decision_latency-
+      resourceType: Subject
+    - patternType: PREFIXED
+      name: simulator.control-
+      resourceType: Subject
+---
+# sa-dtm-flink - same subject grant as the dtm-flink group, bound to the user
+# principal as well (see the Schema Registry note at the top).
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: sa-dtm-flink-subjects-write
+  namespace: kafka
+spec:
+  principal:
+    type: user
+    name: sa-dtm-flink
   role: DeveloperWrite
   clustersScopeByIds:
     schemaRegistryClusterId: id_schemaregistry_kafka

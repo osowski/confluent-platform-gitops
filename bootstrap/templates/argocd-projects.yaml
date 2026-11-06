@@ -144,6 +144,11 @@ spec:
       kind: Certificate
     - group: cert-manager.io
       kind: Issuer
+    # External Secrets Operator: namespaced SecretStores only
+    - group: external-secrets.io
+      kind: SecretStore
+    - group: external-secrets.io
+      kind: ExternalSecret
     - group: traefik.io
       kind: IngressRoute
     - group: flink.apache.org
