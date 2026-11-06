@@ -1,0 +1,75 @@
+# Ray Serve and worker-group scale for eks-demo.
+#
+# serveConfigV2 is one string, so this replaces it whole: two replicas for
+# context-mcp and each enabled agent (num_replicas stays <= the 6 topic
+# partitions); revocation is disabled in agents.yaml and keeps one replica.
+# Each agent replica reserves 0.1 CPU (dtm/mesh/agents/host.py) and each
+# ContextMcp replica Serve's default 1 CPU: 2.9 CPU in total. Two mesh
+# workers (2 CPU each) plus the head (1 CPU) leave room for both ContextMcp
+# replicas wherever the agent replicas land. In-tree autoscaling is off, so
+# KubeRay runs exactly `replicas` workers; scale by editing `replicas` (up to
+# maxReplicas: 4).
+#
+# The test op pins index 0 to the mesh worker group, so a reordering in
+# components/mesh-runtime fails the build rather than patching another group.
+- op: test
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/groupName
+  value: mesh
+- op: replace
+  path: /spec/serveConfigV2
+  value: |
+    applications:
+      - name: context-mcp
+        route_prefix: /context-mcp
+        import_path: dtm.mesh.context_mcp:app
+        deployments:
+          - name: ContextMcp
+            num_replicas: 2
+      - name: risk
+        route_prefix: /risk
+        import_path: dtm.mesh.risk:app
+        deployments:
+          - name: RiskAgent
+            num_replicas: 2
+      - name: enrolment
+        route_prefix: /enrolment
+        import_path: dtm.mesh.enrolment:app
+        deployments:
+          - name: EnrolmentAgent
+            num_replicas: 2
+      - name: step-up
+        route_prefix: /step-up
+        import_path: dtm.mesh.step_up:app
+        deployments:
+          - name: StepUpAgent
+            num_replicas: 2
+      - name: compliance
+        route_prefix: /compliance
+        import_path: dtm.mesh.compliance:app
+        deployments:
+          - name: ComplianceAgent
+            num_replicas: 2
+      - name: revocation
+        route_prefix: /revocation
+        import_path: dtm.mesh.revocation:app
+        deployments:
+          - name: RevocationAgent
+            num_replicas: 1
+- op: replace
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/replicas
+  value: 2
+- op: replace
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/maxReplicas
+  value: 4
+# Spread mesh workers across nodes.
+- op: add
+  path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/affinity
+  value:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                ray.io/node-type: worker

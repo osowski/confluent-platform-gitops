@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Fleet size for eks-demo. A component, listed ahead of mesh-runtime in the
+# overlay, so the mesh-runtime replacements copy this value into the
+# simulator and both Ray containers. An overlay-level patch runs after the
+# components and would change only the ConfigMap.
+patches:
+  - target:
+      kind: ConfigMap
+      name: device-trust-mesh-config
+    patch: |-
+      - op: replace
+        path: /data/DEVICE_CAP
+        value: "100"

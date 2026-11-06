@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: deployment-gpu-patch.yaml
+    target:
+      kind: Deployment
+      name: ollama
+
+  - path: pvc-patch.yaml
+    target:
+      kind: PersistentVolumeClaim
+      name: ollama-data
+
+  - path: model-config-patch.yaml
+
+labels:
+- includeSelectors: false
+  includeTemplates: true
+  pairs:
+    cluster: eks-demo

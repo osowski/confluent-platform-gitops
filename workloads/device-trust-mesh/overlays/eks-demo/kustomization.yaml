@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Order matters: device-cap sets DEVICE_CAP before mesh-runtime copies it into
+# its consumers; ui and rbac-oauth patch resources that mesh-runtime declares.
+components:
+  - device-cap
+  - ../../components/mesh-runtime
+  - ../../components/ui
+  # Agents call the in-cluster Ollama on the GPU node.
+  - ../../components/ollama-in-cluster-mode
+  # Keycloak OAuth identities, MDS role bindings and client OAuth settings.
+  - ../../components/rbac-oauth
+
+patches:
+  # Two replicas per enabled agent in agents.yaml.
+  - path: agents-config-patch.yaml
+  # Serve replicas, worker group size and worker spread.
+  - path: rayservice-scale-patch.yaml
+    target:
+      group: ray.io
+      version: v1
+      kind: RayService
+      name: device-trust-mesh
+
+# Images from the client-OAuth release of osowski/flink-sandbox device-trust-mesh.
+images:
+  - name: quay.io/osowski/device-trust-mesh-ray
+    newTag: v1.3.0-202611050559
+  - name: quay.io/osowski/device-trust-mesh-simulator
+    newTag: v1.3.0-202611050559
+  - name: quay.io/osowski/device-trust-mesh-ui
+    newTag: v1.3.0-202611050559
+
+# Cluster-specific labels
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      cluster: eks-demo

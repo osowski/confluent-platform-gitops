@@ -1,0 +1,21 @@
+# NAMING IS CRITICAL: these connectionSecretId/connectionSecretRef values must
+# exactly match the FlinkSecret/FlinkEnvironmentSecretMapping names in
+# flink-secrets.yaml. CMF silently ignores a catalog whose connectionSecretId
+# is unmapped; CFK fails reconciliation instead.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaCatalog
+metadata:
+  name: dtm-catalog
+  namespace: device-trust-mesh
+spec:
+  srInstance:
+    connectionSecretId: sr-conn-secret-id-dtm
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkKafkaDatabase
+metadata:
+  name: dtm-database
+  namespace: device-trust-mesh
+spec:
+  connectionSecretRef:
+    name: kafka-conn-secret-id-dtm
