@@ -455,7 +455,7 @@ kubectl get crd | grep platform.confluent.io
 Destroy Terraform resources in reverse order:
 
 ```bash
-terraform -chdir=terraform/eks-demo destroy
+terraform -chdir=terraform/clusters/eks-demo destroy
 terraform -chdir=terraform/dns-bootstrap destroy
 ```
 
