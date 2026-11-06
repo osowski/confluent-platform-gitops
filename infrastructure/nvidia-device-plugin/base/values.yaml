@@ -1,0 +1,6 @@
+# Base Helm values for nvidia-device-plugin
+# Only includes non-default values necessary for our infrastructure
+
+# The chart's default node affinity requires node-feature-discovery labels.
+# NFD is not deployed, so overlays select GPU nodes with a nodeSelector.
+affinity: null

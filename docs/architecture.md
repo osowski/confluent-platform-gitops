@@ -53,6 +53,8 @@ Platform infrastructure components deployed before workloads.
 **Deployed components:**
 - **kube-prometheus-stack-crds** (wave 2) - Prometheus Operator CRDs deployed early for availability
 - **metrics-server** (wave 5) - Kubernetes Metrics Server for resource metrics and HPA support
+- **cluster-autoscaler** (wave 5, eks-demo only) - Scales EKS managed node groups within their Terraform bounds, via IRSA
+- **nvidia-device-plugin** (wave 5, eks-demo only) - Advertises `nvidia.com/gpu` on the tainted GPU node group
 - **traefik** (wave 10) - Ingress controller for external access
 - **kube-prometheus-stack** (wave 20) - Monitoring stack with Prometheus, Grafana, Alertmanager
 - **cert-manager** (wave 20) - TLS certificate management
