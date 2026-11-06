@@ -1,0 +1,33 @@
+# agents.yaml for eks-demo: two replicas for each enabled agent, matching
+# num_replicas in rayservice-scale-patch.yaml. Ray Serve schedules replicas
+# from serveConfigV2; agents.yaml validates the count (1-6). Every other
+# setting is the same as base/config.yaml, since a patch replaces the whole
+# agents.yaml string.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-trust-mesh-agents
+  namespace: device-trust-mesh
+data:
+  agents.yaml: |
+    llm:
+      provider: ollama                 # ollama | openai-compatible | recorded (replay)
+      endpoint: ${LLM_ENDPOINT}
+      model: qwen3:4b
+      options: { temperature: 0, seed: 42, think: false, num_ctx: 4096 }
+      timeoutMs: 30000
+    agents:
+      risk:       { enabled: true,  replicas: 2, promptRef: risk.v1,       llm: {} }  # llm: per-agent override (empty = global)
+      enrolment:  { enabled: true,  replicas: 2, promptRef: enrolment.v1,  llm: {} }
+      step-up:    { enabled: true,  replicas: 2 }
+      compliance: { enabled: true,  replicas: 2 }
+      revocation: { enabled: false, replicas: 1, promptRef: revocation.v1, llm: {} }
+    bus:
+      mode: live                       # live | replay
+      startPosition: committed         # committed | earliest | offset | timestamp (replay)
+      topicPrefix: ""                  # replay sets "replay.<run-id>."
+      policyCommands: enabled          # enabled | redirect | disabled
+      allowedConsume: [ "agent.tasks.<self>", "agent.task-events", "agent.cards" ]
+    context:
+      mcpUrl: http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp/mcp
+      waitTimeoutMs: 2000

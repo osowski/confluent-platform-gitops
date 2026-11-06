@@ -1,0 +1,17 @@
+---
+# TLS certificate for the Device Trust Mesh UI IngressRoute.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dtm-ui-tls
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "110"
+spec:
+  secretName: dtm-ui-tls
+  dnsNames:
+    - dtm.eks-demo.platform.dspdemos.com
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod

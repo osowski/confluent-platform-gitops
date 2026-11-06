@@ -7,6 +7,8 @@ resources:
   - schema-registry-certificate.yaml
   - cmf-certificate.yaml
   - cmf-ui-ingressroute.yaml
+  - dtm-ui-certificate.yaml
+  - dtm-ui-ingressroute.yaml
 
 patches:
   - path: cmf-ingressroute-patch.yaml
