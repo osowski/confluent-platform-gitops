@@ -620,6 +620,7 @@ The eks-demo mesh requires the GPU node group. There is no CPU Ollama fallback.
 | Node group | `gpu`: one `g4dn.xlarge` (T4), fixed size 1, no autoscaling |
 | Node label / taint | `accelerator=nvidia` / `nvidia.com/gpu=present:NoSchedule` |
 | Ollama | `nvidia.com/gpu: 1`, `OLLAMA_NUM_PARALLEL=4`, model cache on a `gp3` PVC |
+| Models | `qwen3:4b` (agents) and `qwen3:8b`, pulled by the PostSync `ollama-model-pull` Job |
 | Agents | `LLM_ENDPOINT` is `http://ollama.ollama.svc.cluster.local:11434` through the `ollama-in-cluster-mode` component |
 
 ### Access
@@ -660,7 +661,11 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
 
 ### Current state
 
-- **`simulator.control` writes are denied.** Only the `dtm-flink` group can write `simulator.control`; the simulator, Ray and UI principals cannot, so `dtm-ctl` fails with `TopicAuthorizationFailed` on eks-demo. The simulator rate can't be changed at runtime.
+- **`dtm-ctl` runs in the simulator pod**, as `sa-dtm-simulator`, which has Write on `simulator.control`. The simulator starts at 0.2 enrolments/s, the same as flink-demo; raise the rate to drive more agent traffic:
+  ```bash
+  kubectl exec -n device-trust-mesh deploy/device-simulator -c simulator -- python -m dtm.simulator.ctl rate 2
+  ```
+- **Rotating a client secret.** ESO refreshes the Kubernetes Secret within `refreshInterval: 1h`. Keycloak takes the new value only when the Keycloak Job runs, on the next `device-trust-mesh` sync, and pods read env at start. After a rotation, sync `device-trust-mesh`, then restart the RayService pods, `device-simulator` and `device-trust-mesh-ui`.
 - **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the model.
   ```bash
   kubectl delete pvc ollama-data -n ollama
@@ -712,7 +717,7 @@ Tracks event rate, not fleet size:
 | What | Why |
 |---|---|
 | Ollama parallel slots and GPU count | LLM calls/s depend on enrolments/s. At the same rate, 1,000 devices make the same number of LLM calls as 100. |
-| Kafka and Flink throughput | Records/s depend on the rate set with `dtm-ctl`, which eks-demo can't change (see [Current state](#current-state)). |
+| Kafka and Flink throughput | Records/s depend on the rate set with `dtm-ctl` (see [Current state](#current-state)). |
 
 ---
 

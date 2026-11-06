@@ -224,7 +224,7 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
-# Device events.
+# Device events, and the control messages dtm-ctl sends from the simulator pod.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -238,6 +238,9 @@ spec:
   resourcePatterns:
     - patternType: LITERAL
       name: device.events
+      resourceType: Topic
+    - patternType: LITERAL
+      name: simulator.control
       resourceType: Topic
   kafkaRestClassRef:
     name: default
