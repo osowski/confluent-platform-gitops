@@ -443,7 +443,7 @@ Client secrets flow Terraform → AWS Secrets Manager → External Secrets Opera
 - Private API endpoint requires SSM tunnel for all `kubectl` access; no public endpoint is exposed under any circumstances
 - Traefik replaced by AWS Load Balancer Controller; Longhorn replaced by EBS CSI driver
 - Route53 + ACM provide real public DNS and TLS instead of self-signed certificates and `/etc/hosts` resolution
-- `workers-v2` managed node group (t3.2xlarge, min=4, max=6) spread across 3 availability zones
+- `workers-v2` managed node group (t3.2xlarge, min=4, max=10, scaled by cluster-autoscaler) spread across 3 availability zones; optional single-node `g4dn.xlarge` GPU group for Ollama
 
 ### mTLS Variant (flink-demo-rbac-mtls cluster)
 
