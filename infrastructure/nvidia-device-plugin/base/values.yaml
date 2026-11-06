@@ -2,5 +2,6 @@
 # Only includes non-default values necessary for our infrastructure
 
 # The chart's default node affinity requires node-feature-discovery labels.
-# NFD is not deployed, so overlays select GPU nodes with a nodeSelector.
+# NFD is not deployed, so every overlay must set a nodeSelector for its GPU
+# nodes; without one the plugin crash-loops on every non-GPU node.
 affinity: null
