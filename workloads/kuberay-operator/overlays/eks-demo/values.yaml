@@ -1,0 +1,6 @@
+# KubeRay Operator - eks-demo Cluster Overlay
+# Cluster-specific configuration overrides
+
+# Additional pod labels for eks-demo cluster
+labels:
+  cluster: eks-demo

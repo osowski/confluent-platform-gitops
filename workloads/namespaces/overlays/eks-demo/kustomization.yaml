@@ -3,12 +3,4 @@ kind: Kustomization
 
 resources:
   - ../../base
-
-# Exclude ollama namespace — only needed for flink-demo clusters
-patches:
-  - patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: ollama
+  - device-trust-mesh.yaml
