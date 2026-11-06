@@ -6,7 +6,9 @@
 # Each agent replica reserves 0.1 CPU (dtm/mesh/agents/host.py) and each
 # ContextMcp replica Serve's default 1 CPU: 2.9 CPU in total. Two mesh
 # workers (2 CPU each) plus the head (1 CPU) leave room for both ContextMcp
-# replicas wherever the agent replicas land; maxReplicas caps the group at 4.
+# replicas wherever the agent replicas land. In-tree autoscaling is off, so
+# KubeRay runs exactly `replicas` workers; scale by editing `replicas` (up to
+# maxReplicas: 4).
 #
 # The test op pins index 0 to the mesh worker group, so a reordering in
 # components/mesh-runtime fails the build rather than patching another group.
