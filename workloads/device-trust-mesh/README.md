@@ -5,7 +5,7 @@ An agent mesh that manages **trusted customer devices** (browsers, phones, table
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables and Flink statements deploy today, together with the runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool. The `RayService` and simulator arrive with [#451](https://github.com/osowski/confluent-platform-gitops/issues/451). Measured results are marked *to be recorded*.
+> Measured results are marked *to be recorded*.
 
 ---
 
@@ -598,14 +598,7 @@ The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-de
 
 ### Prerequisites
 
-1. **Terraform.** In `terraform/clusters/eks-demo`, set `gpu_node_group_enabled = true` and apply. This adds the GPU node, the `dtm-eso` IRSA role and the four client secrets in Secrets Manager. Before applying, confirm both EC2 quotas in `us-east-1`:
-
-   | Quota code | Quota | Needed |
-   |---|---|---|
-   | `L-DB2E81BA` | Running On-Demand G and VT instances | at least 4 vCPU (one `g4dn.xlarge`) |
-   | `L-1216C47A` | Running On-Demand Standard instances | at least 80 vCPU of headroom (10 × `t3.2xlarge`, the autoscaler ceiling) |
-
-   See [`terraform/clusters/eks-demo/README.md`](../../terraform/clusters/eks-demo/README.md#gpu-node-group) for the offering check and the variable reference. The `eks.amazonaws.com/role-arn` annotation in [`components/rbac-oauth/eso.yaml`](components/rbac-oauth/eso.yaml) must match the `dtm_eso_role_arn` output.
+1. **Terraform.** In `terraform/clusters/eks-demo`, set `gpu_node_group_enabled = true` and apply. This adds the GPU node, the `dtm-eso` IRSA role and the four client secrets in Secrets Manager. Before applying, confirm the G-instance and Standard On-Demand vCPU quotas in `us-east-1`; the quota codes, offering check and variable reference are in [`terraform/clusters/eks-demo/README.md`](../../terraform/clusters/eks-demo/README.md#gpu-node-group). The `eks.amazonaws.com/role-arn` annotation in [`components/rbac-oauth/eso.yaml`](components/rbac-oauth/eso.yaml) must match the `dtm_eso_role_arn` output.
 2. **Cluster infrastructure.** `cluster-autoscaler` and `nvidia-device-plugin` are synced (see [`clusters/eks-demo/README.md`](../../clusters/eks-demo/README.md#infrastructure-applications)). Check the GPU is allocatable:
    ```bash
    kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
@@ -667,7 +660,7 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
 
 ### Current state
 
-- **`simulator.control` writes are denied.** No DTM principal has write access to `simulator.control`, so `dtm-ctl` fails with `TopicAuthorizationFailed` on eks-demo. The simulator rate can't be changed at runtime.
+- **`simulator.control` writes are denied.** Only the `dtm-flink` group can write `simulator.control`; the simulator, Ray and UI principals cannot, so `dtm-ctl` fails with `TopicAuthorizationFailed` on eks-demo. The simulator rate can't be changed at runtime.
 - **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the model.
   ```bash
   kubectl delete pvc ollama-data -n ollama
@@ -680,7 +673,7 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
 
 ## Scaling the fleet
 
-**Question:** to run 1,000 devices at today's latency, what has to scale?
+**Question:** to run 1,000 devices at current latency, what has to scale?
 
 Two drivers scale different components:
 
@@ -719,7 +712,7 @@ Tracks event rate, not fleet size:
 | What | Why |
 |---|---|
 | Ollama parallel slots and GPU count | LLM calls/s depend on enrolments/s. At the same rate, 1,000 devices make the same number of LLM calls as 100. |
-| Kafka and Flink throughput | Records/s depend on the rate set with `dtm-ctl`, which eks-demo can't change today (see [Current state](#current-state)). |
+| Kafka and Flink throughput | Records/s depend on the rate set with `dtm-ctl`, which eks-demo can't change (see [Current state](#current-state)). |
 
 ---
 
