@@ -1,0 +1,32 @@
+---
+# ServiceAccount the SecretStore authenticates as. IRSA maps it to the
+# dtm-eso-eks-demo IAM role, which can only GetSecretValue/DescribeSecret on
+# /device-trust-mesh/eks-demo/*.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dtm-eso
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+    eks.amazonaws.com/role-arn: arn:aws:iam::829250931565:role/dtm-eso-eks-demo
+---
+# Namespaced SecretStore: only ExternalSecrets in device-trust-mesh can use
+# it, and it reads Secrets Manager with the dtm-eso identity above rather than
+# the External Secrets Operator controller's own ServiceAccount.
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: dtm-secrets-manager
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: dtm-eso

@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Keycloak OAuth identities and MDS role bindings for the device-trust-mesh
+# clients on a cluster that runs Keycloak/MDS RBAC (eks-demo).
+#
+# Every client secret lives in AWS Secrets Manager under
+# /device-trust-mesh/eks-demo/<client>. External Secrets Operator syncs each
+# one into device-trust-mesh through a namespaced SecretStore that
+# authenticates as the dtm-eso ServiceAccount (IRSA). The Keycloak setup Job
+# reads those synced Secrets, so Secrets Manager stays the single source of
+# truth and no credential appears in this repository.
+#
+# Sync order (Argo CD waves): ServiceAccount + SecretStore (-3) ->
+# ExternalSecrets (-2) -> Keycloak setup Job (Sync hook, -1) -> role
+# bindings and the device-trust-mesh base (0 and later).
+#
+# The ConfluentRolebindings carry namespace: kafka explicitly; an overlay
+# using this component must not set a kustomize namespace transformer.
+
+resources:
+  - eso.yaml
+  - external-secrets.yaml
+  - keycloak-service-account-job.yaml
+  - confluentrolebindings.yaml
