@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-autoscaler
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "5" # After CRDs (2), before infrastructure (10+)
+spec:
+  project: infrastructure
+  sources:
+    - repoURL: https://kubernetes.github.io/autoscaler
+      targetRevision: 9.59.0 # Pin to specific version
+      chart: cluster-autoscaler
+      helm:
+        ignoreMissingValueFiles: true
+        valueFiles:
+          - $values/infrastructure/cluster-autoscaler/base/values.yaml
+          - $values/infrastructure/cluster-autoscaler/overlays/eks-demo/values.yaml
+    - repoURL: https://github.com/osowski/confluent-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false # kube-system already exists
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

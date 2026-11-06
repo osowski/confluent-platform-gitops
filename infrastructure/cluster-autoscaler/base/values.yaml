@@ -1,0 +1,15 @@
+# Base Helm values for cluster-autoscaler
+# Only includes non-default values necessary for our infrastructure
+
+cloudProvider: aws
+
+rbac:
+  serviceAccount:
+    # Matches the IRSA role's trust policy (kube-system/cluster-autoscaler)
+    name: cluster-autoscaler
+
+extraArgs:
+  balance-similar-node-groups: true
+  # Pods with emptyDir volumes must not pin a node forever
+  skip-nodes-with-local-storage: false
+  expander: least-waste

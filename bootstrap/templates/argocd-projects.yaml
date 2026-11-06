@@ -26,6 +26,7 @@ spec:
     - https://aws.github.io/eks-charts
     - https://kubernetes-sigs.github.io/aws-ebs-csi-driver
     - https://charts.external-secrets.io
+    - https://kubernetes.github.io/autoscaler
 
   # Allow deploying to all namespaces
   destinations:
