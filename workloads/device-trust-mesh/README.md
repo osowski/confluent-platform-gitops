@@ -661,12 +661,12 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
 
 ### Current state
 
-- **`dtm-ctl` runs in the simulator pod**, as `sa-dtm-simulator`, which has Write on `simulator.control`. The simulator starts at 0.2 enrolments/s, the same as flink-demo; raise the rate to drive more agent traffic:
+- **`dtm-ctl` runs in the simulator pod**, as `sa-dtm-simulator`, which has Write on `simulator.control`. The simulator Deployment defaults to `replicas: 0`; scale it to 1 first. It starts at 0.2 enrolments/s, the same as flink-demo; raise the rate to drive more agent traffic:
   ```bash
   kubectl exec -n device-trust-mesh deploy/device-simulator -c simulator -- python -m dtm.simulator.ctl rate 2
   ```
 - **Rotating a client secret.** ESO refreshes the Kubernetes Secret within `refreshInterval: 1h`. Keycloak takes the new value only when the Keycloak Job runs, on the next `device-trust-mesh` sync, and pods read env at start. After a rotation, sync `device-trust-mesh`, then restart the RayService pods, `device-simulator` and `device-trust-mesh-ui`.
-- **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the model.
+- **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the models.
   ```bash
   kubectl delete pvc ollama-data -n ollama
   kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
