@@ -6,6 +6,7 @@ watchNamespaces:
   - flink
   - flink-shapes
   - flink-colors
+  - device-trust-mesh
 
 # Additional pod labels for eks-demo cluster
 operatorPod:

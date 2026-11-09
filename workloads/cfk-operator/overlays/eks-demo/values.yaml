@@ -9,5 +9,6 @@ namespaceList:
   - flink
   - flink-shapes
   - flink-colors
+  - device-trust-mesh
   - kafka
   - operator
