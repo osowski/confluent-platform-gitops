@@ -4,10 +4,11 @@
 # context-mcp and each enabled agent (num_replicas stays <= the 6 topic
 # partitions); revocation is disabled in agents.yaml and keeps one replica.
 # Each agent replica reserves 0.1 CPU (dtm/mesh/agents/host.py) and each
-# ContextMcp replica Serve's default 1 CPU: 2.9 CPU in total. Two mesh
-# workers (2 CPU each) plus the head (1 CPU) leave room for both ContextMcp
-# replicas wherever the agent replicas land. In-tree autoscaling is off, so
-# KubeRay runs exactly `replicas` workers; scale by editing `replicas` (up to
+# ContextMcp replica Serve's default 1 CPU: 2.9 CPU in total. The head
+# advertises 0 CPU, so no Serve replica lands on it and it keeps its 2 Gi for
+# GCS, the dashboard and the Serve controller; the two mesh workers (2 CPU
+# each) hold every replica. In-tree autoscaling is off, so KubeRay runs
+# exactly `replicas` workers; scale by editing `replicas` (up to
 # maxReplicas: 4).
 #
 # The test op pins index 0 to the mesh worker group, so a reordering in
@@ -55,6 +56,9 @@
         deployments:
           - name: RevocationAgent
             num_replicas: 1
+- op: add
+  path: /spec/rayClusterConfig/headGroupSpec/rayStartParams/num-cpus
+  value: "0"
 - op: replace
   path: /spec/rayClusterConfig/workerGroupSpecs/0/replicas
   value: 2
