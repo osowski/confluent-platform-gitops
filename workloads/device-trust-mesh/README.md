@@ -249,7 +249,7 @@ Resizing `dtm-shared-pool` (slots, CPU or memory in [`base/flink-compute-pool.ya
 3. Sync the `device-trust-mesh` Application. The Application is manual-sync, so nothing re-creates the statements before this. The pool updates at wave 60, then the statements are re-created at wave 70.
 4. Check that the new TaskManager has the new slot count and that every long-running statement returns to `RUNNING`.
 
-Deleting a statement discards its state, and it restarts from its configured start offsets. The re-created `dtm-view-*` statements re-emit their backlog into the `*_human_readable` topics, so a running UI shows a burst of historical feed rows and counts it as live traffic in busiest pairs. Restart the UI once the backlog drains, or run [`reset-session.sh`](#resetting-for-a-fresh-session) instead when the history does not need to survive.
+Deleting a statement discards its state, and it restarts from its configured start offsets. The re-created `dtm-view-*` statements re-emit their backlog into the `*_human_readable` topics, so a running UI shows a burst of historical feed rows and counts it as live traffic in busiest pairs. Restart the UI once the backlog drains, or run the [session reset](#resetting-for-a-fresh-session) instead when the history does not need to survive.
 
 ### Tables
 
@@ -480,6 +480,7 @@ bus:
 |---|---|
 | `components/mesh-runtime` | Adds the `RayService` (`device-trust-mesh-ray`, Ray 2.59.0) and the simulator (`device-trust-mesh-simulator`), and the `DEVICE_CAP` replacements. Included in `flink-demo`; it needs `kuberay-operator` applied first. |
 | `components/ollama-in-cluster-mode` | Switches `LLM_ENDPOINT` to `http://ollama.ollama.svc.cluster.local:11434` |
+| `components/session-reset` | Adds the `dtm-reset` ServiceAccount, its Roles in `device-trust-mesh`, `kafka` and `argocd`, the reset script and its settings, for [Resetting for a Fresh Session](#resetting-for-a-fresh-session) |
 
 ### Model Recommendation
 
@@ -538,11 +539,13 @@ The full Phase 1 acceptance run is [#453](https://github.com/osowski/confluent-p
 Before a session, empty everything an audience can see (devices, the traffic feed, busiest pairs and latencies) while keeping the topics, schemas, Agent Cards, the `dtm-ddl-*` statements and the agents:
 
 ```bash
-./workloads/device-trust-mesh/reset-session.sh --dry-run   # show the plan
-./workloads/device-trust-mesh/reset-session.sh             # type 'reset' to confirm, or pass --yes
+kubectl create -f workloads/device-trust-mesh/reset-job.yaml      # prints job.batch/dtm-reset-<suffix>
+kubectl -n device-trust-mesh logs -f job/dtm-reset-<suffix>
 ```
 
-The script only runs against the `kind-flink-demo` kube context; set `DTM_RESET_CONTEXT` to use another.
+The reset runs in the cluster as a Job, the same way on every cluster. The [`session-reset`](components/session-reset/) component syncs its ServiceAccount, RBAC, the [`reset-session.sh`](components/session-reset/reset-session.sh) script and a `dtm-reset-settings` ConfigMap; [`reset-job.yaml`](reset-job.yaml) is not synced by Argo CD, so each `kubectl create` starts one new reset. To preview the plan, add `--dry-run` to the Job's `args`. A finished Job is deleted after an hour.
+
+The Kafka steps run the Kafka CLI inside `kafka-0`. On flink-demo the internal listener is anonymous. On eks-demo (`DTM_RESET_KAFKA_AUTH: oauth`) the CLI authenticates as the broker's own OAuth client, a super user; its client config names the broker's mounted secret through Kafka's `${file:...}` config provider, so the credentials never leave the broker pod.
 
 **What it does, in order:**
 1. Scales the simulator to 0.
@@ -669,7 +672,6 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
   kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
   ```
 - **Ray scaling is manual.** In-tree autoscaling is off, so KubeRay runs exactly `replicas` workers (2, up to `maxReplicas: 4`). Scale by editing `replicas` in [`overlays/eks-demo/rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml).
-- **No session reset.** [`reset-session.sh`](reset-session.sh) targets the `flink-demo` kube context and issues unauthenticated broker calls, so it does not work on eks-demo.
 
 ---
 

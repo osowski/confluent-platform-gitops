@@ -14,6 +14,8 @@ components:
   - ../../components/mesh-runtime
   # Live mesh UI. Reads context-mcp, so it requires mesh-runtime.
   - ../../components/ui
+  # In-cluster session reset (reset-job.yaml).
+  - ../../components/session-reset
 
 # Cluster-specific labels
 labels:

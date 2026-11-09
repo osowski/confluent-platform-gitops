@@ -10,6 +10,8 @@ components:
   - device-cap
   - ../../components/mesh-runtime
   - ../../components/ui
+  # In-cluster session reset (reset-job.yaml).
+  - ../../components/session-reset
   # Agents call the in-cluster Ollama on the GPU node.
   - ../../components/ollama-in-cluster-mode
   # Keycloak OAuth identities, MDS role bindings and client OAuth settings.

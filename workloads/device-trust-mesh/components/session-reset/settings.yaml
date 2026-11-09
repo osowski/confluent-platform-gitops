@@ -1,0 +1,12 @@
+---
+# Cluster-specific settings for reset-session.sh, read by the reset Job as env.
+# DTM_RESET_KAFKA_AUTH: none (anonymous internal listener) or oauth (the
+# broker's own OAuth client, via DTM_RESET_TOKEN_URL).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dtm-reset-settings
+  namespace: device-trust-mesh
+data:
+  DTM_RESET_KAFKA_AUTH: none
+  DTM_RESET_TOKEN_URL: ""

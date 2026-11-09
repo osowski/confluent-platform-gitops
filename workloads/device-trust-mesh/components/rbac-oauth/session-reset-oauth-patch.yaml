@@ -1,0 +1,11 @@
+---
+# The reset Job authenticates its Kafka CLI calls as the broker's own OAuth
+# client, through the in-cluster Keycloak token endpoint.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dtm-reset-settings
+  namespace: device-trust-mesh
+data:
+  DTM_RESET_KAFKA_AUTH: oauth
+  DTM_RESET_TOKEN_URL: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token

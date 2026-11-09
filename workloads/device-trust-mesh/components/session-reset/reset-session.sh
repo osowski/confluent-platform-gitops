@@ -2,7 +2,8 @@
 #
 # reset-session.sh - Empty the Device Trust Mesh for a fresh demo session
 #
-# Usage: ./workloads/device-trust-mesh/reset-session.sh [--dry-run] [-y|--yes]
+# Runs in the cluster as the dtm-reset Job (workloads/device-trust-mesh/reset-job.yaml):
+#   kubectl create -f workloads/device-trust-mesh/reset-job.yaml
 #
 # Every pane of the mesh UI starts empty afterwards (devices, traffic feed, busiest pairs,
 # latencies), while topics, schemas, Agent Cards, the DDL statements and the agents survive.
@@ -18,13 +19,19 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-EXPECTED_CONTEXT="${DTM_RESET_CONTEXT:-kind-flink-demo}"
 NAMESPACE="device-trust-mesh"
 ARGOCD_NAMESPACE="argocd"
 APPLICATION="device-trust-mesh"
 KAFKA_NAMESPACE="kafka"
 BROKER_POD="kafka-0"
 BOOTSTRAP="kafka.kafka.svc.cluster.local:9071"
+# none: the internal listener is anonymous. oauth: authenticate as the broker's own OAuth
+# client, a super user, reading its credentials from the broker's mounted secret.
+KAFKA_AUTH="${DTM_RESET_KAFKA_AUTH:-none}"
+TOKEN_URL="${DTM_RESET_TOKEN_URL:-}"
+BROKER_OAUTH_SECRET="/mnt/secrets/kafka-oauth-client/oauth.txt"
+CLIENT_CONFIG="/tmp/dtm-reset-client.properties"
+KAFKA_CLI_OPTS=""
 SIMULATOR="device-simulator"
 UI="device-trust-mesh-ui"
 RAY_SELECTOR="ray.io/is-ray-node=yes"
@@ -33,7 +40,6 @@ CONTEXT_MCP_URL="http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluste
 KEEP_TOPICS=" agent.cards agent.cards_human_readable "
 WAIT_TIMEOUT_S=600
 DRY_RUN=false
-ASSUME_YES=false
 
 # Helper functions
 error() {
@@ -54,9 +60,9 @@ debug() {
 
 usage() {
     cat <<EOF
-Usage: $0 [--dry-run] [-y|--yes]
+Usage: $0 [--dry-run]
 
-Empty the Device Trust Mesh on flink-demo for a fresh demo session.
+Empty the Device Trust Mesh for a fresh demo session. Runs as the dtm-reset Job.
 
 Steps:
   1. Scale the simulator to 0.
@@ -75,10 +81,10 @@ The simulator stays at 0 replicas; start the session with:
 
 Options:
   --dry-run         Show the plan and the commands without changing anything
-  -y, --yes         Skip the confirmation prompt (required for non-interactive use)
 
-Environment:
-  DTM_RESET_CONTEXT kube context to require (default: kind-flink-demo)
+Environment (from the dtm-reset-settings ConfigMap):
+  DTM_RESET_KAFKA_AUTH  none or oauth (default: none)
+  DTM_RESET_TOKEN_URL   OAuth token endpoint, required with oauth
 EOF
 }
 
@@ -110,12 +116,33 @@ wait_for() {
 }
 
 broker() {
-    kc -n "$KAFKA_NAMESPACE" exec "$BROKER_POD" -c kafka -- "$@"
+    kc -n "$KAFKA_NAMESPACE" exec -i "$BROKER_POD" -c kafka -- \
+        env ${KAFKA_CLI_OPTS:+"KAFKA_OPTS=${KAFKA_CLI_OPTS}"} "$@"
+}
+
+# Client properties for the Kafka CLI. The oauth variant names the broker's secret file
+# through the file config provider, so the credentials never leave the broker pod.
+client_config() {
+    if [[ "$KAFKA_AUTH" == "oauth" ]]; then
+        cat <<EOF
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=OAUTHBEARER
+sasl.oauthbearer.token.endpoint.url=${TOKEN_URL}
+sasl.login.callback.handler.class=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginCallbackHandler
+config.providers=file
+config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
+sasl.oauthbearer.client.credentials.client.id=\${file:${BROKER_OAUTH_SECRET}:clientId}
+sasl.oauthbearer.client.credentials.client.secret=\${file:${BROKER_OAUTH_SECRET}:clientSecret}
+sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required ;
+EOF
+    else
+        echo "security.protocol=PLAINTEXT"
+    fi
 }
 
 topic_policy_is() {
-    broker kafka-configs --bootstrap-server "$BOOTSTRAP" --describe --entity-type topics \
-        --entity-name "$1" | grep -q "cleanup.policy=$2 "
+    broker kafka-configs --bootstrap-server "$BOOTSTRAP" --command-config "$CLIENT_CONFIG" \
+        --describe --entity-type topics --entity-name "$1" | grep -q "cleanup.policy=$2 "
 }
 
 # Moves every partition's start offset to its end; -1 means the partition's high watermark.
@@ -133,8 +160,8 @@ purge_topics() {
     fi
     local purged
     purged=$(echo "{\"version\":1,\"partitions\":[${entries}]}" |
-        kc -n "$KAFKA_NAMESPACE" exec -i "$BROKER_POD" -c kafka -- bash -c \
-        "cat > /tmp/dtm-reset-offsets.json && kafka-delete-records --bootstrap-server ${BOOTSTRAP} \
+        broker bash -c "cat > /tmp/dtm-reset-offsets.json && kafka-delete-records \
+        --bootstrap-server ${BOOTSTRAP} --command-config ${CLIENT_CONFIG} \
         --offset-json-file /tmp/dtm-reset-offsets.json" | grep -c 'low_watermark' || true)
     if [[ "$purged" != "$count" ]]; then
         error "kafka-delete-records purged ${purged} of ${count} partitions"
@@ -171,7 +198,6 @@ ui_get() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=true ;;
-        -y|--yes) ASSUME_YES=true ;;
         -h|--help) usage; exit 0 ;;
         *) error "Unknown argument: $1"; usage; exit 1 ;;
     esac
@@ -180,17 +206,24 @@ done
 
 # Preflight
 command -v kubectl >/dev/null || { error "kubectl not found"; exit 1; }
-current_context=$(kubectl config current-context 2>/dev/null || true)
-if [[ "$current_context" != "$EXPECTED_CONTEXT" ]]; then
-    error "kube context is '${current_context}', expected '${EXPECTED_CONTEXT}' (set DTM_RESET_CONTEXT to override)"
-    exit 1
-fi
+case "$KAFKA_AUTH" in
+    none) ;;
+    oauth)
+        [[ -n "$TOKEN_URL" ]] || { error "DTM_RESET_TOKEN_URL is required with DTM_RESET_KAFKA_AUTH=oauth"; exit 1; }
+        KAFKA_CLI_OPTS="-Dorg.apache.kafka.sasl.oauthbearer.allowed.urls=${TOKEN_URL}"
+        ;;
+    *) error "DTM_RESET_KAFKA_AUTH must be none or oauth, not '${KAFKA_AUTH}'"; exit 1 ;;
+esac
 kc -n "$ARGOCD_NAMESPACE" get application "$APPLICATION" >/dev/null ||
     { error "Argo CD Application ${APPLICATION} not found"; exit 1; }
 kc -n "$KAFKA_NAMESPACE" get pod "$BROKER_POD" >/dev/null ||
     { error "broker pod ${KAFKA_NAMESPACE}/${BROKER_POD} not found"; exit 1; }
+# Written on every run, dry runs included, so the topic checks can authenticate.
+client_config | broker bash -c "cat > ${CLIENT_CONFIG}"
+broker kafka-configs --bootstrap-server "$BOOTSTRAP" --command-config "$CLIENT_CONFIG" \
+    --describe --entity-type brokers --entity-default >/dev/null ||
+    { error "Kafka CLI cannot reach ${BOOTSTRAP} with DTM_RESET_KAFKA_AUTH=${KAFKA_AUTH}"; exit 1; }
 
-# Word lists rather than arrays, so the script runs on macOS's bash 3.2.
 STATEMENTS=$(kc -n "$NAMESPACE" get flinkstatements \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -v '^dtm-ddl-' || true)
 STATEMENT_COUNT=$(echo "$STATEMENTS" | grep -c . || true)
@@ -215,17 +248,12 @@ if [[ -z "$PURGE_LINES" ]]; then
     exit 1
 fi
 
-info "Reset plan for context ${current_context}"
+info "Reset plan (Kafka auth: ${KAFKA_AUTH})"
 debug "Statements to recreate (${STATEMENT_COUNT}): $(echo $STATEMENTS)"
 debug "Topics to purge:${PURGE_TOPICS}"
 debug "Compacted topics switched to compact,delete for the purge:${COMPACT_TOPICS:- none}"
 debug "Topics kept:${KEEP_TOPICS}"
 [[ "$DRY_RUN" == "true" ]] && info "Dry run: nothing will change"
-
-if [[ "$ASSUME_YES" != "true" && "$DRY_RUN" != "true" ]]; then
-    read -r -p "Type 'reset' to empty the Device Trust Mesh: " answer
-    [[ "$answer" == "reset" ]] || { error "Aborted"; exit 1; }
-fi
 
 info "1/9 Scaling ${SIMULATOR} to 0"
 run kc -n "$NAMESPACE" scale deploy "$SIMULATOR" --replicas=0
