@@ -206,6 +206,31 @@ done
 
 # Preflight
 command -v kubectl >/dev/null || { error "kubectl not found"; exit 1; }
+# kubectl uses the in-cluster config only when no client flag changes its defaults, and
+# --request-timeout does, so point it at the pod's ServiceAccount through a kubeconfig.
+SA_DIR="/var/run/secrets/kubernetes.io/serviceaccount"
+[[ -f "${SA_DIR}/token" ]] || { error "no ServiceAccount token at ${SA_DIR}; run this as the dtm-reset Job"; exit 1; }
+export KUBECONFIG="/tmp/dtm-reset-kubeconfig"
+export KUBECACHEDIR="/tmp/dtm-reset-kube-cache"
+cat > "$KUBECONFIG" <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+  - name: in-cluster
+    cluster:
+      server: https://kubernetes.default.svc
+      certificate-authority: ${SA_DIR}/ca.crt
+users:
+  - name: dtm-reset
+    user:
+      tokenFile: ${SA_DIR}/token
+contexts:
+  - name: in-cluster
+    context:
+      cluster: in-cluster
+      user: dtm-reset
+current-context: in-cluster
+EOF
 case "$KAFKA_AUTH" in
     none) ;;
     oauth)
