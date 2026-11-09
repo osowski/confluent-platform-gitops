@@ -21,6 +21,11 @@ spec:
         env:
         - name: OLLAMA_NUM_PARALLEL
           value: "4"
+        # Keep the model loaded on the GPU. The default 5m keep-alive unloads
+        # it when idle, and the next calls wait on a cold load past the
+        # agents' 30s timeout.
+        - name: OLLAMA_KEEP_ALIVE
+          value: "-1"
         resources:
           limits:
             nvidia.com/gpu: 1
