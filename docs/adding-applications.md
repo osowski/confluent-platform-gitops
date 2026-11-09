@@ -644,13 +644,12 @@ it here too. Symptom if missed: the `FlinkApplication`/`FlinkComputePool`
 CR itself looks fine in CFK's status, but no pods are ever created — the
 underlying `FlinkDeployment` sits with an empty `status`.
 
-**Unlike CFK, this one does NOT restart automatically on a values change** —
-the chart's Deployment has no checksum annotation tying it to the
-ConfigMap it reads `watchNamespaces` from, so ArgoCD updates the ConfigMap
-but the running pod keeps its stale in-memory config indefinitely. After
-this value changes, manually restart it once (there's no way to script this
-into the sync itself without adding a checksum annotation to the chart's
-Deployment template, which we don't control):
+The operator runs with `kubernetes.operator.dynamic.namespaces.enabled: true`
+(set in `workloads/flink-kubernetes-operator/base/values.yaml`), so it picks
+up a `watchNamespaces` change without a restart. ArgoCD updates the
+ConfigMap, the kubelet refreshes the mounted file, and the operator's config
+check (every 5 minutes) starts watching the new namespace. Allow about 5
+minutes before expecting pods. To pick it up at once, restart the operator:
 
 ```bash
 kubectl rollout restart deployment/flink-kubernetes-operator -n operator
