@@ -144,6 +144,12 @@ spec:
       kind: Certificate
     - group: cert-manager.io
       kind: Issuer
+    # External Secrets Operator. ExternalSecrets can also reference existing
+    # ClusterSecretStores, which are cluster-scoped and not created here.
+    - group: external-secrets.io
+      kind: SecretStore
+    - group: external-secrets.io
+      kind: ExternalSecret
     - group: traefik.io
       kind: IngressRoute
     - group: flink.apache.org

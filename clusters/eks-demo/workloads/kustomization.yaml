@@ -14,6 +14,9 @@ resources:
   - mds-keygen.yaml
   - namespaces.yaml
   - workload-ingresses.yaml
+  - ollama.yaml
+  - kuberay-operator.yaml
+  - device-trust-mesh.yaml
 
 # Workload applications are deployed in sync wave order (100-120)
 # Remove any applications you don't need for your cluster

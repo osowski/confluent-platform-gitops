@@ -1,11 +1,11 @@
 # Agentic Device Trust Mesh
 
-An agent mesh that manages **trusted customer devices** (browsers, phones, tablets) at a large financial institution, running on Confluent Platform, CP Flink and KubeRay on the `flink-demo` cluster. Agents enrol, deny, challenge and revoke devices. Every hand-off between them is an [A2A](https://a2a-protocol.org/latest/specification/) message on Kafka, so the whole conversation is visible in Control Center and queryable from Flink SQL.
+An agent mesh that manages **trusted customer devices** (browsers, phones, tablets) at a large financial institution, running on Confluent Platform, CP Flink and KubeRay on the `flink-demo` and `eks-demo` clusters. Agents enrol, deny, challenge and revoke devices. Every hand-off between them is an [A2A](https://a2a-protocol.org/latest/specification/) message on Kafka, so the whole conversation is visible in Control Center and queryable from Flink SQL.
 
 Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
-> This workload is scaffolding. The topics, schemas, Flink tables and Flink statements deploy today, together with the runtime ConfigMaps and the Flink environment, catalog, database and shared compute pool. The `RayService` and simulator arrive with [#451](https://github.com/osowski/confluent-platform-gitops/issues/451). Measured results are marked *to be recorded*.
+> Measured results are marked *to be recorded*.
 
 ---
 
@@ -406,7 +406,7 @@ SELECT agent, version, description, request_topic FROM `agent.cards_human_readab
 - The simulator draws ids from the fixed pool `dev-0001..dev-<DEVICE_CAP>`, so it can't exceed the cap.
 - The `mesh-runtime` component's Kustomize `replacements` copy the value into the simulator and into the Ray head and worker containers.
 - `context-mcp` exports `dtm_tracked_devices` and flags `dtm_device_cap_exceeded`.
-- Partition counts are fixed at 6 and support caps up to 500. Agent replicas must stay ≤ 6.
+- Partition counts are fixed at 6 and support caps up to 500. Agent replicas must stay ≤ 6. For larger fleets see [Scaling the fleet](#scaling-the-fleet).
 
 ---
 
@@ -589,6 +589,135 @@ curl -s localhost:8000/context-mcp/healthz                               # 503 u
 ```
 
 To query it the way the agents do, point an MCP client at `http://localhost:8000/context-mcp/mcp` (streamable HTTP) through the same port-forward. For example, `npx @modelcontextprotocol/inspector` opens a browser UI that lists and calls the four tools: `get_device_context`, `get_customer_context`, `list_risk_signals` and `list_devices`.
+
+---
+
+## Running on eks-demo
+
+The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-device fleet, two Serve replicas for `context-mcp` and each enabled agent, OAuth on every Kafka and Schema Registry client, and Ollama on a GPU node.
+
+### Prerequisites
+
+1. **Terraform.** In `terraform/clusters/eks-demo`, set `gpu_node_group_enabled = true` and apply. This adds the GPU node, the `dtm-eso` IRSA role and the four client secrets in Secrets Manager. Before applying, confirm the G-instance and Standard On-Demand vCPU quotas in `us-east-1`; the quota codes, offering check and variable reference are in [`terraform/clusters/eks-demo/README.md`](../../terraform/clusters/eks-demo/README.md#gpu-node-group). The `eks.amazonaws.com/role-arn` annotation in [`components/rbac-oauth/eso.yaml`](components/rbac-oauth/eso.yaml) must match the `dtm_eso_role_arn` output.
+2. **Cluster infrastructure.** `cluster-autoscaler` and `nvidia-device-plugin` are synced (see [`clusters/eks-demo/README.md`](../../clusters/eks-demo/README.md#infrastructure-applications)). Check the GPU is allocatable:
+   ```bash
+   kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
+   ```
+3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.3.0-202611050559`, the client-OAuth release of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
+4. **Workload Applications.** `kuberay-operator` syncs automatically. `ollama` and `device-trust-mesh` are manual-sync. Sync `ollama` first, then `device-trust-mesh`:
+   ```bash
+   kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
+   kubectl patch application device-trust-mesh -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
+   ```
+   Verify as in [Running It](#running-it), step 5. Start a run by scaling `device-simulator` to 1.
+
+### GPU requirement
+
+The eks-demo mesh requires the GPU node group. There is no CPU Ollama fallback.
+
+| Item | Value |
+|---|---|
+| Node group | `gpu`: one `g4dn.xlarge` (T4), fixed size 1, no autoscaling |
+| Node label / taint | `accelerator=nvidia` / `nvidia.com/gpu=present:NoSchedule` |
+| Ollama | `nvidia.com/gpu: 1`, `OLLAMA_NUM_PARALLEL=4`, model cache on a `gp3` PVC |
+| Models | `qwen3:4b` (agents) and `qwen3:8b`, pulled by the PostSync `ollama-model-pull` Job |
+| Agents | `LLM_ENDPOINT` is `http://ollama.ollama.svc.cluster.local:11434` through the `ollama-in-cluster-mode` component |
+
+### Access
+
+The UI is at `https://dtm.eks-demo.platform.dspdemos.com` (IngressRoute `dtm-ui` in [`workloads/ingresses/overlays/eks-demo`](../ingresses/overlays/eks-demo/), Let's Encrypt certificate). The cluster is private, so reach it through the bastion: start the SSM SOCKS5 tunnel and route `*.platform.dspdemos.com` through it in FoxyProxy, as described in [Environment Access](../../clusters/eks-demo/README.md#environment-access). DNS comes from ExternalDNS, so no `/etc/hosts` entry is needed.
+
+For the Ray dashboard and `context-mcp`, port-forward as in [Inspecting the Mesh](#inspecting-the-mesh), with `HTTPS_PROXY` set.
+
+### Secrets and OAuth flow
+
+Every client authenticates to Kafka and Schema Registry as its own Keycloak service account. No secret value is in git.
+
+```text
+Terraform -> AWS Secrets Manager  /device-trust-mesh/eks-demo/sa-dtm-{ray,simulator,ui,flink}
+          -> ESO SecretStore dtm-secrets-manager (ServiceAccount dtm-eso, IRSA)
+          -> ExternalSecrets (wave -2) -> dtm-{ray,simulator,ui,flink}-oauth,
+                                          dtm-cmf-kafka-credentials, dtm-cmf-sr-credentials
+          -> Job dtm-service-account-setup (Sync hook, wave -1) sets each Keycloak client secret from them
+          -> workloads fetch tokens (client credentials); ConfluentRolebindings authorize the dtm-* groups
+```
+
+| Keycloak client | Group | Used by |
+|---|---|---|
+| `sa-dtm-ray` | `dtm-ray` | Agents and `context-mcp` (one Ray principal) |
+| `sa-dtm-simulator` | `dtm-simulator` | `device-simulator` |
+| `sa-dtm-ui` | `dtm-ui` | Mesh UI |
+| `sa-dtm-flink` | `dtm-flink` | CMF catalog and Flink SQL statements, through the `FlinkSecret` and `FlinkEnvironmentSecretMapping` chain |
+
+Secrets Manager is the source of truth. The Job creates each client or sets the secret on an existing one, adds the service-account user to its group and verifies a client-credentials token. The role bindings and CMF chain are in [`components/rbac-oauth`](components/rbac-oauth/).
+
+**When a client can't authenticate**, check in this order:
+
+| # | Check | Command |
+|---|---|---|
+| 1 | ExternalSecrets are `Ready` and the Secrets exist | `kubectl get externalsecret -n device-trust-mesh` |
+| 2 | The Keycloak Job completed (it fails the sync after `activeDeadlineSeconds: 600` if a Secret never appears) | `kubectl logs -n device-trust-mesh job/dtm-service-account-setup` |
+| 3 | The broker denied the request or rejected the token | `kubectl logs -n kafka kafka-0 \| grep -iE 'denied\|oauth\|authoriz'` |
+
+### Current state
+
+- **`dtm-ctl` runs in the simulator pod**, as `sa-dtm-simulator`, which has Write on `simulator.control`. The simulator Deployment defaults to `replicas: 0`; scale it to 1 first. It starts at 0.2 enrolments/s, the same as flink-demo; raise the rate to drive more agent traffic:
+  ```bash
+  kubectl exec -n device-trust-mesh deploy/device-simulator -c simulator -- python -m dtm.simulator.ctl rate 2
+  ```
+- **Rotating a client secret.** ESO refreshes the Kubernetes Secret within `refreshInterval: 1h`. Keycloak takes the new value only when the Keycloak Job runs, on the next `device-trust-mesh` sync, and pods read env at start. After a rotation, sync `device-trust-mesh`, then restart the RayService pods, `device-simulator` and `device-trust-mesh-ui`.
+- **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the models.
+  ```bash
+  kubectl delete pvc ollama-data -n ollama
+  kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
+  ```
+- **Ray scaling is manual.** In-tree autoscaling is off, so KubeRay runs exactly `replicas` workers (2, up to `maxReplicas: 4`). Scale by editing `replicas` in [`overlays/eks-demo/rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml).
+- **No session reset.** [`reset-session.sh`](reset-session.sh) targets the `flink-demo` kube context and issues unauthenticated broker calls, so it does not work on eks-demo.
+
+---
+
+## Scaling the fleet
+
+**Question:** to run 1,000 devices at current latency, what has to scale?
+
+Two drivers scale different components:
+
+| Driver | Set by | Drives |
+|---|---|---|
+| **Fleet size** | `DEVICE_CAP` | **State**: rows in `device.context` and `customer.context`, Flink keyed state for the context and risk-signal statements, and the in-memory tables every `context-mcp` replica holds (each replica materializes all devices) |
+| **Event rate** | `dtm-ctl rate`, 0 to 100 enrolments/s | **Throughput**: records/s through `device.events`, the router, `agent.tasks.*` and LLM calls/s |
+
+| Component | Current setting | Bounds | Knob |
+|---|---|---|---|
+| Topic partitions | 6 per topic; 1 for `agent.cards`, `agent.cards_human_readable`, `agent.pair_counts`, `simulator.control`. The [`base/topics.yaml`](base/topics.yaml) header supports `DEVICE_CAP` up to 500 | Max consumer parallelism per topic, so the cap on agent replicas and Flink source parallelism. Partitions can't shrink. | `partitionCount` in `base/topics.yaml` |
+| Agent Serve replicas | 2 each for `context-mcp`, `risk`, `enrolment`, `step-up`, `compliance`; 1 for disabled `revocation` ([`rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml)). `flink-demo`: 1 each | Concurrent tasks per agent. Must stay ≤ partitions. | `num_replicas`, with `replicas` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml) |
+| Ray workers | 2 CPU / 3 Gi each; `replicas: 2`, `maxReplicas: 4` on eks-demo (`maxReplicas: 2` in [`base`](components/mesh-runtime/rayservice.yaml)). Agent replicas reserve 0.1 CPU, `ContextMcp` replicas 1 CPU. On eks-demo the head advertises 0 CPU, so only workers hold Serve replicas. | Room for Serve replicas | `replicas`, up to `maxReplicas` |
+| `context-mcp` | `max_ongoing_requests` = `MAX_CONCURRENT_LOOKUPS` = 32 per replica. Every replica holds all devices in memory. | Lookup p99; memory per replica grows with `DEVICE_CAP` and is added per replica | Replicas, worker memory |
+| Flink statements | `parallelism: 1` on all 10 long-running statements, on one `dtm-shared-pool` TaskManager with 12 slots, 3 CPU and 4608m ([`flink-statements.yaml`](base/flink-statements.yaml), [`flink-compute-pool.yaml`](base/flink-compute-pool.yaml)) | Per-hop latency and state size per statement. Two slots spare; any parallelism above 1 needs more slots or TaskManagers. | Statement `parallelism`, `taskmanager.numberOfTaskSlots`; see [Growing the shared pool](#growing-the-shared-pool) |
+| LLM (Ollama) | 1 GPU (`g4dn.xlarge`), `OLLAMA_NUM_PARALLEL=4` ([`ollama/overlays/eks-demo`](../ollama/overlays/eks-demo/deployment-gpu-patch.yaml)) | LLM calls/s, usually the first limit as event rate rises | `OLLAMA_NUM_PARALLEL`, model size, GPU count (the GPU group is fixed at 1 node) |
+| Simulator | 1 replica when scaled up; rate 0 to 100/s | Event-generation ceiling | Replicas |
+| UI | 1 replica; reads the derived topics | Rendering, not mesh latency | None needed for mesh latency |
+
+### Worked example: 1,000 devices
+
+Moves with fleet size:
+
+| What | Change |
+|---|---|
+| `DEVICE_CAP` | `"1000"` in [`overlays/eks-demo/device-cap`](overlays/eks-demo/device-cap/kustomization.yaml). It exceeds the 500 ceiling for 6 partitions. |
+| Partitions | Recreate the topics with 12 partitions, so replicas and Flink source parallelism can exceed 6. |
+| Replicas | Raise `context-mcp` and agent `num_replicas` (and `agents.yaml` `replicas`), up to the partition count. |
+| `context-mcp` memory | Each replica holds all 1,000 devices, so check worker memory before adding replicas. |
+| Ray workers | Raise `replicas` and `maxReplicas` for the added Serve replicas. |
+| Flink | Raise `parallelism` on the context and risk-signal statements, and `taskmanager.numberOfTaskSlots` or the TaskManager count to match. Roll out as in [Growing the shared pool](#growing-the-shared-pool). |
+| Nodes | The general node group tops out at 10 (`node_max_size`), and raising it needs `L-1216C47A` headroom. |
+
+Tracks event rate, not fleet size:
+
+| What | Why |
+|---|---|
+| Ollama parallel slots and GPU count | LLM calls/s depend on enrolments/s. At the same rate, 1,000 devices make the same number of LLM calls as 100. |
+| Kafka and Flink throughput | Records/s depend on the rate set with `dtm-ctl` (see [Current state](#current-state)). |
 
 ---
 

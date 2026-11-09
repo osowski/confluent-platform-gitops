@@ -35,6 +35,11 @@ patches:
       kind: Service
       name: keycloak-external
 
+  - path: admin-secret-reflection-patch.yaml
+    target:
+      kind: Secret
+      name: keycloak-admin
+
 labels:
 - includeSelectors: false
   includeTemplates: true
