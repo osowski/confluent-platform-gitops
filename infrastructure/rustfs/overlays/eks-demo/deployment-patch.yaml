@@ -2,6 +2,9 @@
 # The RustFS image runs as UID/GID 10001, but a gp3 EBS volume mounts as a
 # root-owned ext4 filesystem. fsGroup makes kubelet hand the volume to the
 # RustFS group so the server can write /data.
+#
+# The memory limit is double base; RustFS runs at about 400Mi on eks-demo,
+# close to the base 512Mi.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,3 +16,8 @@ spec:
       securityContext:
         fsGroup: 10001
         fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: rustfs
+          resources:
+            limits:
+              memory: 1Gi

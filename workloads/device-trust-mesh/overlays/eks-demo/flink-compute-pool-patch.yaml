@@ -1,0 +1,12 @@
+# JobManager process memory is double base: with the ten long-running
+# statements on the pool, the base 1024m JobManager runs near its limit.
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkComputePool
+metadata:
+  name: dtm-shared-pool
+  namespace: device-trust-mesh
+spec:
+  clusterSpec:
+    jobManager:
+      resource:
+        memory: "2048m"

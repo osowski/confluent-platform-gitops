@@ -18,6 +18,8 @@ components:
 patches:
   # Two replicas per enabled agent in agents.yaml.
   - path: agents-config-patch.yaml
+  # JobManager memory.
+  - path: flink-compute-pool-patch.yaml
   # Serve replicas, worker group size and worker spread.
   - path: rayservice-scale-patch.yaml
     target:
