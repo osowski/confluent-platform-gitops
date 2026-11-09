@@ -1,6 +1,5 @@
-# device-trust-mesh agents call qwen3:4b; qwen3:8b stays pulled so the agents
-# can switch models in config alone. The PostSync ollama-model-pull Job pulls
-# every model listed here.
+# eks-demo Ollama serves only the device-trust-mesh agents, which call qwen3:4b.
+# The PostSync ollama-model-pull Job pulls every model listed here.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,4 +8,3 @@ metadata:
 data:
   models: |
     qwen3:4b
-    qwen3:8b
