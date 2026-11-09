@@ -28,9 +28,9 @@ resources:
   # the dtm-cmf-* Secrets synced in external-secrets.yaml.
   - flink-secrets.yaml
 
-# Requires the base plus the mesh-runtime and ui components ahead of this one
-# in the overlay's components list: these patches target the RayService and
-# Deployments those components declare.
+# Requires the base plus the mesh-runtime, ui and session-reset components
+# ahead of this one in the overlay's components list: these patches target the
+# RayService, Deployments and reset settings those components declare.
 patches:
   # Strategic-merge, self-identifying by apiVersion/kind/metadata. The Flink
   # CRs' fields touched here are maps or scalars, and Deployment env merges
@@ -39,6 +39,7 @@ patches:
   - path: flink-compute-pool-oauth-patch.yaml
   - path: simulator-oauth-patch.yaml
   - path: ui-oauth-patch.yaml
+  - path: session-reset-oauth-patch.yaml
   # JSON6902 append: RayService env lists have no merge key.
   - path: rayservice-oauth-patch.yaml
     target:

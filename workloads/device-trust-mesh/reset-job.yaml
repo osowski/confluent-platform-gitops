@@ -1,0 +1,58 @@
+---
+# Empties the Device Trust Mesh for a fresh demo session. Not synced by
+# Argo CD: start each reset with
+#
+#   kubectl create -f workloads/device-trust-mesh/reset-job.yaml
+#
+# The ServiceAccount, RBAC, script and per-cluster settings come from the
+# session-reset component, so the same file runs on every cluster.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: dtm-reset-
+  namespace: device-trust-mesh
+  labels:
+    app.kubernetes.io/name: dtm-reset
+spec:
+  # A partial reset is not safe to repeat blindly; rerun by creating a new Job.
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dtm-reset
+    spec:
+      serviceAccountName: dtm-reset
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: reset
+          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066  # kubectl v1.35.4
+          command: ["/bin/bash", "/scripts/reset-session.sh"]
+          # Add "--dry-run" to print the plan without changing anything.
+          args: []
+          envFrom:
+            - configMapRef:
+                name: dtm-reset-settings
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: dtm-reset-script

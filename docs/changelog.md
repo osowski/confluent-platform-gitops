@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Agentic Device Trust Mesh scaffolding on `flink-demo`** ([#441](https://github.com/osowski/confluent-platform-gitops/issues/441)): opt-in `kuberay-operator` and `device-trust-mesh` Applications (topics, shared Flink compute pool, runtime config). Agents land in follow-up stories; see the [use-case README](../workloads/device-trust-mesh/README.md).
 
 ### Changed
+- **Device Trust Mesh session reset runs in the cluster** ([#496](https://github.com/osowski/confluent-platform-gitops/issues/496)): `kubectl create -f workloads/device-trust-mesh/reset-job.yaml` resets the mesh on flink-demo and eks-demo; the laptop script is gone.
 - **Flink Kubernetes Operator watches new namespaces without a restart** ([#505](https://github.com/osowski/confluent-platform-gitops/issues/505)): `kubernetes.operator.dynamic.namespaces.enabled` is on for all clusters, so a `watchNamespaces` change takes effect within about 5 minutes.
   Restart the operator once after this lands so it reads the new setting.
 - **eks-demo Ollama keeps its model loaded** ([#505](https://github.com/osowski/confluent-platform-gitops/issues/505)): `OLLAMA_KEEP_ALIVE=-1`, so the first agent calls after an idle period no longer time out on a cold model load.

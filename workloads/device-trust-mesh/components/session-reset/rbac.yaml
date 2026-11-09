@@ -1,0 +1,102 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dtm-reset
+  namespace: device-trust-mesh
+---
+# Everything reset-session.sh does in the mesh namespace: scale the simulator,
+# delete and watch the long-running FlinkStatements, switch topic cleanup
+# policies, restart the Ray pods and the UI, and read through the UI pod.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dtm-reset
+  namespace: device-trust-mesh
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["get", "create"]
+  - apiGroups: ["platform.confluent.io"]
+    resources: ["flinkstatements"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["platform.confluent.io"]
+    resources: ["kafkatopics"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dtm-reset
+  namespace: device-trust-mesh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dtm-reset
+subjects:
+  - kind: ServiceAccount
+    name: dtm-reset
+    namespace: device-trust-mesh
+---
+# Exec into the broker pod, which has the Kafka CLI, for the topic purge.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dtm-reset
+  namespace: kafka
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dtm-reset
+  namespace: kafka
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dtm-reset
+subjects:
+  - kind: ServiceAccount
+    name: dtm-reset
+    namespace: device-trust-mesh
+---
+# Sync the device-trust-mesh Application, which recreates the statements.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dtm-reset
+  namespace: argocd
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    resourceNames: ["device-trust-mesh"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dtm-reset
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dtm-reset
+subjects:
+  - kind: ServiceAccount
+    name: dtm-reset
+    namespace: device-trust-mesh
