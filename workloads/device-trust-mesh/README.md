@@ -514,10 +514,7 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    kubectl apply -f clusters/flink-demo/workloads/device-trust-mesh.yaml -n argocd
    kubectl patch application device-trust-mesh -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
    ```
-   On a cluster that was bootstrapped before `device-trust-mesh` joined the Flink Kubernetes Operator's `watchNamespaces`, restart the operator once so it watches the new namespace. Otherwise the shared pool's `FlinkDeployment` never gets pods. See [Adding Applications](../../docs/adding-applications.md#2-flink-kubernetes-operators-watchnamespaces):
-   ```bash
-   kubectl rollout restart deployment/flink-kubernetes-operator -n operator
-   ```
+   The Flink Kubernetes Operator starts watching `device-trust-mesh` within about 5 minutes of it joining `watchNamespaces`. Until then the shared pool's `FlinkDeployment` has no pods. See [Adding Applications](../../docs/adding-applications.md#2-flink-kubernetes-operators-watchnamespaces).
 5. **Verify:**
    ```bash
    kubectl get kafkatopic -n device-trust-mesh
