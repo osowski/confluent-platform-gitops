@@ -269,7 +269,7 @@ Defined in `clusters/eks-demo/infrastructure/kustomization.yaml`:
 - **cluster-autoscaler** (wave 5) - Scales the `workers-v2` node group between its Terraform min and max (IRSA)
 - **nvidia-device-plugin** (wave 5) - Advertises `nvidia.com/gpu` on the tainted GPU node group
 - **aws-load-balancer-controller** (wave 8) - AWS Load Balancer Controller for NLB provisioning
-- **external-dns** (wave 8) - Route53 DNS record management via ExternalDNS
+- **external-dns** (wave 18) - Route53 DNS record management via ExternalDNS
 - **traefik** (wave 10) - Ingress controller deployed on internal AWS NLB
 - **cert-manager** (wave 20) - TLS certificate management (Let's Encrypt DNS-01 via Route53 IRSA)
 - **kube-prometheus-stack** (wave 20) - Monitoring stack (Prometheus, Grafana, Alertmanager)

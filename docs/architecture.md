@@ -408,16 +408,20 @@ export HTTPS_PROXY=socks5://localhost:1080
 
 Without the tunnel running, `kubectl get nodes` will simply time out — not fail with an auth error, just hang — which can be disorienting the first time you encounter it. See [ADR-0004](../adrs/0004-private-eks-api-ssm-bastion.md) for the full rationale behind this design.
 
-**AWS-Native Ingress (ALB + ExternalDNS + Route53):**
+**Ingress (Traefik + internal NLB + ExternalDNS + Let's Encrypt):**
 
-The ingress model for eks-demo is fundamentally different from the kind-based clusters in this repository, which use Traefik with local `.confluentdemo.local` hostnames and `/etc/hosts` entries. On eks-demo, the AWS Load Balancer Controller provisions an Application Load Balancer for each Kubernetes Ingress resource, and ExternalDNS automatically creates Route53 DNS records pointing to those ALBs. TLS certificates are provisioned via ACM and referenced by annotation on the Ingress resources.
+eks-demo routes through Traefik `IngressRoute`s, like the kind-based clusters. What differs is how traffic reaches Traefik and how names and certificates are issued. The kind clusters use a NodePort, `.confluentdemo.local` names in `/etc/hosts`, and self-signed certificates. On eks-demo:
 
-The end result is that deploying a new service with an Ingress in eks-demo automatically produces a real public DNS record, a real TLS certificate, and a real load balancer — with no manual AWS console interaction required.
+| Concern | Implementation | Sync wave |
+|---|---|---|
+| Load balancer | The AWS Load Balancer Controller provisions one **internal** NLB (`nlb-ip`, IP targets, cross-zone) for the Traefik `LoadBalancer` Service | 8 |
+| Ingress controller | Traefik, a 2-replica Deployment, routing `IngressRoute` CRs | 10 |
+| DNS | ExternalDNS (`sources: [service]`, `policy: sync`, `txtOwnerId: eks-demo`) writes one wildcard Route53 record, `*.eks-demo.platform.dspdemos.com`, from the `external-dns.alpha.kubernetes.io/hostname` annotation on the Traefik Service | 18 |
+| TLS | cert-manager issues a `Certificate` per host from the Let's Encrypt staging and production `ClusterIssuer`s, using the Route53 DNS-01 solver | 20 (cert-manager), 75 (`cert-manager-resources`) |
 
-- **Ingress controller**: AWS Load Balancer Controller (sync-wave 25)
-- **DNS automation**: ExternalDNS watching for `Ingress` resources and writing A records to Route53 (sync-wave 26)
-- **TLS**: ACM certificates referenced via `alb.ingress.kubernetes.io/certificate-arn` annotation
-- **Domain pattern**: `<service>.eks-demo.platform.dspdemos.com`
+A new service needs only an `IngressRoute` and a `Certificate` under `<service>.eks-demo.platform.dspdemos.com` (see `workloads/ingresses/overlays/eks-demo/`). The wildcard record already covers its name, so no DNS change is needed. The names resolve publicly, but they point to the internal NLB, so the services are reachable only from inside the VPC, through the SSM/SOCKS5 bastion above.
+
+The configuration is in `infrastructure/traefik/overlays/eks-demo/values.yaml`, `infrastructure/external-dns/` and `infrastructure/cert-manager-resources/overlays/eks-demo/letsencrypt-cluster-issuers.yaml`.
 
 **Storage (EBS CSI Driver):**
 
@@ -441,8 +445,8 @@ Client secrets flow Terraform → AWS Secrets Manager → External Secrets Opera
 **Key differences from flink-demo-rbac:**
 - Cluster infrastructure is provisioned via Terraform (`terraform/clusters/eks-demo/` + `terraform/modules/eks-cluster/`), not assumed to pre-exist — see [ADR-0005](../adrs/0005-terraform-argocd-cluster-provisioning-split.md) and [ADR-0006](../adrs/0006-terraform-remote-state-module-structure.md)
 - Private API endpoint requires SSM tunnel for all `kubectl` access; no public endpoint is exposed under any circumstances
-- Traefik replaced by AWS Load Balancer Controller; Longhorn replaced by EBS CSI driver
-- Route53 + ACM provide real public DNS and TLS instead of self-signed certificates and `/etc/hosts` resolution
+- Traefik sits behind an internal NLB provisioned by the AWS Load Balancer Controller, not a NodePort; Longhorn replaced by EBS CSI driver
+- Route53 (one ExternalDNS wildcard record) and Let's Encrypt (DNS-01) provide real DNS names and trusted TLS instead of `/etc/hosts` resolution and self-signed certificates
 - `workers-v2` managed node group (t3.2xlarge, min=4, max=10, scaled by cluster-autoscaler) spread across 3 availability zones; optional single-node `g4dn.xlarge` GPU group for Ollama
 
 ### mTLS Variant (flink-demo-rbac-mtls cluster)
