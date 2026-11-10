@@ -1,0 +1,16 @@
+# TLS certificate for the Ray dashboard IngressRoute.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ray-dashboard-tls
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "110"
+spec:
+  secretName: ray-dashboard-tls
+  dnsNames:
+    - ray.eks-demo.platform.dspdemos.com
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod

@@ -1,0 +1,9 @@
+# Prometheus scraping of the Ray head and workers, and the mesh's Grafana
+# dashboard. Needs kube-prometheus-stack (PodMonitor CRD, Grafana dashboard
+# sidecar) on the cluster.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - podmonitor.yaml
+  - grafana-dashboard.yaml

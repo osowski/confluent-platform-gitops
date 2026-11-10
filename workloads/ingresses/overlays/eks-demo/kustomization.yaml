@@ -9,6 +9,8 @@ resources:
   - cmf-ui-ingressroute.yaml
   - dtm-ui-certificate.yaml
   - dtm-ui-ingressroute.yaml
+  - ray-dashboard-certificate.yaml
+  - ray-dashboard-ingressroute.yaml
 
 patches:
   - path: cmf-ingressroute-patch.yaml

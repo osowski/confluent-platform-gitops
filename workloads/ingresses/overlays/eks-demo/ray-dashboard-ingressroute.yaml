@@ -1,0 +1,22 @@
+# Ray dashboard on the RayService head. The dashboard has no authentication and
+# its Jobs API runs arbitrary code on the Ray cluster; the eks-demo hosts
+# resolve to the internal NLB, so it is reachable only from inside the VPC.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ray-dashboard
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "118"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`ray.eks-demo.platform.dspdemos.com`)
+      kind: Rule
+      services:
+        - name: device-trust-mesh-head-svc
+          port: 8265
+          scheme: http
+  tls:
+    secretName: ray-dashboard-tls

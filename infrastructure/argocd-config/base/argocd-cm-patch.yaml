@@ -521,3 +521,58 @@ data:
     hs.status = "Progressing"
     hs.message = "Flink job state: " .. obj.status.jobStatus.state
     return hs
+  # RayService (KubeRay 1.3+ conditions). Without it a RayService reports
+  # Healthy at creation, so later sync waves start before Serve is up.
+  #   * observedGeneration < generation   -> Progressing (spec not yet observed)
+  #   * Suspended=True                    -> Suspended
+  #   * Ready=False, ValidationFailed or
+  #     InitializingTimeout               -> Degraded
+  #   * Upgrade/RollbackInProgress=True   -> Progressing
+  #   * Ready=True                        -> Healthy
+  #   * anything else                     -> Progressing (Ready's message)
+  resource.customizations.health.ray.io_RayService: |
+    hs = {}
+    if obj.status == nil or obj.status.conditions == nil then
+      hs.status = "Progressing"
+      hs.message = "Waiting for RayService status"
+      return hs
+    end
+    if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil and obj.status.observedGeneration < obj.metadata.generation then
+      hs.status = "Progressing"
+      hs.message = "Waiting for KubeRay to observe the latest spec"
+      return hs
+    end
+    local c = {}
+    for _, cond in ipairs(obj.status.conditions) do
+      c[cond.type] = cond
+    end
+    local ready = c["Ready"]
+    if c["Suspended"] ~= nil and c["Suspended"].status == "True" then
+      hs.status = "Suspended"
+      hs.message = "RayService is suspended"
+      return hs
+    end
+    if ready ~= nil and ready.status == "False" and (ready.reason == "ValidationFailed" or ready.reason == "InitializingTimeout") then
+      hs.status = "Degraded"
+      hs.message = ready.reason .. ": " .. (ready.message or "")
+      return hs
+    end
+    for _, t in ipairs({"UpgradeInProgress", "RollbackInProgress"}) do
+      if c[t] ~= nil and c[t].status == "True" then
+        hs.status = "Progressing"
+        hs.message = t .. ": " .. (c[t].message or "")
+        return hs
+      end
+    end
+    if ready ~= nil and ready.status == "True" then
+      hs.status = "Healthy"
+      hs.message = "RayService is serving"
+      return hs
+    end
+    hs.status = "Progressing"
+    if ready ~= nil and ready.message ~= nil then
+      hs.message = ready.message
+    else
+      hs.message = "Waiting for the RayService to be Ready"
+    end
+    return hs
