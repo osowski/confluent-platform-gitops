@@ -32,14 +32,15 @@ patches:
       kind: RayService
       name: device-trust-mesh
 
-# Images from the client-OAuth release of osowski/flink-sandbox device-trust-mesh.
+# osowski/flink-sandbox device-trust-mesh images with the OAuth client settings and
+# metrics exported through Ray's metrics agent.
 images:
   - name: quay.io/osowski/device-trust-mesh-ray
-    newTag: v1.3.0-202611050559
+    newTag: v1.3.0-202611101623
   - name: quay.io/osowski/device-trust-mesh-simulator
-    newTag: v1.3.0-202611050559
+    newTag: v1.3.0-202611101623
   - name: quay.io/osowski/device-trust-mesh-ui
-    newTag: v1.3.0-202611050559
+    newTag: v1.3.0-202611101623
 
 # Cluster-specific labels
 labels:
