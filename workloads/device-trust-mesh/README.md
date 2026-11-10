@@ -479,6 +479,7 @@ bus:
 | Component | Effect |
 |---|---|
 | `components/mesh-runtime` | Adds the `RayService` (`device-trust-mesh-ray`, Ray 2.59.0) and the simulator (`device-trust-mesh-simulator`), and the `DEVICE_CAP` replacements. Included in `flink-demo`; it needs `kuberay-operator` applied first. |
+| `components/observability` | Adds a PodMonitor for the Ray head and workers and the `Device Trust Mesh` Grafana dashboard. Needs `kube-prometheus-stack`; included in `eks-demo` |
 | `components/ollama-in-cluster-mode` | Switches `LLM_ENDPOINT` to `http://ollama.ollama.svc.cluster.local:11434` |
 | `components/session-reset` | Adds the `dtm-reset` ServiceAccount, its Roles in `device-trust-mesh`, `kafka` and `argocd`, the reset script and its settings, for [Resetting for a Fresh Session](#resetting-for-a-fresh-session) |
 
@@ -573,7 +574,7 @@ At `http://localhost:8265`:
 | **Cluster** | The head and worker nodes, with CPU and memory use |
 | **Actors** / **Logs** | Every Serve replica's process, and stdout/stderr per node |
 
-Without the dashboard, `kubectl -n device-trust-mesh get rayservice device-trust-mesh -o yaml` shows each Serve application's status under `.status`.
+Without the dashboard, `kubectl -n device-trust-mesh get rayservice device-trust-mesh -o yaml` shows each Serve application's status under `.status`. Argo CD reports the RayService Healthy once its `Ready` condition is `True`, so the simulator (wave 90) and UI (wave 95) wait for Serve.
 
 **`context-mcp` directly.** The context engine serves a REST mirror of its MCP tools, and requests from localhost are allowed:
 
@@ -589,6 +590,23 @@ curl -s localhost:8000/context-mcp/healthz                               # 503 u
 ```
 
 To query it the way the agents do, point an MCP client at `http://localhost:8000/context-mcp/mcp` (streamable HTTP) through the same port-forward. For example, `npx @modelcontextprotocol/inspector` opens a browser UI that lists and calls the four tools: `get_device_context`, `get_customer_context`, `list_risk_signals` and `list_devices`.
+
+#### Metrics
+
+The mesh records its `dtm_*` metrics through `ray.util.metrics`, and Ray's metrics agent on every Ray pod (port `metrics`, 8080) exports them as `ray_dtm_*`, next to Ray's own `ray_serve_*` metrics. Each Serve replica's series carries a `WorkerId` label, so sum across workers. The app's `/<app>/metrics` routes reach one replica through the Serve proxy; don't scrape them.
+
+With [`components/observability`](components/observability/) (eks-demo), the PodMonitor `device-trust-mesh-ray` scrapes every Ray pod, and the **Device Trust Mesh** Grafana dashboard shows:
+
+| Panel | Metric | Target |
+|---|---|---|
+| Context tool p99 | `ray_dtm_context_tool_latency_ms` by `tool` | < 20 ms |
+| Materialization lag p99 | `ray_dtm_materialization_lag_ms` by `topic` | < 1 s |
+| Agent hop p99 | `ray_dtm_hop_latency_ms` by `agent` (envelope `eventTime` to consumption, no LLM time) | < 100 ms |
+| Agent processing, LLM latency and calls | `ray_dtm_agent_processing_latency_ms`, `ray_dtm_llm_latency_ms` by `agent`, `model`, `status` | |
+| Errors and skips | handler, loop and invalid-request counters by `agent`, skipped context records by `topic`, STALE lookups | |
+| Tracked devices, healthy replicas | `ray_dtm_tracked_devices`, `ray_serve_deployment_replica_healthy` | |
+
+Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates a histogram's `_sum` from bucket midpoints. End-to-end event-to-decision latency isn't a Prometheus metric; the UI shows it. Consumer lag per agent group needs a Kafka lag exporter, which isn't deployed.
 
 ---
 
@@ -627,7 +645,9 @@ The eks-demo mesh requires the GPU node group. There is no CPU Ollama fallback.
 
 The UI is at `https://dtm.eks-demo.platform.dspdemos.com` (IngressRoute `dtm-ui` in [`workloads/ingresses/overlays/eks-demo`](../ingresses/overlays/eks-demo/), Let's Encrypt certificate). The cluster is private, so reach it through the bastion: start the SSM SOCKS5 tunnel and route `*.platform.dspdemos.com` through it in FoxyProxy, as described in [Environment Access](../../clusters/eks-demo/README.md#environment-access). DNS comes from ExternalDNS, so no `/etc/hosts` entry is needed.
 
-For the Ray dashboard and `context-mcp`, port-forward as in [Inspecting the Mesh](#inspecting-the-mesh), with `HTTPS_PROXY` set.
+The Ray dashboard is at `https://ray.eks-demo.platform.dspdemos.com` (IngressRoute `ray-dashboard`, same overlay). It has no authentication, and its Jobs API runs arbitrary code on the Ray cluster, so it is reachable only from inside the VPC. The Grafana dashboard **Device Trust Mesh** is at `https://grafana.eks-demo.platform.dspdemos.com`; see [Metrics](#metrics).
+
+For `context-mcp`, port-forward as in [Inspecting the Mesh](#inspecting-the-mesh), with `HTTPS_PROXY` set.
 
 ### Secrets and OAuth flow
 

@@ -1,0 +1,21 @@
+# Scrapes Ray's metrics agent on every Ray pod. KubeRay adds the `metrics`
+# port (8080) to the head and worker containers. Each Serve replica's series
+# carries a WorkerId label, so dashboards aggregate across workers.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: device-trust-mesh-ray
+  namespace: device-trust-mesh
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      ray.io/is-ray-node: "yes"
+  podMetricsEndpoints:
+    - port: metrics
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_ray_io_cluster]
+          targetLabel: ray_io_cluster
+        - sourceLabels: [__meta_kubernetes_pod_label_ray_io_node_type]
+          targetLabel: ray_io_node_type
