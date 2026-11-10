@@ -698,9 +698,9 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
-# LITERAL *: Confluent's managed Kafka sink derives transactional.id from
-# the Flink job ID (a random UUID), and sink.transactional-id-prefix has no
-# effect on it, so no prefix pattern can match. See ADR-0011.
+# LITERAL *: Confluent's managed Kafka sink prefixes transactional.id with a
+# random UUID it generates for each statement, and sink.transactional-id-prefix
+# has no effect on it, so no prefix pattern can match. See ADR-0011.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
