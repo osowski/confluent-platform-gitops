@@ -46,7 +46,7 @@ The Certificate must be issued and its Secret must exist — Reflector-mirrored 
 | 60 | `FlinkComputePool secure-sql-pool` — mTLS podTemplate (cert mount + PEM-prep init container) + OAuth allow-list for the Schema Registry client (`env.java.opts.all`, same requirement as `shapes-pool`/`colors-pool`) | |
 | 70 | `FlinkStatement secure-sql-enrich` — `` INSERT INTO `secure-sql-output` SELECT ... FROM `secure-sql-input` `` | |
 
-**Why `TransactionalId` is `LITERAL *`, not `PREFIXED secure-sql-`:** Confluent's managed Kafka sink connector derives `transactional.id` from the Flink job ID (a random UUID), not the target table name — the standard Flink connector option `sink.transactional-id-prefix` has no effect on it. A prefix pattern can never match an unpredictable per-job ID, so this one resource type is intentionally unscoped for this tenant; `Topic`/`Group` bindings stay properly prefixed.
+**Why `TransactionalId` is `LITERAL *`, not `PREFIXED secure-sql-`:** Confluent's managed Kafka sink connector prefixes `transactional.id` with a random UUID it generates for each statement, not the target table name — the standard Flink connector option `sink.transactional-id-prefix` has no effect on it. A prefix pattern can never match an unpredictable ID, so this one resource type is intentionally unscoped for this tenant; `Topic`/`Group` bindings stay properly prefixed.
 
 **Why `_confluent_sr_catalog` needs its own grant:** the SR-catalog mechanism auto-creates this shared internal bookkeeping topic outside any tenant's resource prefix, the first time any catalog uses it.
 
