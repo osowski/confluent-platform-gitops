@@ -26,6 +26,12 @@ spec:
   clusterSpec:
     flinkVersion: v1_19
     image: confluentinc/cp-flink-sql:1.19-cp10
+    # JVM options: a patch value replaces the whole string, so each component
+    # sets its flags on env.java.opts.jobmanager and env.java.opts.taskmanager
+    # rather than env.java.opts.all (components/rbac-oauth sets both for the
+    # OAuth allow-list). Flink appends them to env.java.opts.all. A second
+    # component that needs the same key must carry the existing flags into
+    # its value.
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "12"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
