@@ -1,0 +1,15 @@
+# The Keycloak token endpoint every device-trust-mesh OAuth client uses. The
+# replacements in kustomization.yaml copy TOKEN_URL into each place that needs
+# it; the patches and ExternalSecrets carry the placeholder set-by-replacements.
+# local-config keeps this ConfigMap out of the rendered output.
+# scripts/tests/test_render_placeholders.py fails if a placeholder has no
+# matching target and survives the render.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dtm-oauth-endpoints
+  namespace: device-trust-mesh
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  TOKEN_URL: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token

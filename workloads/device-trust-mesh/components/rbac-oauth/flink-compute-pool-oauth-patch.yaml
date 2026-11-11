@@ -15,5 +15,5 @@ metadata:
 spec:
   clusterSpec:
     flinkConfiguration:
-      env.java.opts.jobmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
-      env.java.opts.taskmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+      env.java.opts.jobmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=set-by-replacements"
+      env.java.opts.taskmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=set-by-replacements"

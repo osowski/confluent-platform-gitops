@@ -8,4 +8,4 @@ metadata:
   namespace: device-trust-mesh
 data:
   DTM_RESET_KAFKA_AUTH: oauth
-  DTM_RESET_TOKEN_URL: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+  DTM_RESET_TOKEN_URL: set-by-replacements
