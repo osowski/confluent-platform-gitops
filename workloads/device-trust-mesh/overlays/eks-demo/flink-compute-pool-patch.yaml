@@ -1,4 +1,20 @@
-# JobManager process memory is double base: with the ten long-running
+# eks-demo sizing for dtm-shared-pool, from the pool's measured use.
+#
+# TaskManagers: 5 slots each, so the ten long-running statements (parallelism
+# 1, one slot each) run on two TaskManagers, and an eleventh statement starts
+# a third. Each statement needs about 150 MiB of heap at rest, mostly Kafka
+# client and runtime overhead (its state is a few MiB), and more while it
+# backfills after a re-create. CPU stays low except during that backfill; 2
+# CPU for five statements covers it and fits beside the other pods on a
+# t3.2xlarge worker.
+#
+# Managed memory: state.backend is filesystem (heap), so the default 0.4
+# managed fraction reserves memory no operator uses. 0.1 gives that memory to
+# the task heap: 2616 MiB of heap per 4096m TaskManager for five statements,
+# with room for the backfill peak. CPU, not memory, decides where pods fit on
+# workers-v2, so the memory doesn't add nodes.
+#
+# JobManager: process memory is double base, because with the ten long-running
 # statements on the pool, the base 1024m JobManager runs near its limit.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
@@ -7,6 +23,13 @@ metadata:
   namespace: device-trust-mesh
 spec:
   clusterSpec:
+    flinkConfiguration:
+      taskmanager.numberOfTaskSlots: "5"
+      taskmanager.memory.managed.fraction: "0.1"
+    taskManager:
+      resource:
+        cpu: 2.0
+        memory: "4096m"
     jobManager:
       resource:
         memory: "2048m"
