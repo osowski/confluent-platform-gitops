@@ -3,8 +3,10 @@
 # the pool's Flink job crash-loops with "URL cannot be accessed due to
 # restrictions".
 #
-# This value replaces env.java.opts.all wholesale. base/flink-compute-pool.yaml
-# sets no env.java.opts.all; if it gains one, carry its flags into this value.
+# The flag goes on the JobManager and TaskManager keys, not env.java.opts.all:
+# both JVMs run Kafka clients (the source enumerator on the JobManager, the
+# readers and writers on the TaskManagers), and Flink appends each key to
+# env.java.opts.all, so another component can still set that key.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
 metadata:
@@ -13,4 +15,5 @@ metadata:
 spec:
   clusterSpec:
     flinkConfiguration:
-      env.java.opts.all: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+      env.java.opts.jobmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+      env.java.opts.taskmanager: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
