@@ -46,3 +46,6 @@ spec:
             expectedIssuer: https://keycloak.eks-demo.platform.dspdemos.com/realms/confluent
             jwksEndpointUri: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/certs
             subClaimName: client_id
+            # Resolve the token's Keycloak groups, as the Kafka listeners do, so
+            # group role bindings on subjects apply to Schema Registry requests.
+            groupsClaimName: groups
