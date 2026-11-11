@@ -2,6 +2,8 @@
 # replacements in kustomization.yaml copy TOKEN_URL into each place that needs
 # it; the patches and ExternalSecrets carry the placeholder set-by-replacements.
 # local-config keeps this ConfigMap out of the rendered output.
+# scripts/tests/test_render_placeholders.py fails if a placeholder has no
+# matching target and survives the render.
 apiVersion: v1
 kind: ConfigMap
 metadata:
