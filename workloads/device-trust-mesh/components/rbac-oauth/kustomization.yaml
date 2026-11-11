@@ -82,7 +82,6 @@ replacements:
           name: dtm-cmf-sr-credentials
         fieldPaths:
           - spec.target.template.data.[bearer.auth.issuer.endpoint.url]
-          - spec.target.template.data.[bearer.auth.token.endpoint.url]
       - select:
           kind: ConfigMap
           name: dtm-reset-settings
