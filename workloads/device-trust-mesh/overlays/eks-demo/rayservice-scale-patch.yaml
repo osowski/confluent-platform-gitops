@@ -11,6 +11,10 @@
 # exactly `replicas` workers; scale by editing `replicas` (up to
 # maxReplicas: 4).
 #
+# Outside num_replicas, the serveConfigV2 copy must match
+# components/mesh-runtime/rayservice.yaml; scripts/tests/test_overlay_copies.py
+# fails if it doesn't.
+#
 # The test op pins index 0 to the mesh worker group, so a reordering in
 # components/mesh-runtime fails the build rather than patching another group.
 - op: test

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eks-demo node autoscaling and GPU scheduling** ([#494](https://github.com/osowski/confluent-platform-gitops/issues/494)): cluster-autoscaler grows `workers-v2` between 4 and 10 nodes on demand, and the NVIDIA device plugin makes the GPU node's `nvidia.com/gpu` schedulable.
 
 ### Changed
+- **eks-demo Device Trust Mesh overlay copies are checked against base** ([#505](https://github.com/osowski/confluent-platform-gitops/issues/505)): `python3 -I -m unittest discover -s scripts/tests` fails when the eks-demo `agents.yaml` or `serveConfigV2` copy differs from base in anything but replica counts.
 - **eks-demo Device Trust Mesh Flink pool scales out by TaskManager** ([#524](https://github.com/osowski/confluent-platform-gitops/issues/524)): 5-slot TaskManagers (2 CPU, 4 GiB, managed memory 0.1) run the statements on two TaskManagers, with nearly three times the heap per statement, and the pool adds a TaskManager for each further 5 statements.
   Roll it out as in the README's "Growing the shared pool".
 - **eks-demo Schema Registry honors group role bindings** ([#505](https://github.com/osowski/confluent-platform-gitops/issues/505)): it reads the token's `groups` claim like the Kafka listeners, so subject bindings on Keycloak groups (`colors`, `shapes`, `dtm-*`) now apply.

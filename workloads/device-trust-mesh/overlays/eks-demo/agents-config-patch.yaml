@@ -2,7 +2,8 @@
 # num_replicas in rayservice-scale-patch.yaml. Ray Serve schedules replicas
 # from serveConfigV2; agents.yaml validates the count (1-6). Every other
 # setting is the same as base/config.yaml, since a patch replaces the whole
-# agents.yaml string.
+# agents.yaml string; scripts/tests/test_overlay_copies.py fails if anything
+# but `replicas` differs from base.
 apiVersion: v1
 kind: ConfigMap
 metadata:
