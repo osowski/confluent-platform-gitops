@@ -31,6 +31,9 @@ spec:
         - sourceLabels: [__meta_kubernetes_pod_container_name]
           regex: flink-main-container
           action: keep
+        # Declaring a "metrics" containerPort in each podTemplate and selecting
+        # port: metrics is the usual approach, but every new Flink cluster would
+        # need that patch, so the target address is set here instead.
         - sourceLabels: [__meta_kubernetes_pod_ip]
           regex: (.+)
           targetLabel: __address__
