@@ -15,7 +15,6 @@ resources:
   - flink-environment-shapes.yaml
   - producers.yaml
   - schemas.yaml
-  - service.yaml
   - topics.yaml
 
 # Common labels applied to all resources

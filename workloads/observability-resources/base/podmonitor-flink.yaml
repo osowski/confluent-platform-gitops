@@ -1,0 +1,42 @@
+# Scrapes every Flink JobManager and TaskManager in the cluster: FlinkApplication
+# clusters and the CMF compute pools that run Flink SQL statements, in any
+# namespace. The pods expose the Prometheus reporter on 9249
+# (metrics.reporter.prom.port) but don't declare it as a container port, so the
+# endpoint keeps the main container and points the target at <podIP>:9249.
+# job="flink" matches the label the Flink dashboard filters on.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flink-pods
+  namespace: flink
+  labels:
+    release: prometheus
+    monitoring: confluent
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      type: flink-native-kubernetes
+  podTargetLabels:
+    - app
+    - component
+    - platform.confluent.io/origin
+    - type
+  podMetricsEndpoints:
+    - interval: 60s
+      scrapeTimeout: 30s
+      scheme: http
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_container_name]
+          regex: flink-main-container
+          action: keep
+        # Declaring a "metrics" containerPort in each podTemplate and selecting
+        # port: metrics is the usual approach, but every new Flink cluster would
+        # need that patch, so the target address is set here instead.
+        - sourceLabels: [__meta_kubernetes_pod_ip]
+          regex: (.+)
+          targetLabel: __address__
+          replacement: ${1}:9249
+        - targetLabel: job
+          replacement: flink
