@@ -11,7 +11,10 @@
 #
 # Managed memory: state.backend is filesystem (heap), so the default 0.4
 # managed fraction reserves memory no operator uses. 0.1 gives that memory to
-# the task heap: 1879 MiB of heap per 3072m TaskManager for five statements.
+# the task heap: 2616 MiB of heap per 4096m TaskManager for five statements.
+# The backfill peak filled the old 1818 MiB heap, so its real demand is
+# unknown; 4096m leaves room for it. CPU, not memory, decides where pods fit
+# on workers-v2, so the extra memory doesn't add nodes.
 #
 # JobManager: process memory is double base, because with the ten long-running
 # statements on the pool, the base 1024m JobManager runs near its limit.
@@ -28,7 +31,7 @@ spec:
     taskManager:
       resource:
         cpu: 2.0
-        memory: "3072m"
+        memory: "4096m"
     jobManager:
       resource:
         memory: "2048m"
