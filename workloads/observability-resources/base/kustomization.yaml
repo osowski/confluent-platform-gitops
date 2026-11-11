@@ -4,4 +4,4 @@ kind: Kustomization
 resources:
   - grafana-dashboard.yaml
   - podmonitor-operator.yaml
-  - servicemonitor.yaml
+  - podmonitor-flink.yaml

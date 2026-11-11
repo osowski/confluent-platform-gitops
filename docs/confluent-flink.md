@@ -224,21 +224,28 @@ GROUP BY product_id;
 
 ## Monitoring
 
-### Prometheus / Grafana (ServiceMonitor)
+### Prometheus / Grafana (PodMonitor)
 
-Flink pod metrics are scraped by Prometheus via a `ServiceMonitor` and a headless `Service` defined in `workloads/flink-resources/base/`:
+Prometheus scrapes every Flink JobManager and TaskManager in the cluster: FlinkApplication clusters and the CMF compute pools that run Flink SQL statements, in any namespace. The files are in `workloads/observability-resources/base/`:
 
 | File | Purpose |
 |------|---------|
-| `service.yaml` | Exposes Flink pods on port 9249 (`metrics`), selected by `type: flink-native-kubernetes` |
-| `servicemonitor.yaml` | Configures Prometheus scraping; sets `job="flink"` via `relabelings` |
-| `grafana-dashboard.yaml` | ConfigMap with embedded Grafana dashboard; loaded automatically via `grafana_dashboard: "1"` label |
+| `podmonitor-flink.yaml` | Selects pods labelled `type: flink-native-kubernetes` in every namespace and scrapes the Prometheus reporter on port 9249; sets `job="flink"` via `relabelings` |
+| `grafana-dashboard.yaml` | ConfigMap with the **Flink** Grafana dashboard; loaded automatically via the `grafana_dashboard: "1"` label |
+
+A Flink cluster only needs the Prometheus reporter in its `flinkConfiguration` (`metrics.reporter.prom.factory.class` and `metrics.reporter.prom.port: "9249-9250"`); no per-namespace Service is required. The Flink pods don't declare 9249 as a container port, so the PodMonitor keeps the `flink-main-container` and points each target at `<podIP>:9249`.
 
 #### Label conventions
 
-The `ServiceMonitor` uses a `relabelings` entry to hardcode `job="flink"` on all scraped metrics. This intentionally aligns with the label convention used by the upstream [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) Flink dashboards (`flink-jobmanager.json`, `flink-taskmanager.json`), which filter on `job="flink"` in every PromQL expression.
+The `PodMonitor` uses a `relabelings` entry to hardcode `job="flink"` on all scraped metrics. This intentionally aligns with the label convention used by the upstream [confluentinc/jmx-monitoring-stacks](https://github.com/confluentinc/jmx-monitoring-stacks) Flink dashboards (`flink-jobmanager.json`, `flink-taskmanager.json`), which filter on `job="flink"` in every PromQL expression.
 
-Pod labels (`app`, `component`, `type`, `platform.confluent.io/origin`) are propagated to metrics via `podTargetLabels`. The `app` label is used in dashboard variable queries as the environment selector (`app="$env"`).
+Pod labels (`app`, `component`, `type`, `platform.confluent.io/origin`) are propagated to metrics via `podTargetLabels`. The dashboard selects a cluster with three variables:
+
+| Variable | Label | Notes |
+|----------|-------|-------|
+| `namespace` | `namespace` | Namespace of the Flink cluster |
+| `env` | `app` | FlinkApplication or compute pool name; listed even when no job is running |
+| `job` | `job_name` | Job or SQL statement on that cluster (multi-select); a shared compute pool runs one job per statement |
 
 > **Note**: If you import the upstream jmx-monitoring-stacks dashboards directly, their `env` label variable queries must be updated to use `app` instead, as this stack does not add an `env` label to scraped metrics.
 

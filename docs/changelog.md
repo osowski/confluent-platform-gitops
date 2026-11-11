@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Flink dashboard covers Flink SQL compute pools** ([#525](https://github.com/osowski/confluent-platform-gitops/issues/525)): Prometheus scrapes every Flink cluster in any namespace, including CMF compute pools, with no per-namespace Service.
+  The **Flink** dashboard selects by namespace, cluster and job (one per SQL statement on a shared pool), and shows TaskManager heap.
 - **Agentic Device Trust Mesh on `flink-demo`** ([#441](https://github.com/osowski/confluent-platform-gitops/issues/441)): a demo where AI agents on KubeRay decide device trust by exchanging A2A messages over Kafka, with Flink SQL keeping device and customer context and risk signals fresh, and a local Ollama `qwen3:4b` model doing the reasoning.
   A live UI at `https://device-trust-mesh.flink-demo.confluentdemo.local` shows each device's trust status, the agent traffic and the messages agents exchange, and `kubectl create -f workloads/device-trust-mesh/reset-job.yaml` clears it between sessions.
   Opt in with the `kuberay-operator` and `device-trust-mesh` Applications; see the [use-case README](../workloads/device-trust-mesh/README.md).
