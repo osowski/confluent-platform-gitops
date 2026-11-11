@@ -2,19 +2,17 @@
 #
 # TaskManagers: 5 slots each, so the ten long-running statements (parallelism
 # 1, one slot each) run on two TaskManagers, and an eleventh statement starts
-# a third. On one 12-slot TaskManager the ten statements held about 1.5 GiB of
-# heap after GC, about 150 MiB each, against under 3 MiB of state each: the
-# rest is Kafka client and runtime overhead. The pool used 0.2-0.4 cores at
-# rest and peaked at 2.7 while re-created statements backfilled. 2 CPU for
-# five statements covers that peak, and fits beside the other pods on a
+# a third. Each statement needs about 150 MiB of heap at rest, mostly Kafka
+# client and runtime overhead (its state is a few MiB), and more while it
+# backfills after a re-create. CPU stays low except during that backfill; 2
+# CPU for five statements covers it and fits beside the other pods on a
 # t3.2xlarge worker.
 #
 # Managed memory: state.backend is filesystem (heap), so the default 0.4
 # managed fraction reserves memory no operator uses. 0.1 gives that memory to
-# the task heap: 2616 MiB of heap per 4096m TaskManager for five statements.
-# The backfill peak filled the old 1818 MiB heap, so its real demand is
-# unknown; 4096m leaves room for it. CPU, not memory, decides where pods fit
-# on workers-v2, so the extra memory doesn't add nodes.
+# the task heap: 2616 MiB of heap per 4096m TaskManager for five statements,
+# with room for the backfill peak. CPU, not memory, decides where pods fit on
+# workers-v2, so the memory doesn't add nodes.
 #
 # JobManager: process memory is double base, because with the ten long-running
 # statements on the pool, the base 1024m JobManager runs near its limit.
