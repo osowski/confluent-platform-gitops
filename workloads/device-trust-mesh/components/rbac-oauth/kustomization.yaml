@@ -20,6 +20,7 @@ kind: Component
 # using this component must not set a kustomize namespace transformer.
 
 resources:
+  - oauth-endpoints.yaml
   - eso.yaml
   - external-secrets.yaml
   - keycloak-service-account-job.yaml
@@ -47,3 +48,53 @@ patches:
       version: v1
       kind: RayService
       name: device-trust-mesh
+
+# TOKEN_URL has exactly one source: dtm-oauth-endpoints.
+replacements:
+  - source:
+      kind: ConfigMap
+      name: dtm-oauth-endpoints
+      fieldPath: data.TOKEN_URL
+    targets:
+      - select:
+          kind: Deployment
+          name: device-simulator
+        fieldPaths:
+          - spec.template.spec.containers.[name=simulator].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
+      - select:
+          kind: Deployment
+          name: device-trust-mesh-ui
+        fieldPaths:
+          - spec.template.spec.containers.[name=ui].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
+      - select:
+          kind: RayService
+          name: device-trust-mesh
+        fieldPaths:
+          - spec.rayClusterConfig.headGroupSpec.template.spec.containers.[name=ray-head].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
+          - spec.rayClusterConfig.workerGroupSpecs.[groupName=mesh].template.spec.containers.[name=ray-worker].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
+      - select:
+          kind: ExternalSecret
+          name: dtm-cmf-kafka-credentials
+        fieldPaths:
+          - spec.target.template.data.[sasl.oauthbearer.token.endpoint.url]
+      - select:
+          kind: ExternalSecret
+          name: dtm-cmf-sr-credentials
+        fieldPaths:
+          - spec.target.template.data.[bearer.auth.issuer.endpoint.url]
+          - spec.target.template.data.[bearer.auth.token.endpoint.url]
+      - select:
+          kind: ConfigMap
+          name: dtm-reset-settings
+        fieldPaths:
+          - data.DTM_RESET_TOKEN_URL
+      # The allow-list flag is "-D<property>=<url>": replace the part after "=".
+      - select:
+          kind: FlinkComputePool
+          name: dtm-shared-pool
+        fieldPaths:
+          - spec.clusterSpec.flinkConfiguration.[env.java.opts.jobmanager]
+          - spec.clusterSpec.flinkConfiguration.[env.java.opts.taskmanager]
+        options:
+          delimiter: "="
+          index: 1

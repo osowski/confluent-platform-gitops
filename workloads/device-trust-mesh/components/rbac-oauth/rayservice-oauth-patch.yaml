@@ -33,7 +33,7 @@
   path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
   value:
     name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
-    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+    value: "set-by-replacements"
 - op: add
   path: /spec/rayClusterConfig/headGroupSpec/template/spec/containers/0/env/-
   value:
@@ -69,7 +69,7 @@
   path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
   value:
     name: KAFKA_OAUTH_TOKEN_ENDPOINT_URL
-    value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
+    value: "set-by-replacements"
 - op: add
   path: /spec/rayClusterConfig/workerGroupSpecs/0/template/spec/containers/0/env/-
   value:
