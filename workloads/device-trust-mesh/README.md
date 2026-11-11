@@ -606,7 +606,7 @@ With [`components/observability`](components/observability/) (eks-demo), the Pod
 | Errors and skips | handler, loop and invalid-request counters by `agent`, skipped context records by `topic`, STALE lookups | |
 | Tracked devices, healthy replicas | `ray_dtm_tracked_devices`, `ray_serve_deployment_replica_healthy` | |
 
-The acceptance-target stats are always shown. The **Agents**, **Context serving** and **Serve runtime** rows start collapsed, and their panels query Prometheus only once a row is expanded.
+The acceptance-target stats and the **Agents** row are open by default. The **Context serving** and **Serve runtime** rows start collapsed, and their panels query Prometheus only once a row is expanded.
 
 Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates a histogram's `_sum` from bucket midpoints. End-to-end event-to-decision latency isn't a Prometheus metric; the UI shows it. Consumer lag per agent group needs a Kafka lag exporter, which isn't deployed.
 
