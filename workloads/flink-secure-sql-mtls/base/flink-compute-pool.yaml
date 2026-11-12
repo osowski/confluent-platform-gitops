@@ -37,7 +37,11 @@ spec:
       env.java.opts.all: "-Dorg.apache.flink.kafka.shaded.org.apache.kafka.sasl.oauthbearer.allowed.urls=http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
       metrics.reporter.prom.port: "9249-9250"
-      pipeline.operator-chaining.enabled: "false"
+      # Chaining keeps each Kafka sink's writer and committer in one task, so
+      # a committed transactional producer goes back to the writer's pool.
+      # Unchained, the writer opens a new producer on every checkpoint and
+      # never closes the old ones, and the TaskManager runs out of memory.
+      pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
       state.checkpoints.dir: "s3://warehouse/checkpoints/secure-sql/"
       state.savepoints.dir: "s3://warehouse/savepoints/secure-sql/"
