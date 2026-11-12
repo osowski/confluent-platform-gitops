@@ -615,7 +615,7 @@ The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-de
    ```bash
    kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
    ```
-3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.3.0-202611101623` of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh), which has the OAuth client settings and exports its metrics through Ray (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
+3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.4.0-202611122118`, the `device-trust-mesh-v1.4.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)), and it has the OAuth client settings and exports its metrics through Ray (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
 4. **Workload Applications.** `kuberay-operator` syncs automatically. `ollama` and `device-trust-mesh` are manual-sync. Sync `ollama` first, then `device-trust-mesh`:
    ```bash
    kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
