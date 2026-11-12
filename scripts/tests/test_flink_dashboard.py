@@ -98,6 +98,15 @@ class FlinkDashboardTest(unittest.TestCase):
                 for metric in metrics:
                     self.assertRegex(queried, rf"\b{metric}\b")
 
+    def test_jobmanager_job_queries_aggregate_by_job_name(self):
+        rows = {p["title"]: p for p in self.dashboard["panels"] if p["type"] == "row"}
+        for title in ("Checkpoints", "Restarts and uptime"):
+            for panel, expr in exprs(rows[title]["panels"]):
+                if "flink_jobmanager_job_" not in expr:
+                    continue
+                with self.subTest(row=title, panel=panel):
+                    self.assertRegex(expr, r"\b(max|sum) by \(job_name\)")
+
     def test_collapsed_row_panels_sit_below_their_row(self):
         for row in self.dashboard["panels"]:
             if row["type"] != "row" or not row["collapsed"]:
