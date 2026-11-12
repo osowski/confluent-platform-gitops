@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Flink dashboard job health rows** ([#527](https://github.com/osowski/confluent-platform-gitops/issues/527)): collapsed **Checkpoints**, **Restarts and uptime** and **Lag** rows show, for each selected job or statement, checkpoint duration and failures, restarts, and Kafka and event-time lag.
 - **Flink dashboard covers Flink SQL compute pools** ([#525](https://github.com/osowski/confluent-platform-gitops/issues/525)): Prometheus scrapes every Flink cluster in any namespace, including CMF compute pools, with no per-namespace Service.
   The **Flink** dashboard selects by namespace, cluster and job (one per SQL statement on a shared pool), and shows TaskManager heap.
 - **Agentic Device Trust Mesh on `flink-demo`** ([#441](https://github.com/osowski/confluent-platform-gitops/issues/441)): a demo where AI agents on KubeRay decide device trust by exchanging A2A messages over Kafka, with Flink SQL keeping device and customer context and risk signals fresh, and a local Ollama `qwen3:4b` model doing the reasoning.

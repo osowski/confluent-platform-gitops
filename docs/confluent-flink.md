@@ -247,6 +247,18 @@ Pod labels (`app`, `component`, `type`, `platform.confluent.io/origin`) are prop
 | `env` | `app` | FlinkApplication or compute pool name; listed even when no job is running |
 | `job` | `job_name` | Job or SQL statement on that cluster (multi-select); a shared compute pool runs one job per statement |
 
+Three collapsed rows show per-job health:
+
+| Row | Shows |
+|-----|-------|
+| **Checkpoints** | Duration, size, and completed and failed checkpoints per minute |
+| **Restarts and uptime** | Restarts in the time range, and uptime |
+| **Lag** | Kafka source pending records, max consumer lag, and event-time and watermark lag |
+
+The Kafka panels show data only for jobs with a Kafka source. Event-time lag shows data only for sources with event time.
+
+Every query on a per-job metric (`flink_jobmanager_job_*`, `flink_taskmanager_job_*`) filters on all three variables. `scripts/tests/test_flink_dashboard.py` fails on any that doesn't.
+
 > **Note**: If you import the upstream jmx-monitoring-stacks dashboards directly, their `env` label variable queries must be updated to use `app` instead, as this stack does not add an `env` label to scraped metrics.
 
 #### Operator metrics
