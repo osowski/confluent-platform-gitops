@@ -205,20 +205,10 @@ Every subject is a CFK `Schema` CR (wave 35) in [`base/schemas.yaml`](base/schem
 - **A2A.** Schemas are derived from the pinned A2A v1.0.1 JSON Schema bundle. Each is narrowed to the mesh binding: the JSON-RPC wrapper, envelope metadata required, `parts` pinned to `[data, text]`, and `data` typed per topic or per artifact name. The snake_case aliases are dropped because the mesh emits camelCase only.
 - **Why `-a2a` and not `-value`.** The Flink catalog only infers tables from `<topic>-value`, and CMF can't map JSON Schema tuple arrays (`prefixItems`). A `-value` subject would make the catalog fail to load the table at all. Under `-a2a` the A2A tables infer as `raw` instead (see [Tables](#tables)).
 
-Schemas are generated, never hand-edited:
+The schemas are generated in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh#schemas), the only place they are edited. Its generator also writes `dtm/schemas/kustomization.yaml`, one ConfigMap per schema. [`base/kustomization.yaml`](base/kustomization.yaml) references that directory as a remote base, pinned to the commit of a `device-trust-mesh-v*` release, and this repo keeps the Schema CRs ([ADR-0021](../../adrs/0021-device-trust-mesh-schemas-from-flink-sandbox.md)).
 
-| Path | Contents |
-|---|---|
-| `schemas/upstream/a2a-v1.0.1.json` | Unmodified bundle from `https://a2a-protocol.org/v1.0.1/spec/a2a.json`. The generator checks its SHA-256 |
-| `schemas/src/avro/*.avsc` | Avro sources. `envelope.avsc` is inlined wherever a field has type `io.confluent.dtm.Envelope` |
-| `schemas/src/a2a/*.json` | The envelope and payload JSON Schemas used to narrow A2A |
-| `base/schemas/{avro,a2a}/*` | Generated output, committed, consumed by `configMapGenerator` |
-
-```bash
-python3 -I scripts/generate-dtm-schemas.py           # regenerate base/schemas/
-python3 -I scripts/generate-dtm-schemas.py --check   # exit 1 and list drifted files
-python3 -I -m unittest discover -s scripts/tests -v  # generator tests
-```
+- **Changed schemas:** set the remote base's `ref` to the new release's commit, and the eks-demo image tags to that release's build.
+- **New subject:** add it in flink-sandbox and cut a release. Then add its `Schema` CR to `base/schemas.yaml` and move the `ref`.
 
 ---
 
@@ -625,7 +615,7 @@ The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-de
    ```bash
    kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
    ```
-3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.3.0-202611101623` of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh), which has the OAuth client settings and exports its metrics through Ray (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
+3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.4.0-202611122118`, the `device-trust-mesh-v1.4.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)), and it has the OAuth client settings and exports its metrics through Ray (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
 4. **Workload Applications.** `kuberay-operator` syncs automatically. `ollama` and `device-trust-mesh` are manual-sync. Sync `ollama` first, then `device-trust-mesh`:
    ```bash
    kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
@@ -799,4 +789,5 @@ Replaying one agent from a chosen point in the stream is a later phase ([#454](h
 - [Why Google's Agent2Agent Protocol Needs Apache Kafka](https://www.confluent.io/blog/google-agent2agent-protocol-needs-kafka/)
 - [ADR-0014: RTCE-style context engine on CP + KubeRay](../../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md)
 - [ADR-0015: A2A v1.0 over Kafka](../../adrs/0015-a2a-over-kafka-agent-communication.md)
+- [ADR-0021: Device Trust Mesh schemas come from flink-sandbox](../../adrs/0021-device-trust-mesh-schemas-from-flink-sandbox.md)
 - [Bootstrap procedure: live-testing a branch](../../docs/bootstrap-procedure.md#live-testing-an-unmerged-branch-on-a-cluster)
