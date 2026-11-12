@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eks-demo node autoscaling and GPU scheduling** ([#494](https://github.com/osowski/confluent-platform-gitops/issues/494)): cluster-autoscaler grows `workers-v2` between 4 and 10 nodes on demand, and the NVIDIA device plugin makes the GPU node's `nvidia.com/gpu` schedulable.
 
 ### Changed
+- **Device Trust Mesh schemas come from flink-sandbox** ([#469](https://github.com/osowski/confluent-platform-gitops/issues/469)): the schemas and their ConfigMaps are generated in `osowski/flink-sandbox` and pulled in as a Kustomize remote base pinned to `device-trust-mesh-v1.4.0`, which eks-demo's images also run.
+  Edit schemas there; this repo keeps the Schema CRs ([ADR-0021](../adrs/0021-device-trust-mesh-schemas-from-flink-sandbox.md)).
 - **Flink dashboard shows one line per statement** ([#545](https://github.com/osowski/confluent-platform-gitops/issues/545)): checkpoint and uptime panels no longer split a re-created statement into two series, and **Restarts in range** is a stat panel.
 - **eks-demo Device Trust Mesh Flink pool scales out by TaskManager** ([#524](https://github.com/osowski/confluent-platform-gitops/issues/524)): 5-slot TaskManagers (2 CPU, 4 GiB, managed memory 0.1) run the statements on two TaskManagers, with nearly three times the heap per statement, and the pool adds a TaskManager for each further 5 statements.
   Roll it out as in the README's "Growing the shared pool".
