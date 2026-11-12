@@ -233,6 +233,9 @@ Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived F
 - `spec.type` can't be changed after creation.
 - Pool updates are blocked while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`.
 - If one statement starves the others, move it to its own `DEDICATED` pool with a new versioned statement.
+- Operator chaining stays on (`pipeline.operator-chaining.enabled: "true"`).
+  - **Why:** each transactional Kafka sink's committer must run in the same task as its writer. Otherwise the writer opens a new producer and network thread on every checkpoint and never closes the old ones, and the TaskManager is OOM-killed within a few hours.
+  - **Check:** `scripts/tests/test_dtm_pool_chaining.py` fails on any overlay that renders the pool with chaining off.
 - Checkpoints run every 10 s (`execution.checkpointing.interval`, 5 s `min-pause`). Kafka sinks commit on checkpoint, so this bounds how soon `read_committed` consumers see each statement's output (see **Committed visibility** under [Statements](#statements)).
 
 #### Growing the shared pool
