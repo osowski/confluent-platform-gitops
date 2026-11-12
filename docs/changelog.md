@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): in-cluster Ollama is now opt-in per overlay instead of the default.
 
 ### Fixed
+- **Other Flink SQL pools stop leaking Kafka producers** ([#544](https://github.com/osowski/confluent-platform-gitops/issues/544)): `shapes-pool`, `colors-pool`, `pool` and `secure-sql-pool` now chain operators like `dtm-shared-pool`, so long-running statements writing to Kafka no longer leak a producer thread on every checkpoint.
+  CMF rejects a pool update while statements run, so delete each pool's statements before syncing; the sync re-creates the ones in Git.
 - **Device Trust Mesh TaskManagers no longer run out of memory** ([#541](https://github.com/osowski/confluent-platform-gitops/issues/541)): `dtm-shared-pool` chains operators again, so its Kafka sinks stop leaking a producer thread on every checkpoint and the statements stop restarting every 1 to 2 hours.
   Roll it out as in the README's "Growing the shared pool".
 - **eks-demo KRaft controllers spread across nodes** ([#500](https://github.com/osowski/confluent-platform-gitops/issues/500)): preferred pod anti-affinity keeps one node loss from taking down the whole quorum.

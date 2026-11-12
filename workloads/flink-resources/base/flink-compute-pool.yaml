@@ -56,7 +56,11 @@ spec:
     image: confluentinc/cp-flink-sql:1.19-cp10
 
     flinkConfiguration:
-      pipeline.operator-chaining.enabled: "false"
+      # Chaining keeps each Kafka sink's writer and committer in one task, so
+      # a committed transactional producer goes back to the writer's pool.
+      # Unchained, the writer opens a new producer on every checkpoint and
+      # never closes the old ones, and the TaskManager runs out of memory.
+      pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
       taskmanager.numberOfTaskSlots: "4"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
