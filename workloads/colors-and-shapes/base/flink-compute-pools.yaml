@@ -1,12 +1,9 @@
 ---
 # Flink SQL compute pools (CFK 3.3.0+, RFC 68)
 #
-# NOTE: clusterSpec.image must match the deployed CMF version. cp-flink-sql
-# 1.19-cp7 is the documented floor for CMF 2.3.x/2.4.x; earlier tags fail
-# statement plan loading with a `key.format requires ... confluent.key.fields`
-# error. Pinned to 1.19-cp10 (above the floor) because cp8 silently ignores
-# a FlinkApplication's --user-jar-uris — UDFs never load, with no error —
-# which cp10 fixes.
+# NOTE: clusterSpec.image must match the deployed CMF version and the pool's
+# flinkVersion. See workloads/flink-resources/base/flink-compute-pool.yaml for
+# the image tag scheme and the Flink 2.x config keys these pools use.
 
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
@@ -19,8 +16,8 @@ spec:
   type: DEDICATED
   flinkEnvironment: shapes-env
   clusterSpec:
-    flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkVersion: v2_3
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
@@ -31,18 +28,18 @@ spec:
       # never closes the old ones, and the TaskManager runs out of memory.
       pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
-      state.checkpoints.dir: "s3://warehouse/checkpoints/shapes/"
-      state.savepoints.dir: "s3://warehouse/savepoints/shapes/"
+      execution.checkpointing.dir: "s3://warehouse/checkpoints/shapes/"
+      execution.checkpointing.savepoint-dir: "s3://warehouse/savepoints/shapes/"
       s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
-      state.backend: "filesystem"
-      state.checkpoints.timeout: "600000"
+      state.backend.type: "hashmap"
+      execution.checkpointing.timeout: "600000"
       execution.checkpointing.min-pause: "5000"
       execution.checkpointing.max-concurrent-checkpoints: "1"
       high-availability.type: "kubernetes"
       high-availability.storageDir: "s3://warehouse/ha/shapes/"
-      state.checkpoints.num-retained: "10"
+      execution.checkpointing.num-retained: "10"
     podTemplate:
       spec:
         restartPolicy: Always
@@ -86,8 +83,8 @@ spec:
   type: DEDICATED
   flinkEnvironment: colors-env
   clusterSpec:
-    flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkVersion: v2_3
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
@@ -98,18 +95,18 @@ spec:
       # never closes the old ones, and the TaskManager runs out of memory.
       pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
-      state.checkpoints.dir: "s3://warehouse/checkpoints/colors/"
-      state.savepoints.dir: "s3://warehouse/savepoints/colors/"
+      execution.checkpointing.dir: "s3://warehouse/checkpoints/colors/"
+      execution.checkpointing.savepoint-dir: "s3://warehouse/savepoints/colors/"
       s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
-      state.backend: "filesystem"
-      state.checkpoints.timeout: "600000"
+      state.backend.type: "hashmap"
+      execution.checkpointing.timeout: "600000"
       execution.checkpointing.min-pause: "5000"
       execution.checkpointing.max-concurrent-checkpoints: "1"
       high-availability.type: "kubernetes"
       high-availability.storageDir: "s3://warehouse/ha/colors/"
-      state.checkpoints.num-retained: "10"
+      execution.checkpointing.num-retained: "10"
     podTemplate:
       spec:
         restartPolicy: Always

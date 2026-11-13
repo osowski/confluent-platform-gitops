@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cmf-compile-tls
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "117" # Before cmf-operator (118): CMF mounts these Secrets
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: workloads
+  source:
+    repoURL: https://github.com/osowski/confluent-platform-gitops.git
+    targetRevision: feature-550/cmf-2-5-upgrade
+    path: workloads/cmf-compile-tls/overlays/flink-demo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

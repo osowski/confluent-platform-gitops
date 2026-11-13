@@ -1,0 +1,141 @@
+# CMF compile-worker TLS keygen (ADR-0022)
+#
+# CMF and its compile workers authenticate each other with TLS client certificates. The chart can
+# generate them, but only stably with Helm `lookup`, which Argo CD's `helm template` never resolves,
+# so every sync would issue a new CA and restart CMF. This Job creates them once instead, as the
+# Secrets the chart reads with cmf.statementService.workers.tls.existingSecretPrefix
+# (cmf-compile-certs):
+#
+#   cmf-compile-certs-cmf     kubernetes.io/tls: ca.crt, tls.crt, tls.key (CN=cmf)
+#   cmf-compile-certs-worker  ca.crt, worker-<i>.crt, worker-<i>.key (CN=compile-worker-<i>)
+#
+# CMF checks the peer's CN, so the CNs are fixed. Each certificate also names its own Service
+# (cmf-worker-api, cmf-compile-worker). The Job is idempotent: it keeps Secrets that share a CA
+# and hold a pair for every worker, and otherwise reissues both. Raise WORKER_COUNT with
+# workers.count. Reissued Secrets need a restart of CMF and the compile worker.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cmf-compile-tls-keygen
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-compile-tls-keygen
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
+    resourceNames: ["cmf-compile-certs-cmf", "cmf-compile-certs-worker"]
+  # create can't be limited by resourceNames
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-compile-tls-keygen
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cmf-compile-tls-keygen
+subjects:
+  - kind: ServiceAccount
+    name: cmf-compile-tls-keygen
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cmf-compile-tls-keygen
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: cmf-compile-tls-keygen
+    spec:
+      serviceAccountName: cmf-compile-tls-keygen
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: keygen
+          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066  # kubectl v1.35.4
+          env:
+            - name: PREFIX
+              value: cmf-compile-certs
+            - name: WORKER_COUNT
+              value: "1"
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              cmf="$PREFIX-cmf" worker="$PREFIX-worker"
+              field() { kubectl -n "$NAMESPACE" get secret "$1" -o "jsonpath={.data.${2//./\\.}}" 2>/dev/null || true; }
+
+              ca=$(field "$cmf" ca.crt)
+              complete=true
+              [[ -n $ca && -n $(field "$cmf" tls.key) && $(field "$worker" ca.crt) == "$ca" ]] || complete=false
+              for ((i = 0; i < WORKER_COUNT; i++)); do
+                [[ -n $(field "$worker" "worker-$i.crt") && -n $(field "$worker" "worker-$i.key") ]] || complete=false
+              done
+              if $complete; then
+                echo "$cmf and $worker are complete for $WORKER_COUNT worker(s); nothing to do"
+                exit 0
+              fi
+
+              echo "Issuing a new compile CA, the cmf certificate and $WORKER_COUNT worker certificate(s)"
+              umask 077
+              dir=$(mktemp -d)
+              trap 'rm -rf "$dir"' EXIT
+              cd "$dir"
+              openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj /CN=cmf-compile-ca \
+                -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign \
+                -keyout ca.key -out ca.crt 2>/dev/null
+              issue() { # issue FILE CN SERVICE
+                openssl req -newkey rsa:2048 -nodes -subj "/CN=$2" -keyout "$1.key" -out "$1.csr" 2>/dev/null
+                printf '%s\n' basicConstraints=CA:FALSE \
+                  keyUsage=critical,digitalSignature,keyEncipherment \
+                  extendedKeyUsage=serverAuth,clientAuth \
+                  "subjectAltName=DNS:$3,DNS:$3.$NAMESPACE,DNS:$3.$NAMESPACE.svc" >"$1.ext"
+                openssl x509 -req -days 3650 -in "$1.csr" -CA ca.crt -CAkey ca.key -CAcreateserial \
+                  -extfile "$1.ext" -out "$1.crt" 2>/dev/null
+              }
+              issue cmf cmf cmf-worker-api
+              files=(--from-file=ca.crt=ca.crt)
+              for ((i = 0; i < WORKER_COUNT; i++)); do
+                issue "worker-$i" "compile-worker-$i" cmf-compile-worker
+                files+=("--from-file=worker-$i.crt=worker-$i.crt" "--from-file=worker-$i.key=worker-$i.key")
+              done
+
+              kubectl -n "$NAMESPACE" create secret generic "$cmf" --type=kubernetes.io/tls \
+                --from-file=ca.crt=ca.crt --from-file=tls.crt=cmf.crt --from-file=tls.key=cmf.key \
+                --dry-run=client -o yaml | kubectl apply -f -
+              kubectl -n "$NAMESPACE" create secret generic "$worker" "${files[@]}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "Created $cmf and $worker. Restart CMF and cmf-compile-worker if they were already running."
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

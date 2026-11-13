@@ -12,23 +12,17 @@ spec:
   sources:
     - repoURL: https://packages.confluent.io/helm
       chart: confluent-manager-for-apache-flink
-      targetRevision: 2.4.4
+      targetRevision: 2.5.0
       helm:
         valueFiles:
           - $values/workloads/cmf-operator/base/values.yaml
           - $values/workloads/cmf-operator/overlays/flink-demo/values.yaml
     - repoURL: https://github.com/osowski/confluent-platform-gitops.git
-      targetRevision: HEAD
+      targetRevision: feature-550/cmf-2-5-upgrade
       ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: operator
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      name: confluent-manager-for-apache-flink
-      jsonPointers:
-        - /spec/template/metadata/annotations/rollme
   syncPolicy:
     automated:
       prune: true

@@ -12,7 +12,7 @@ spec:
   project: workloads
   source:
     repoURL: https://github.com/osowski/confluent-platform-gitops.git
-    targetRevision: HEAD
+    targetRevision: feature-550/cmf-2-5-upgrade
     path: workloads/device-trust-mesh/overlays/flink-demo
   destination:
     server: https://kubernetes.default.svc

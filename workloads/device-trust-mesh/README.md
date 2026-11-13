@@ -218,7 +218,7 @@ The object chain mirrors [Colors and Shapes](../colors-and-shapes/README.md): `d
 
 ### Shared Compute Pool
 
-Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived Flink session cluster, sized at JM 1 GiB plus one 4.5 GiB TaskManager with 12 slots (3 CPU), which covers the ten long-running statements at parallelism 1 with two slots spare. eks-demo runs a 2 GiB JobManager and TaskManagers with 5 slots, 2 CPU and 4 GiB each, so the ten statements run on two TaskManagers and an eleventh starts a third ([`overlays/eks-demo/flink-compute-pool-patch.yaml`](overlays/eks-demo/flink-compute-pool-patch.yaml) gives the measurements behind the sizing). That replaces one dedicated cluster per statement. Shared pools fit many low-throughput queries, and they keep statement state across stop/resume on CMF ≥ 2.4.2 (this repo runs 2.4.4).
+Every statement runs on **`dtm-shared-pool` (`type: SHARED`)**: one long-lived Flink session cluster, sized at JM 1 GiB plus one 4.5 GiB TaskManager with 12 slots (3 CPU), which covers the ten long-running statements at parallelism 1 with two slots spare. eks-demo runs a 2 GiB JobManager and TaskManagers with 5 slots, 2 CPU and 4 GiB each, so the ten statements run on two TaskManagers and an eleventh starts a third ([`overlays/eks-demo/flink-compute-pool-patch.yaml`](overlays/eks-demo/flink-compute-pool-patch.yaml) gives the measurements behind the sizing). That replaces one dedicated cluster per statement. Shared pools fit many low-throughput queries, and they keep statement state across stop/resume on CMF ≥ 2.4.2 (this repo runs 2.5.0).
 
 - `spec.type` can't be changed after creation.
 - Pool updates are blocked while any statement on the pool is `PENDING`, `RUNNING`, `STOPPED` or `FAILING`.
