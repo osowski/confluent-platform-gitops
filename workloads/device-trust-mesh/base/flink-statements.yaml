@@ -22,6 +22,16 @@
 # of Flink SQL CR constraints.
 # ---------------------------------------------------------------------------
 #
+# Deleting a statement discards its state, and the re-created job starts from
+# its sources' scan.startup.mode. dtm-device-context, dtm-customer-context,
+# dtm-risk-signals, dtm-decision-latency and the dtm-view-* statements read
+# from earliest-offset: their state (aggregates, OVER and LAG history, join
+# and dedupe state) is rebuilt from the retained history, so a re-create
+# re-emits their outputs. dtm-agent-pair-counts reads from latest-offset and
+# dtm-a2a-task-router from its committed group offsets (both below). The
+# session reset (README, "Resetting for a Fresh Session") empties the topics,
+# so statements re-created by it have nothing to re-read.
+#
 # dtm-device-context and dtm-customer-context fold device.events and
 # device.policy-commands into the compacted device.context and
 # customer.context upsert tables. Both are pure aggregates:
@@ -111,10 +121,15 @@
 #     the literal 'dtm-a2a-task-router', the source topic and the event's Kafka
 #     partition and offset. A restart from the router's checkpoint reproduces
 #     the same ids; a re-produced event has a new offset and so a new id.
-#     Agents are stateless per message, so a -v2 must not start from
-#     earliest-offset, where they would re-run every historical request.
-#     Start a -v2 from latest-offset (or the old statement's offsets) and keep
-#     the 'dtm-a2a-task-router' literal, so any overlap reproduces the same ids.
+#   * Both device.events scans start from group-offsets: the offsets the
+#     dtm-a2a-task-router consumer group committed on the last completed
+#     checkpoint, or the earliest retained offset for a group with none or an
+#     offset a purge has passed (properties.auto.offset.reset). Agents act on
+#     every request they receive, so a re-created router that re-read the
+#     topic would make them re-run every retained conversation. A -v2 keeps
+#     the group id and the 'dtm-a2a-task-router' literal and is created after
+#     the old statement is deleted, so it resumes where that one stopped and
+#     any overlap reproduces the same ids.
 #   * contextId and the envelope correlationId are the event's correlation_id;
 #     causationId is its message_id. requiredContextSeq (envelope and risk
 #     payload) is the event's device_seq: the device.context context_seq an
@@ -717,7 +732,7 @@ spec:
     ', network=', `fingerprint`.`network_type`, ', country=', `geo`.`country`) AS `fingerprint_summary`,
     SHA1(CONCAT_WS('|', 'dtm-a2a-task-router', 'device.events', CAST(`kafka_partition` AS STRING), CAST(`kafka_offset` AS STRING))) AS `h`
     FROM `device.events`
-    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'earliest-offset') */
+    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'group-offsets', 'properties.auto.offset.reset' = 'earliest') */
     WHERE `event_type` = 'ENROL_REQUESTED' AND `envelope`.`customer_id` IS NOT NULL AND `envelope`.`device_seq` IS NOT NULL
     )
     );
@@ -792,7 +807,7 @@ spec:
     WHEN `event_type` = 'CHALLENGE_FAILED' THEN CAST('FAILED' AS STRING) END AS `challenge_result`,
     SHA1(CONCAT_WS('|', 'dtm-a2a-task-router', 'device.events', CAST(`kafka_partition` AS STRING), CAST(`kafka_offset` AS STRING))) AS `h`
     FROM `device.events`
-    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'earliest-offset') */
+    /*+ OPTIONS('properties.group.id' = 'dtm-a2a-task-router', 'scan.startup.mode' = 'group-offsets', 'properties.auto.offset.reset' = 'earliest') */
     WHERE `event_type` = 'UNENROL_REQUESTED'
     OR (`event_type` IN ('CHALLENGE_PASSED', 'CHALLENGE_FAILED') AND `enrolment_task_id` IS NOT NULL AND `enrolment_task_id` <> '')
     )
