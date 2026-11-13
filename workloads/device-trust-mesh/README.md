@@ -241,7 +241,12 @@ Resizing `dtm-shared-pool` (slots, CPU or memory in [`base/flink-compute-pool.ya
 3. Sync the `device-trust-mesh` Application. The Application is manual-sync, so nothing re-creates the statements before this. The pool updates at wave 60, then the statements are re-created at wave 70.
 4. Check that the new TaskManager has the new slot count and that every long-running statement returns to `RUNNING`.
 
-Deleting a statement discards its state, and it restarts from its configured start offsets. The re-created `dtm-view-*` statements re-emit their backlog into the `*_human_readable` topics, so a running UI shows a burst of historical feed rows and counts it as live traffic in busiest pairs. Restart the UI once the backlog drains, or run the [session reset](#resetting-for-a-fresh-session) instead when the history does not need to survive.
+Deleting a statement discards its state, and it restarts from its configured start offsets:
+
+- **`dtm-a2a-task-router`** resumes from the offsets its consumer group committed on its last checkpoint, so the agents receive only events the router had not yet sent. If it re-read `device.events` from the start, the agents would re-run every retained conversation: LLM calls, decisions, audit records and policy commands.
+- **The stateful statements** (`dtm-device-context`, `dtm-customer-context`, `dtm-risk-signals`, `dtm-decision-latency` and the `dtm-view-*` statements) rebuild their state from `earliest-offset` and re-emit their outputs. The `dtm-view-*` backlog lands in the `*_human_readable` topics, so a running UI shows a burst of historical feed rows and counts it as live traffic in busiest pairs. Restart the UI once the backlog drains.
+
+To start clean instead, run the [session reset](#resetting-for-a-fresh-session) when the history does not need to survive.
 
 ### Tables
 
