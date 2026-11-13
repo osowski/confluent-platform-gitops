@@ -1,6 +1,7 @@
 ---
-# secure-sql Flink SQL compute pool (CFK 3.3.0+, RFC 68). See shapes-pool/
-# colors-pool for the image-floor rationale (cp-flink-sql 1.19-cp10).
+# secure-sql Flink SQL compute pool (CFK 3.3.0+, RFC 68). See
+# workloads/flink-resources/base/flink-compute-pool.yaml for the image tag
+# scheme and the Flink 2.x config keys this pool uses.
 #
 # podTemplate mounts the cert-manager-issued secure-sql-mtls-client Secret
 # read-only, then a lightweight init container (reusing this same image —
@@ -24,8 +25,8 @@ spec:
   type: DEDICATED
   flinkEnvironment: secure-sql-env
   clusterSpec:
-    flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkVersion: v2_3
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
     flinkConfiguration:
       taskmanager.numberOfTaskSlots: "2"
       # OAuth allow-list for the Schema Registry client's OAUTHBEARER token
@@ -43,25 +44,25 @@ spec:
       # never closes the old ones, and the TaskManager runs out of memory.
       pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
-      state.checkpoints.dir: "s3://warehouse/checkpoints/secure-sql/"
-      state.savepoints.dir: "s3://warehouse/savepoints/secure-sql/"
+      execution.checkpointing.dir: "s3://warehouse/checkpoints/secure-sql/"
+      execution.checkpointing.savepoint-dir: "s3://warehouse/savepoints/secure-sql/"
       s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
-      state.backend: "filesystem"
-      state.checkpoints.timeout: "600000"
+      state.backend.type: "hashmap"
+      execution.checkpointing.timeout: "600000"
       execution.checkpointing.min-pause: "5000"
       execution.checkpointing.max-concurrent-checkpoints: "1"
       high-availability.type: "kubernetes"
       high-availability.storageDir: "s3://warehouse/ha/secure-sql/"
-      state.checkpoints.num-retained: "10"
+      execution.checkpointing.num-retained: "10"
     podTemplate:
       spec:
         restartPolicy: Always
         terminationGracePeriodSeconds: 30
         initContainers:
           - name: kafka-mtls-pem-prep
-            image: confluentinc/cp-flink-sql:1.19-cp10
+            image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
             command:
               - sh
               - -c
