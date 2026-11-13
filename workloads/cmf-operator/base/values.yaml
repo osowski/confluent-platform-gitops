@@ -2,8 +2,8 @@
 # Base values - only overrides from chart defaults
 
 # Resource requests - Lower than chart defaults for homelab efficiency
-# Chart defaults: requests.cpu: 1, requests.memory: 1024Mi
-# Chart defaults: limits.cpu: 2, limits.memory: 1024Mi (kept as-is)
+# Chart defaults: requests.cpu: 1, requests.memory: 2048Mi
+# Chart defaults: limits.cpu: 2, limits.memory: 2048Mi (kept as-is)
 resources:
   requests:
     cpu: 500m
@@ -61,3 +61,29 @@ cmf:
       enabled: true
     environmentCatalog:
       enabled: true
+
+  # SQL compilation (see ADR 0022). Every compute pool runs Flink 2.3, so the
+  # pod carries only the 2.3 shared compiler instead of the chart default of
+  # 1.19 + 2.3 at 2Gi each. The compiler's -Xmx plus ~512Mi of JVM overhead must
+  # fit in its memory limit, or an OOMKill takes the CMF API down with it.
+  #
+  # No compile workers: no statement uses CMF artifacts (USING JAR 'cmf://...'),
+  # and the chart can only keep the workers' TLS Secrets stable across renders
+  # with `lookup`, which Argo CD's `helm template` never resolves, so a worker
+  # would rotate its CA and restart CMF on every sync. Statements that use
+  # artifacts fail until workers are added with pre-created Secrets
+  # (workers.tls.existingSecretPrefix).
+  statementService:
+    sharedCompilers:
+      - version: "2.3"
+        port: 8096
+        jvmArgs: "-Xmx1g"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1536Mi
+          limits:
+            cpu: "1"
+            memory: 1536Mi
+    workers:
+      count: 0
