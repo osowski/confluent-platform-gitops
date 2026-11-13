@@ -4,3 +4,13 @@
 # Additional pod annotations for flink-demo cluster identification
 podAnnotations:
   cluster: flink-demo
+
+# One compile worker, so statements can use CMF artifacts (USING JAR 'cmf://...').
+# The cmf-compile-tls Application creates its TLS Secrets (cmf-compile-certs-*);
+# see ADR 0022. Default worker resources: 3Gi memory request and limit.
+cmf:
+  statementService:
+    workers:
+      count: 1
+      tls:
+        existingSecretPrefix: cmf-compile-certs

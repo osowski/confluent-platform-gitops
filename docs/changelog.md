@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **CMF 2.5.0 and Flink SQL on Flink 2.3 on all clusters** ([#550](https://github.com/osowski/confluent-platform-gitops/issues/550)): every compute pool runs `cp-flink-sql:2.3-cmf2.5-cp1` on Flink Kubernetes Operator 1.16.1-cp1, so Flink 2.3 SQL features (process table functions, batch statements) work.
-  Pools start without their 1.19 state: rebuild the cluster rather than upgrading in place. CMF compiles only Flink 2.3 and has no compile workers, so `cmf://` artifacts don't load ([ADR-0022](../adrs/0022-cmf-2-5-flink-2-3-sql-compilation.md)).
+  Pools start without their 1.19 state: rebuild the cluster rather than upgrading in place. CMF compiles only Flink 2.3. Only flink-demo has a compile worker, so `cmf://` UDFs load only there ([ADR-0022](../adrs/0022-cmf-2-5-flink-2-3-sql-compilation.md)).
 - **Device Trust Mesh schemas come from flink-sandbox** ([#469](https://github.com/osowski/confluent-platform-gitops/issues/469)): the schemas and their ConfigMaps are generated in `osowski/flink-sandbox` and pulled in as a Kustomize remote base pinned to `device-trust-mesh-v1.4.0`, which eks-demo's images also run.
   Edit schemas there; this repo keeps the Schema CRs ([ADR-0021](../adrs/0021-device-trust-mesh-schemas-from-flink-sandbox.md)).
 - **Flink dashboard shows one line per statement** ([#545](https://github.com/osowski/confluent-platform-gitops/issues/545)): checkpoint and uptime panels no longer split a re-created statement into two series, and **Restarts in range** is a stat panel.
