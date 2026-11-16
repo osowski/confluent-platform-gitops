@@ -108,6 +108,10 @@ spec:
       kind: Job
     - group: batch
       kind: CronJob
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
     - group: networking.k8s.io
       kind: Ingress
     - group: networking.k8s.io
