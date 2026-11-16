@@ -21,10 +21,10 @@
 # parts[0] is the typed data part and parts[1] the text summary; the columns
 # rely on that order.
 #
-# BIGINT columns use TRY_CAST(JSON_VALUE(...) AS BIGINT): Flink 1.19 rejects
-# JSON_VALUE ... RETURNING BIGINT only when a query first reads the column,
-# so the ALTER itself would still complete. Text that is not a plain number
-# becomes NULL (an ISO timestamp, or a float that JSON_VALUE renders as
+# BIGINT columns use TRY_CAST(JSON_VALUE(...) AS BIGINT) rather than
+# JSON_VALUE ... RETURNING BIGINT, which the planner rejects only when a query
+# first reads the column, so the ALTER itself would still complete. Text that
+# is not a plain number becomes NULL (an ISO timestamp, or a float that JSON_VALUE renders as
 # 1.79332393777E12) instead of failing the job: the views drop a record
 # whose env_event_time is NULL and pass a NULL sequence through. Plain
 # decimal text such as 3.7 truncates to 3.

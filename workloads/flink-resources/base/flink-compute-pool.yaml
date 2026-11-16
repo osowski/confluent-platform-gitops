@@ -34,12 +34,15 @@
 # NOTE: spec.type is immutable after creation. spec.state (RUNNING/SUSPENDED)
 # is valid only on SHARED pools and is rejected by a CEL rule on DEDICATED ones.
 #
-# NOTE: clusterSpec.image must match the deployed CMF version, or the JobManager
-# fails to load the statement plan. cp-flink-sql:1.19-cp7 is the documented
-# floor for CMF 2.3.x/2.4.x; earlier tags fail with a `key.format requires ...
-# confluent.key.fields` error. Pinned to 1.19-cp10 (above the floor) because
-# cp8 silently ignores a FlinkApplication's --user-jar-uris — UDFs never
-# load, with no error — which cp10 fixes.
+# NOTE: clusterSpec.image must match the deployed CMF version and the pool's
+# flinkVersion, or the JobManager fails to load the statement plan; CMF does
+# not check that the two agree. cp-flink-sql tags name the CMF minor version
+# (2.3-cmf2.5-cp1 is the first Flink 2.3 build for CMF 2.5). flinkVersion is
+# rejected on update while the pool has resumable statements.
+#
+# Flink 2.x config keys: state.backend.type takes hashmap/rocksdb/forst only
+# (the legacy `filesystem` name is gone), and checkpoint/savepoint settings
+# live under execution.checkpointing.*.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkComputePool
 metadata:
@@ -52,8 +55,8 @@ spec:
   flinkEnvironment: default
 
   clusterSpec:
-    flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkVersion: v2_3
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
 
     flinkConfiguration:
       # Chaining keeps each Kafka sink's writer and committer in one task, so
@@ -65,18 +68,18 @@ spec:
       taskmanager.numberOfTaskSlots: "4"
       metrics.reporter.prom.factory.class: "org.apache.flink.metrics.prometheus.PrometheusReporterFactory"
       metrics.reporter.prom.port: "9249-9250"
-      state.checkpoints.dir: "s3://warehouse/checkpoints/"
-      state.savepoints.dir: "s3://warehouse/savepoints/"
+      execution.checkpointing.dir: "s3://warehouse/checkpoints/"
+      execution.checkpointing.savepoint-dir: "s3://warehouse/savepoints/"
       s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
-      state.backend: "filesystem"
-      state.checkpoints.timeout: "600000"
+      state.backend.type: "hashmap"
+      execution.checkpointing.timeout: "600000"
       execution.checkpointing.min-pause: "5000"
       execution.checkpointing.max-concurrent-checkpoints: "1"
       high-availability.type: "kubernetes"
       high-availability.storageDir: "s3://warehouse/"
-      state.checkpoints.num-retained: "10"
+      execution.checkpointing.num-retained: "10"
 
     podTemplate:
       spec:

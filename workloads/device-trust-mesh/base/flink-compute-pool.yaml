@@ -24,8 +24,8 @@ spec:
   state: RUNNING
   flinkEnvironment: dtm-env
   clusterSpec:
-    flinkVersion: v1_19
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    flinkVersion: v2_3
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
     # JVM options: a patch value replaces the whole string, so each component
     # sets its flags on env.java.opts.jobmanager and env.java.opts.taskmanager
     # rather than env.java.opts.all (components/rbac-oauth sets both for the
@@ -42,18 +42,18 @@ spec:
       # never closes the old ones, and the TaskManager runs out of memory.
       pipeline.operator-chaining.enabled: "true"
       execution.checkpointing.interval: "10s"
-      state.checkpoints.dir: "s3://warehouse/checkpoints/device-trust-mesh/"
-      state.savepoints.dir: "s3://warehouse/savepoints/device-trust-mesh/"
+      execution.checkpointing.dir: "s3://warehouse/checkpoints/device-trust-mesh/"
+      execution.checkpointing.savepoint-dir: "s3://warehouse/savepoints/device-trust-mesh/"
       s3.endpoint: "http://rustfs.storage.svc.cluster.local:9000"
       s3.path.style.access: "true"
       s3.connection.ssl.enabled: "false"
-      state.backend: "filesystem"
-      state.checkpoints.timeout: "600000"
+      state.backend.type: "hashmap"
+      execution.checkpointing.timeout: "600000"
       execution.checkpointing.min-pause: "5000"
       execution.checkpointing.max-concurrent-checkpoints: "1"
       high-availability.type: "kubernetes"
       high-availability.storageDir: "s3://warehouse/ha/device-trust-mesh/"
-      state.checkpoints.num-retained: "10"
+      execution.checkpointing.num-retained: "10"
     podTemplate:
       spec:
         restartPolicy: Always

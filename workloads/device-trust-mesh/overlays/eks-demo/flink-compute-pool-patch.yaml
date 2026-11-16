@@ -8,7 +8,7 @@
 # CPU for five statements covers it and fits beside the other pods on a
 # t3.2xlarge worker.
 #
-# Managed memory: state.backend is filesystem (heap), so the default 0.4
+# Managed memory: state.backend.type is hashmap (heap), so the default 0.4
 # managed fraction reserves memory no operator uses. 0.1 gives that memory to
 # the task heap: 2616 MiB of heap per 4096m TaskManager for five statements,
 # with room for the backfill peak. CPU, not memory, decides where pods fit on

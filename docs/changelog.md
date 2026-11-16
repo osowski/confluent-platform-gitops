@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eks-demo node autoscaling and GPU scheduling** ([#494](https://github.com/osowski/confluent-platform-gitops/issues/494)): cluster-autoscaler grows `workers-v2` between 4 and 10 nodes on demand, and the NVIDIA device plugin makes the GPU node's `nvidia.com/gpu` schedulable.
 
 ### Changed
+- **CMF 2.5.0 and Flink SQL on Flink 2.3 on all clusters** ([#550](https://github.com/osowski/confluent-platform-gitops/issues/550)): every compute pool runs `cp-flink-sql:2.3-cmf2.5-cp1` on Flink Kubernetes Operator 1.16.1-cp1, so Flink 2.3 SQL features (process table functions, batch statements) work.
+  Pools start without their 1.19 state: rebuild the cluster rather than upgrading in place. CMF compiles only Flink 2.3. Only flink-demo has a compile worker, so `cmf://` UDFs load only there ([ADR-0023](../adrs/0023-cmf-2-5-flink-2-3-sql-compilation.md)).
 - **Device Trust Mesh context service runs as its own Deployment on eks-demo** ([#557](https://github.com/osowski/confluent-platform-gitops/issues/557)): `device-trust-mesh-context` has its own image and Keycloak client `sa-dtm-context`, so rolling it leaves the agents alone and agents no longer read the context topics directly.
   Run `terraform apply` for the new client secret before syncing ([ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md)).
 - **Device Trust Mesh schemas come from flink-sandbox** ([#469](https://github.com/osowski/confluent-platform-gitops/issues/469)): the schemas and their ConfigMaps are generated in `osowski/flink-sandbox` and pulled in as a Kustomize remote base pinned to a `device-trust-mesh-v*` release, the same one eks-demo's images run.

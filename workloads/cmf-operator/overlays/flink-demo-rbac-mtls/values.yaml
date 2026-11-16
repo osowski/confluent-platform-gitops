@@ -157,7 +157,7 @@ mountedVolumes:
 # needs cert+key in one file) and copies ca.crt to a PEM truststore file.
 initContainers:
   - name: secure-sql-mtls-pem-prep
-    image: confluentinc/cp-flink-sql:1.19-cp10
+    image: confluentinc/cp-flink-sql:2.3-cmf2.5-cp1
     command:
       - sh
       - -c
