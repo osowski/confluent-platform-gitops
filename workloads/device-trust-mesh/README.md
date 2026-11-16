@@ -171,7 +171,7 @@ On eks-demo the [`context-service`](components/context-service/) component runs 
 | Workload | `Deployment` and `Service` `device-trust-mesh-context`, sync wave 75, so it exists before the RayService (wave 80), whose agents wait for context at start. Image `quay.io/osowski/device-trust-mesh-context`, port 8080 (`http`). |
 | Endpoints | `/mcp` (MCP), `/v1/...` (REST, used by the UI and the session reset), `/healthz` (503 until the replica has caught up; startup and readiness probes), `/livez` (500 once the materializer thread has died; liveness probe), `/metrics` |
 | Scaling | HorizontalPodAutoscaler on CPU (70%), 2 to 4 replicas. The Deployment has no `replicas` field, so a manual sync can't reset the count. Requests 500m CPU / 1 Gi, limits 1 CPU / 1536 Mi. |
-| Rollout | `RollingUpdate` with `maxSurge: 1` and `maxUnavailable: 0`, a PodDisruptionBudget with `minAvailable: 1`, and a 5 s `preStop` sleep. Rolling it doesn't touch the agents, and rolling the agents doesn't touch it. |
+| Rollout | `RollingUpdate` with `maxSurge: 1` and `maxUnavailable: 0`, a PodDisruptionBudget with `minAvailable: 1`, a preferred pod anti-affinity that spreads replicas across nodes, and a 5 s `preStop` sleep. Rolling it doesn't touch the agents, and rolling the agents doesn't touch it. |
 | Clients | Agents (`context.mcpUrl` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml)), the UI (`DTM_UI_CONTEXT_URL`) and the session reset (`DTM_RESET_CONTEXT_URL`) |
 | Identity | Keycloak client `sa-dtm-context`, the only principal that can read the context topics; see [Secrets and OAuth flow](#secrets-and-oauth-flow) |
 
@@ -631,7 +631,7 @@ Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates 
 
 ## Running on eks-demo
 
-The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-device fleet, the standalone [context service](#context-service) (2 to 4 replicas), two Serve replicas for each enabled agent, OAuth on every Kafka and Schema Registry client, and Ollama on a GPU node.
+The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-device fleet, the standalone [context service](#context-service), two Serve replicas for each enabled agent, OAuth on every Kafka and Schema Registry client, and Ollama on a GPU node.
 
 ### Prerequisites
 
@@ -731,7 +731,7 @@ Two drivers scale different components:
 | Topic partitions | 6 per topic; 1 for `agent.cards`, `agent.cards_human_readable`, `agent.pair_counts`, `simulator.control`. The [`base/topics.yaml`](base/topics.yaml) header supports `DEVICE_CAP` up to 500 | Max consumer parallelism per topic, so the cap on agent replicas and Flink source parallelism. Partitions can't shrink. | `partitionCount` in `base/topics.yaml` |
 | Agent Serve replicas | 2 each for `risk`, `enrolment`, `step-up`, `compliance`; 1 for disabled `revocation` ([`rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml)). `flink-demo`: 1 each | Concurrent tasks per agent. Must stay ≤ partitions. | `num_replicas`, with `replicas` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml) |
 | Ray workers | 2 CPU / 3 Gi each; `replicas: 2`, `maxReplicas: 4` on eks-demo (`maxReplicas: 2` in [`base`](components/mesh-runtime/rayservice.yaml)). Agent replicas reserve 0.1 CPU. On eks-demo the head advertises 0 CPU, so only workers hold Serve replicas. | Room for Serve replicas | `replicas`, up to `maxReplicas` |
-| Context service | HPA on CPU (70%), 2 to 4 replicas; requests 500m CPU / 1 Gi, limit 1536 Mi per pod. Every replica holds all devices in memory. There is no request-based autoscaling. | Lookup p99; memory per replica grows with `DEVICE_CAP` and is added per replica | `minReplicas` and `maxReplicas` in [`hpa.yaml`](components/context-service/hpa.yaml), pod memory in [`deployment.yaml`](components/context-service/deployment.yaml) |
+| Context service | Autoscaled on CPU; bounds and resources are in the [Context service](#context-service) table. Every replica holds all devices in memory. There is no request-based autoscaling. | Lookup p99; memory per replica grows with `DEVICE_CAP` and is added per replica | `minReplicas` and `maxReplicas` in [`hpa.yaml`](components/context-service/hpa.yaml), pod memory in [`deployment.yaml`](components/context-service/deployment.yaml) |
 | Flink statements | `parallelism: 1` on all 10 long-running statements, on two `dtm-shared-pool` TaskManagers with 5 slots, 2 CPU and 4096m each, and managed memory at 0.1 ([`flink-statements.yaml`](base/flink-statements.yaml), [`flink-compute-pool-patch.yaml`](overlays/eks-demo/flink-compute-pool-patch.yaml)) | Per-hop latency and heap per statement (about 150 MiB each, mostly Kafka clients). No slots spare: another statement, or parallelism above 1, starts another TaskManager. | Statement `parallelism`, `taskmanager.numberOfTaskSlots`; see [Growing the shared pool](#growing-the-shared-pool) |
 | LLM (Ollama) | 1 GPU (`g4dn.xlarge`), `OLLAMA_NUM_PARALLEL=4` ([`ollama/overlays/eks-demo`](../ollama/overlays/eks-demo/deployment-gpu-patch.yaml)) | LLM calls/s, usually the first limit as event rate rises | `OLLAMA_NUM_PARALLEL`, model size, GPU count (the GPU group is fixed at 1 node) |
 | Simulator | 1 replica when scaled up; rate 0 to 100/s | Event-generation ceiling | Replicas |
