@@ -19,3 +19,20 @@ spec:
           targetLabel: ray_io_cluster
         - sourceLabels: [__meta_kubernetes_pod_label_ray_io_node_type]
           targetLabel: ray_io_node_type
+---
+# Scrapes the context service's /metrics directly; its dtm_* series are
+# unprefixed.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: device-trust-mesh-context
+  namespace: device-trust-mesh
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: device-trust-mesh-context
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics

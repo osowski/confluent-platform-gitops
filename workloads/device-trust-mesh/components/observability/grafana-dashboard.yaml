@@ -1,6 +1,8 @@
-# Grafana dashboard for the mesh's ray_dtm_* and ray_serve_* metrics, loaded by
-# the kube-prometheus-stack dashboard sidecar (grafana_dashboard label, all
-# namespaces). The stat row shows the acceptance targets: context tool p99 < 20 ms,
+# Grafana dashboard for the mesh's dtm_* and ray_* metrics, loaded by the
+# kube-prometheus-stack dashboard sidecar (grafana_dashboard label, all
+# namespaces). The context service is scraped directly, so its dtm_* series are
+# unprefixed; the agents run on Ray, so their series carry the ray_ prefix. The
+# stat row shows the acceptance targets: context tool p99 < 20 ms,
 # materialization lag p99 < 1 s, agent hop p99 < 100 ms. Panels use histogram
 # buckets only: Ray estimates a histogram's _sum from bucket midpoints.
 apiVersion: v1
@@ -118,7 +120,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(ray_dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
               "legendFormat": "",
               "refId": "A"
             }
@@ -180,7 +182,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(ray_dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
               "legendFormat": "",
               "refId": "A"
             }
@@ -300,7 +302,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "max(ray_dtm_tracked_devices{namespace=\"device-trust-mesh\"})",
+              "expr": "max(dtm_tracked_devices{namespace=\"device-trust-mesh\"})",
               "legendFormat": "",
               "refId": "A"
             }
@@ -707,7 +709,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum by (topic) (rate(ray_dtm_materializer_skipped_total{namespace=\"device-trust-mesh\"}[$__rate_interval]))",
+              "expr": "sum by (topic) (rate(dtm_materializer_skipped_total{namespace=\"device-trust-mesh\"}[$__rate_interval]))",
               "legendFormat": "skipped {{topic}}",
               "refId": "D"
             },
@@ -716,7 +718,7 @@ data:
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(ray_dtm_context_stale_total{namespace=\"device-trust-mesh\"}[$__rate_interval]))",
+              "expr": "sum(rate(dtm_context_stale_total{namespace=\"device-trust-mesh\"}[$__rate_interval]))",
               "legendFormat": "STALE lookups",
               "refId": "E"
             }
@@ -798,7 +800,7 @@ data:
                     "type": "prometheus",
                     "uid": "prometheus"
                   },
-                  "expr": "histogram_quantile(0.5, sum by (le, tool) (rate(ray_dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+                  "expr": "histogram_quantile(0.5, sum by (le, tool) (rate(dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
                   "legendFormat": "{{tool}} p50",
                   "refId": "A"
                 },
@@ -807,7 +809,7 @@ data:
                     "type": "prometheus",
                     "uid": "prometheus"
                   },
-                  "expr": "histogram_quantile(0.99, sum by (le, tool) (rate(ray_dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+                  "expr": "histogram_quantile(0.99, sum by (le, tool) (rate(dtm_context_tool_latency_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
                   "legendFormat": "{{tool}} p99",
                   "refId": "B"
                 }
@@ -877,7 +879,7 @@ data:
                     "type": "prometheus",
                     "uid": "prometheus"
                   },
-                  "expr": "histogram_quantile(0.5, sum by (le, topic) (rate(ray_dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+                  "expr": "histogram_quantile(0.5, sum by (le, topic) (rate(dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
                   "legendFormat": "{{topic}} p50",
                   "refId": "A"
                 },
@@ -886,7 +888,7 @@ data:
                     "type": "prometheus",
                     "uid": "prometheus"
                   },
-                  "expr": "histogram_quantile(0.99, sum by (le, topic) (rate(ray_dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
+                  "expr": "histogram_quantile(0.99, sum by (le, topic) (rate(dtm_materialization_lag_ms_bucket{namespace=\"device-trust-mesh\"}[$__rate_interval])))",
                   "legendFormat": "{{topic}} p99",
                   "refId": "B"
                 }
