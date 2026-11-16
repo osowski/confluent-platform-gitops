@@ -27,6 +27,17 @@ spec:
         app: device-trust-mesh-context
     spec:
       terminationGracePeriodSeconds: 30
+      # Preferred, not required: replicas spread across nodes when there is
+      # room, and still schedule when there isn't.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: device-trust-mesh-context
       containers:
         - name: context
           image: quay.io/osowski/device-trust-mesh-context
