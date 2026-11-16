@@ -536,7 +536,7 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    kubectl get schema -n device-trust-mesh          # 23 subjects, STATUS SUCCEEDED
    kubectl get flinkstatement -n device-trust-mesh  # dtm-ddl-* COMPLETED, the 10 long-running statements RUNNING
    kubectl get pods -n device-trust-mesh    # shared-pool JobManager; TaskManagers start once statements run
-   kubectl get rayservice device-trust-mesh -n device-trust-mesh   # Ready once all six Serve apps run
+   kubectl get rayservice device-trust-mesh -n device-trust-mesh   # Ready once every Serve app runs (six on flink-demo, five on eks-demo)
    ```
 6. **Watch the mesh:**
    - Control Center topic browser: `agent.tasks.*`, `agent.task-events`, `*_human_readable`
