@@ -1,6 +1,0 @@
-# KubeRay Operator - flink-demo Cluster Overlay
-# Cluster-specific configuration overrides
-
-# Additional pod labels for flink-demo cluster
-labels:
-  cluster: flink-demo

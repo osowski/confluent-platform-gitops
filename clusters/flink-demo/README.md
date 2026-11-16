@@ -141,12 +141,10 @@ Workload applications are defined in `workloads/kustomization.yaml`:
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **confluent-resources** (wave 110) - Confluent Platform (KRaft, Kafka, Schema Registry, etc.) — **manual sync**
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator
-- **kuberay-operator** (wave 117) - KubeRay operator for the device-trust-mesh agent runtime — **not created by default**, apply manually — see [Device Trust Mesh README](../../workloads/device-trust-mesh/README.md)
 - **observability-resources** (wave 117) - PodMonitors and Grafana dashboards
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink
 - **flink-resources** (wave 120) - Flink integration resources — **manual sync**
 - **colors-and-shapes** (wave 121) - Two-tenant Flink demo (JAR + SQL), anonymous on this cluster — **manual sync** — see [Colors and Shapes README](../../workloads/colors-and-shapes/README.md)
-- **device-trust-mesh** (wave 122) - Agentic Device Trust Mesh (A2A agents on KubeRay, shared Flink compute pool) — **not created by default**, apply manually — see [Device Trust Mesh README](../../workloads/device-trust-mesh/README.md)
 - **flink-agents** (wave 121) - Flink Agents workflow demo (LLM-driven review analysis) — **not created by default**, apply manually — see [Flink Agents README](../../workloads/flink-agents/README.md)
 - **ollama** (wave 110) - In-cluster Ollama LLM backend — **disabled** (run Ollama natively on macOS instead; see [Flink Agents README](../../workloads/flink-agents/README.md))
 
@@ -172,7 +170,6 @@ IP for you and points these same hostnames at it.
 127.0.0.1  cmf.flink-demo.confluentdemo.local
 127.0.0.1  cmf-ui.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
-127.0.0.1  device-trust-mesh.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  headlamp.flink-demo.confluentdemo.local
 127.0.0.1  kafka.flink-demo.confluentdemo.local
@@ -191,7 +188,6 @@ IP for you and points these same hostnames at it.
 > ::1  cmf.flink-demo.confluentdemo.local
 > ::1  cmf-ui.flink-demo.confluentdemo.local
 > ::1  controlcenter.flink-demo.confluentdemo.local
-> ::1  device-trust-mesh.flink-demo.confluentdemo.local
 > ::1  grafana.flink-demo.confluentdemo.local
 > ::1  headlamp.flink-demo.confluentdemo.local
 > ::1  kafka.flink-demo.confluentdemo.local
@@ -212,10 +208,6 @@ IP for you and points these same hostnames at it.
 **Control Center:**
 - **URL**: https://controlcenter.flink-demo.confluentdemo.local
 - **Features**: Cluster monitoring, topic management, schema registry, Connect connectors, ksqlDB queries
-
-**Device Trust Mesh UI:**
-- **URL**: https://device-trust-mesh.flink-demo.confluentdemo.local
-- **Features**: Live device trust status, agent-to-agent traffic and the busiest agent pairs; see the [use-case README](../../workloads/device-trust-mesh/README.md#ui)
 
 **Grafana:**
 - **URL**: http://grafana.flink-demo.confluentdemo.local
