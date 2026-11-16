@@ -1,0 +1,23 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: device-trust-mesh-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "75"
+  labels:
+    app: device-trust-mesh-context
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: device-trust-mesh-context
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

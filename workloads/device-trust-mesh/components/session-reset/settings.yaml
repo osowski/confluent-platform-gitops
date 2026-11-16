@@ -2,6 +2,11 @@
 # Cluster-specific settings for reset-session.sh, read by the reset Job as env.
 # DTM_RESET_KAFKA_AUTH: none (anonymous internal listener) or oauth (the
 # broker's own OAuth client, via DTM_RESET_TOKEN_URL).
+# DTM_RESET_CONTEXT_URL (optional, not set here): REST base URL of the context
+# service for the final devices check, without a trailing slash. Defaults to
+# the Ray Serve context-mcp app,
+# http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp;
+# a cluster running the separate context service patches it in.
 apiVersion: v1
 kind: ConfigMap
 metadata:

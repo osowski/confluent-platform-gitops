@@ -1,15 +1,13 @@
 # Ray Serve and worker-group scale for eks-demo.
 #
-# serveConfigV2 is one string, so this replaces it whole: two replicas for
-# context-mcp and each enabled agent (num_replicas stays <= the 6 topic
-# partitions); revocation is disabled in agents.yaml and keeps one replica.
-# Each agent replica reserves 0.1 CPU (dtm/mesh/agents/host.py) and each
-# ContextMcp replica Serve's default 1 CPU: 2.9 CPU in total. The head
-# advertises 0 CPU, so no Serve replica lands on it and it keeps its 2 Gi for
-# GCS, the dashboard and the Serve controller; the two mesh workers (2 CPU
-# each) hold every replica. In-tree autoscaling is off, so KubeRay runs
-# exactly `replicas` workers; scale by editing `replicas` (up to
-# maxReplicas: 4).
+# serveConfigV2 is one string, so this replaces it whole: two replicas for each
+# enabled agent (num_replicas stays <= the 6 topic partitions); revocation is
+# disabled in agents.yaml and keeps one replica. Each agent replica reserves
+# 0.1 CPU (dtm/mesh/agents/host.py): 0.9 CPU in total. The head advertises 0
+# CPU, so no Serve replica lands on it and it keeps its 2 Gi for GCS, the
+# dashboard and the Serve controller; the two mesh workers (2 CPU each) hold
+# every replica. In-tree autoscaling is off, so KubeRay runs exactly
+# `replicas` workers; scale by editing `replicas` (up to maxReplicas: 4).
 #
 # The test op pins index 0 to the mesh worker group, so a reordering in
 # components/mesh-runtime fails the build rather than patching another group.
@@ -20,12 +18,6 @@
   path: /spec/serveConfigV2
   value: |
     applications:
-      - name: context-mcp
-        route_prefix: /context-mcp
-        import_path: dtm.mesh.context_mcp:app
-        deployments:
-          - name: ContextMcp
-            num_replicas: 2
       - name: risk
         route_prefix: /risk
         import_path: dtm.mesh.risk:app

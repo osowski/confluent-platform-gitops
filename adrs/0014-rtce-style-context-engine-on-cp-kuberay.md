@@ -4,7 +4,7 @@ Date: 2026-10-29
 
 ## Status
 
-Accepted
+Accepted. Context layer amended by [ADR-0022](0022-dtm-context-service-off-ray-serve.md).
 
 ## Context
 
