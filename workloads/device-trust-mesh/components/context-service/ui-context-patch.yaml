@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-trust-mesh-ui
+  namespace: device-trust-mesh
+spec:
+  template:
+    spec:
+      containers:
+        - name: ui
+          env:
+            - name: DTM_UI_CONTEXT_URL
+              value: "http://device-trust-mesh-context.device-trust-mesh.svc.cluster.local:8080"

@@ -21,8 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **CMF 2.5.0 and Flink SQL on Flink 2.3 on all clusters** ([#550](https://github.com/osowski/confluent-platform-gitops/issues/550)): every compute pool runs `cp-flink-sql:2.3-cmf2.5-cp1` on Flink Kubernetes Operator 1.16.1-cp1, so Flink 2.3 SQL features (process table functions, batch statements) work.
-  Pools start without their 1.19 state: rebuild the cluster rather than upgrading in place. CMF compiles only Flink 2.3. Only flink-demo has a compile worker, so `cmf://` UDFs load only there ([ADR-0022](../adrs/0022-cmf-2-5-flink-2-3-sql-compilation.md)).
-- **Device Trust Mesh schemas come from flink-sandbox** ([#469](https://github.com/osowski/confluent-platform-gitops/issues/469)): the schemas and their ConfigMaps are generated in `osowski/flink-sandbox` and pulled in as a Kustomize remote base pinned to `device-trust-mesh-v1.4.0`, which eks-demo's images also run.
+  Pools start without their 1.19 state: rebuild the cluster rather than upgrading in place. CMF compiles only Flink 2.3. Only flink-demo has a compile worker, so `cmf://` UDFs load only there ([ADR-0023](../adrs/0023-cmf-2-5-flink-2-3-sql-compilation.md)).
+- **Device Trust Mesh context service runs as its own Deployment on eks-demo** ([#557](https://github.com/osowski/confluent-platform-gitops/issues/557)): `device-trust-mesh-context` has its own image and Keycloak client `sa-dtm-context`, so rolling it leaves the agents alone and agents no longer read the context topics directly.
+  Run `terraform apply` for the new client secret before syncing ([ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md)).
+- **Device Trust Mesh schemas come from flink-sandbox** ([#469](https://github.com/osowski/confluent-platform-gitops/issues/469)): the schemas and their ConfigMaps are generated in `osowski/flink-sandbox` and pulled in as a Kustomize remote base pinned to a `device-trust-mesh-v*` release, the same one eks-demo's images run.
   Edit schemas there; this repo keeps the Schema CRs ([ADR-0021](../adrs/0021-device-trust-mesh-schemas-from-flink-sandbox.md)).
 - **Flink dashboard shows one line per statement** ([#545](https://github.com/osowski/confluent-platform-gitops/issues/545)): checkpoint and uptime panels no longer split a re-created statement into two series, and **Restarts in range** is a stat panel.
 - **eks-demo Device Trust Mesh Flink pool scales out by TaskManager** ([#524](https://github.com/osowski/confluent-platform-gitops/issues/524)): 5-slot TaskManagers (2 CPU, 4 GiB, managed memory 0.1) run the statements on two TaskManagers, with nearly three times the heap per statement, and the pool adds a TaskManager for each further 5 statements.
@@ -38,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **C3's CMF (CP Flink UI) integration disabled by default** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): `confluent.controlcenter.cmf.enable` is now `false` on all four clusters, since the CMF UI is the primary CP Flink UI going forward.
 - **`flink-agents` no longer created by default on `flink-demo`** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): it sat unsynced most of the time; apply it manually per the [Flink Agents README](../workloads/flink-agents/README.md) when needed.
 - **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): in-cluster Ollama is now opt-in per overlay instead of the default.
+
+### Removed
+- **Device Trust Mesh on `flink-demo`** ([#558](https://github.com/osowski/confluent-platform-gitops/issues/558)): the mesh runs on eks-demo only. The flink-demo `device-trust-mesh` and `kuberay-operator` Applications, their overlays and the UI route are gone.
+  If they were applied on flink-demo, delete both Applications and the `device-trust-mesh` namespace.
 
 ### Fixed
 - **Re-creating the Device Trust Mesh task router no longer re-runs every conversation** ([#549](https://github.com/osowski/confluent-platform-gitops/issues/549)): `dtm-a2a-task-router` resumes from its committed offsets instead of re-sending every retained `device.events` record to the agents.

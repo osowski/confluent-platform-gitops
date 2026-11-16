@@ -12,7 +12,7 @@
 # policy will silently break IRSA.
 
 locals {
-  dtm_clients = ["sa-dtm-ray", "sa-dtm-simulator", "sa-dtm-ui", "sa-dtm-flink"]
+  dtm_clients = ["sa-dtm-ray", "sa-dtm-context", "sa-dtm-simulator", "sa-dtm-ui", "sa-dtm-flink"]
 }
 
 data "aws_caller_identity" "current" {}

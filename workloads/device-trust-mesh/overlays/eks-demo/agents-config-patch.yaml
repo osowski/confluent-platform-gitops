@@ -29,5 +29,5 @@ data:
       policyCommands: enabled          # enabled | redirect | disabled
       allowedConsume: [ "agent.tasks.<self>", "agent.task-events", "agent.cards" ]
     context:
-      mcpUrl: http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp/mcp
+      mcpUrl: http://device-trust-mesh-context.device-trust-mesh.svc.cluster.local:8080/mcp
       waitTimeoutMs: 2000

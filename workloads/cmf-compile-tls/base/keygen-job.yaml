@@ -1,4 +1,4 @@
-# CMF compile-worker TLS keygen (ADR-0022)
+# CMF compile-worker TLS keygen (ADR-0023)
 #
 # CMF and its compile workers authenticate each other with TLS client certificates. The chart can
 # generate them, but only stably with Helm `lookup`, which Argo CD's `helm template` never resolves,

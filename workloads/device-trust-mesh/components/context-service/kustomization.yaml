@@ -1,0 +1,35 @@
+---
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Context service as its own Deployment: MCP at /mcp, REST at /v1/..., with
+# /healthz (readiness), /livez (liveness) and /metrics on port 8080. The UI and
+# the reset script read device state from it.
+#
+# List this component after mesh-runtime (it reuses the device-trust-mesh-config
+# DEVICE_CAP value), after ui and session-reset (it patches both), and before
+# rbac-oauth.
+resources:
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml
+  - hpa.yaml
+
+# DEVICE_CAP has exactly one source: device-trust-mesh-config.
+replacements:
+  - source:
+      kind: ConfigMap
+      name: device-trust-mesh-config
+      fieldPath: data.DEVICE_CAP
+    targets:
+      - select:
+          kind: Deployment
+          name: device-trust-mesh-context
+        fieldPaths:
+          - spec.template.spec.containers.[name=context].env.[name=DEVICE_CAP].value
+
+patches:
+  # The UI reads the device table over the context service's REST API.
+  - path: ui-context-patch.yaml
+  # The reset script reads device state from the context service's REST API.
+  - path: reset-context-patch.yaml

@@ -73,8 +73,8 @@ Platform infrastructure components deployed before workloads.
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
-- **device-trust-mesh** (wave 122, flink-demo and eks-demo, opt-in) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style `context-mcp`, shared Flink compute pool ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md))
-- **kuberay-operator** (wave 117, flink-demo and eks-demo, opt-in) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
+- **device-trust-mesh** (wave 122, eks-demo only) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style context layer (a standalone `device-trust-mesh-context` Deployment on eks-demo), shared Flink compute pool ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md), [ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md))
+- **kuberay-operator** (wave 117, eks-demo only) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 
 **Future components:**
@@ -202,7 +202,7 @@ Apply in that order and delete in reverse, so each CMF-side resource is removed 
 |---|---|
 | `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50 (RBAC clusters additionally use waves 10/20/30 for a `default`-env Secret/FlinkSecret/mapping chain via a Kustomize Component — coexists with the reference application at wave 10 since neither depends on the other) |
 | `colors-and-shapes` | environment 5; catalog 40; database 50; pool 60; statement 70; application 80 (waves 10/20/30 are reserved for the Secret/FlinkSecret/mapping chain a Kustomize Component adds on RBAC clusters — not present in the anonymous base) |
-| `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; DDL 65; statements 70; RayService 80; simulator 90. eks-demo's `rbac-oauth` component adds ServiceAccount and SecretStore -3, ExternalSecrets -2, Keycloak Job -1 |
+| `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; DDL 65; statements 70; `device-trust-mesh-context` 75 (eks-demo); RayService 80; simulator 90. eks-demo's `rbac-oauth` component adds ServiceAccount and SecretStore -3, ExternalSecrets -2, Keycloak Job -1 |
 
 `FlinkApplication` must come after `FlinkEnvironment` rather than sharing its wave. Unwaved they race, and CFK reports `FlinkEnvironment "<env>" not found` on the application. Without a health check that failure is invisible — ArgoCD marks the application Healthy on creation and CFK retries in the background — but once health is evaluated it fails the sync outright.
 
@@ -218,7 +218,7 @@ The following constraints are enforced by CEL rules on the CRDs or by CMF runtim
 | DDL (`CREATE TABLE`) runs only in environments listed in the database's `ddlEnvironments` | DDL is rejected everywhere else |
 | `clusterSpec.image` must match the deployed CMF version and the pool's `clusterSpec.flinkVersion` (every pool runs `v2_3` with `cp-flink-sql:2.3-cmf2.5-cp1`) | JobManager fails to load the statement plan; CMF does not check that the two agree |
 | `clusterSpec.flinkVersion` cannot change while the pool has resumable statements | Moving a workload to another Flink version needs a new pool and new statements |
-| CMF compiles statements only for the Flink lines in `cmf.statementService.sharedCompilers` (only `2.3` here); statements that use CMF artifacts compile only on a compile worker, which only flink-demo runs ([ADR-0022](../adrs/0022-cmf-2-5-flink-2-3-sql-compilation.md)) | A pool on any other Flink line fails to compile its statements; outside flink-demo, a statement that uses CMF artifacts (`USING JAR 'cmf://...'`) fails |
+| CMF compiles statements only for the Flink lines in `cmf.statementService.sharedCompilers` (only `2.3` here); statements that use CMF artifacts compile only on a compile worker, which only flink-demo runs ([ADR-0023](../adrs/0023-cmf-2-5-flink-2-3-sql-compilation.md)) | A pool on any other Flink line fails to compile its statements; outside flink-demo, a statement that uses CMF artifacts (`USING JAR 'cmf://...'`) fails |
 | Flink 2.x pools reject the legacy `state.backend: filesystem` | Use `state.backend.type: hashmap` and the `execution.checkpointing.*` keys |
 | `FlinkSecret` requires CMF secret encryption (`encryption.enabled=true`) | Secrets cannot be stored encrypted at rest, so the sync fails |
 | CMF encryption mode is fixed at database initialization and the key cannot be rotated | Enabling encryption on an existing CMF database requires a **fresh database** — see [flink-demo-rbac README](../clusters/flink-demo-rbac/README.md#enabling-cmf-secret-encryption-requires-a-fresh-cmf-database) |
@@ -317,11 +317,11 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
 | 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
-| 117 | kuberay-operator | KubeRay operator (RayService CRDs) for the device-trust-mesh agent runtime; opt-in on flink-demo and eks-demo |
+| 117 | kuberay-operator | KubeRay operator (RayService CRDs) for the device-trust-mesh agent runtime; eks-demo only |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
 | 120/121 | colors-and-shapes | Two-tenant Flink demo (`shapes-env`, `colors-env`) with a native `FlinkApplication` (JAR) and Flink SQL (`FlinkStatement`) side by side; anonymous on flink-demo (wave 121), Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the three RBAC clusters (wave 120) |
-| 122 | device-trust-mesh | Agentic Device Trust Mesh (topics, shared Flink compute pool, runtime config; RayService via the `mesh-runtime` component); opt-in on flink-demo and eks-demo — see [Device Trust Mesh README](../workloads/device-trust-mesh/README.md) |
+| 122 | device-trust-mesh | Agentic Device Trust Mesh (topics, shared Flink compute pool, runtime config; RayService via the `mesh-runtime` component; on eks-demo also the `device-trust-mesh-context` Deployment via the `context-service` component, wave 75); eks-demo only — see [Device Trust Mesh README](../workloads/device-trust-mesh/README.md) |
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).
@@ -434,11 +434,12 @@ eks-demo uses the AWS EBS CSI driver add-on (managed by EKS) for persistent stor
 
 The eks-demo authorization model mirrors flink-demo-rbac exactly: Keycloak for OAuth/OIDC, MDS for ConfluentRoleBinding enforcement, and group-scoped permissions for `flink-shapes` and `flink-colors`. The same three-layer model applies — see [Multi-Tenant RBAC Architecture (flink-demo-rbac cluster)](#multi-tenant-rbac-architecture-flink-demo-rbac-cluster) for the full breakdown. The key operational difference is that eks-demo runs on real public infrastructure, so OAuth redirect URIs and MDS token issuer URLs reference real DNS hostnames rather than `.local` entries that only resolve in a developer's `/etc/hosts`.
 
-**Device Trust Mesh OAuth principals:** `device-trust-mesh` authenticates through four Keycloak service accounts, each bound to a group that carries its role bindings.
+**Device Trust Mesh OAuth principals:** `device-trust-mesh` authenticates through five Keycloak service accounts, each bound to a group that carries its role bindings.
 
 | Client | Group | Used by |
 |---|---|---|
-| `sa-dtm-ray` | `dtm-ray` | Agents and `context-mcp` |
+| `sa-dtm-ray` | `dtm-ray` | Agents |
+| `sa-dtm-context` | `dtm-context` | Context service; the only principal that reads the context topics |
 | `sa-dtm-simulator` | `dtm-simulator` | Device simulator |
 | `sa-dtm-ui` | `dtm-ui` | Mesh UI |
 | `sa-dtm-flink` | `dtm-flink` | CMF catalog and Flink SQL statements |

@@ -7,7 +7,8 @@ metadata:
 ---
 # Everything reset-session.sh does in the mesh namespace: scale the simulator,
 # delete and watch the long-running FlinkStatements, switch topic cleanup
-# policies, restart the Ray pods and the UI, and read through the UI pod.
+# policies, restart the Ray pods, the context service and the UI, and read
+# through the UI pod.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

@@ -62,7 +62,7 @@ cmf:
     environmentCatalog:
       enabled: true
 
-  # SQL compilation (see ADR 0022). Every compute pool runs Flink 2.3, so the
+  # SQL compilation (see ADR 0023). Every compute pool runs Flink 2.3, so the
   # pod carries only the 2.3 shared compiler instead of the chart default of
   # 1.19 + 2.3 at 2Gi each. The compiler's -Xmx plus ~512Mi of JVM overhead must
   # fit in its memory limit, or an OOMKill takes the CMF API down with it.

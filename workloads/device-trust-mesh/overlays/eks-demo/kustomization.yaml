@@ -4,8 +4,10 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Order matters: device-cap sets DEVICE_CAP before mesh-runtime copies it into
-# its consumers; ui and rbac-oauth patch resources that mesh-runtime declares.
+# Order matters: device-cap sets DEVICE_CAP before mesh-runtime and
+# context-service copy it into their consumers; ui and rbac-oauth patch
+# resources that mesh-runtime declares; context-service patches the ui and
+# session-reset resources, so it follows both, and precedes rbac-oauth.
 components:
   - device-cap
   - ../../components/mesh-runtime
@@ -14,9 +16,12 @@ components:
   - ../../components/session-reset
   # Agents call the in-cluster Ollama on the GPU node.
   - ../../components/ollama-in-cluster-mode
+  # Context service Deployment; points the UI and the reset script at it.
+  - ../../components/context-service
   # Keycloak OAuth identities, MDS role bindings and client OAuth settings.
   - ../../components/rbac-oauth
-  # Prometheus PodMonitor for the Ray pods and the Grafana dashboard.
+  # Prometheus PodMonitors for the Ray pods and the context service, and the
+  # Grafana dashboard.
   - ../../components/observability
 
 patches:
@@ -32,16 +37,18 @@ patches:
       kind: RayService
       name: device-trust-mesh
 
-# osowski/flink-sandbox device-trust-mesh images with the OAuth client settings and
-# metrics exported through Ray's metrics agent. Same release as the schema remote
+# osowski/flink-sandbox device-trust-mesh-v1.5.0 images: the Ray, simulator, UI
+# and context service images share one tag. Same release as the schema remote
 # base in base/kustomization.yaml.
 images:
   - name: quay.io/osowski/device-trust-mesh-ray
-    newTag: v1.4.0-202611122118
+    newTag: v1.5.0-202611161830
   - name: quay.io/osowski/device-trust-mesh-simulator
-    newTag: v1.4.0-202611122118
+    newTag: v1.5.0-202611161830
   - name: quay.io/osowski/device-trust-mesh-ui
-    newTag: v1.4.0-202611122118
+    newTag: v1.5.0-202611161830
+  - name: quay.io/osowski/device-trust-mesh-context
+    newTag: v1.5.0-202611161830
 
 # Cluster-specific labels
 labels:

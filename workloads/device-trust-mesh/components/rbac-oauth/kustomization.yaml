@@ -29,9 +29,10 @@ resources:
   # the dtm-cmf-* Secrets synced in external-secrets.yaml.
   - flink-secrets.yaml
 
-# Requires the base plus the mesh-runtime, ui and session-reset components
-# ahead of this one in the overlay's components list: these patches target the
-# RayService, Deployments and reset settings those components declare.
+# Requires the base plus the mesh-runtime, ui, context-service and
+# session-reset components ahead of this one in the overlay's components list:
+# these patches target the RayService, Deployments and reset settings those
+# components declare.
 patches:
   # Strategic-merge, self-identifying by apiVersion/kind/metadata. The Flink
   # CRs' fields touched here are maps or scalars, and Deployment env merges
@@ -40,6 +41,7 @@ patches:
   - path: flink-compute-pool-oauth-patch.yaml
   - path: simulator-oauth-patch.yaml
   - path: ui-oauth-patch.yaml
+  - path: context-oauth-patch.yaml
   - path: session-reset-oauth-patch.yaml
   # JSON6902 append: RayService env lists have no merge key.
   - path: rayservice-oauth-patch.yaml
@@ -66,6 +68,11 @@ replacements:
           name: device-trust-mesh-ui
         fieldPaths:
           - spec.template.spec.containers.[name=ui].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
+      - select:
+          kind: Deployment
+          name: device-trust-mesh-context
+        fieldPaths:
+          - spec.template.spec.containers.[name=context].env.[name=KAFKA_OAUTH_TOKEN_ENDPOINT_URL].value
       - select:
           kind: RayService
           name: device-trust-mesh
