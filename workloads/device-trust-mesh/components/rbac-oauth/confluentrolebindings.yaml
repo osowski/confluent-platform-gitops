@@ -5,7 +5,8 @@
 # (listener.name.internal.sasl.oauthbearer.groups.claim.name=groups), and the
 # setup Job puts each client's service-account user in its group:
 #
-#   sa-dtm-ray       -> dtm-ray        agents and context-mcp (one Ray principal)
+#   sa-dtm-ray       -> dtm-ray        agents
+#   sa-dtm-context   -> dtm-context    context service (MCP)
 #   sa-dtm-simulator -> dtm-simulator  device simulator
 #   sa-dtm-ui        -> dtm-ui         mesh UI
 #   sa-dtm-flink     -> dtm-flink      CMF catalog and Flink SQL statements
@@ -21,11 +22,10 @@
 # dtm-env grants.
 
 # ==============================================================================
-# dtm-ray - agents and context-mcp
+# dtm-ray - agents
 # ==============================================================================
 ---
-# Read the A2A task, task-event, card and LLM-interaction topics, and the
-# context topics context-mcp materializes.
+# Read the A2A task, task-event, card and LLM-interaction topics.
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -48,15 +48,6 @@ spec:
       resourceType: Topic
     - patternType: LITERAL
       name: agent.llm-interactions
-      resourceType: Topic
-    - patternType: LITERAL
-      name: device.context
-      resourceType: Topic
-    - patternType: LITERAL
-      name: customer.context
-      resourceType: Topic
-    - patternType: LITERAL
-      name: device.risk-signals
       resourceType: Topic
   kafkaRestClassRef:
     name: default
@@ -95,7 +86,7 @@ spec:
   kafkaRestClassRef:
     name: default
 ---
-# Consumer groups dtm.<agent>.<mode>[.<run>] and dtm.context-mcp.<uuid>.
+# Consumer groups dtm.<agent>.<mode>[.<run>].
 apiVersion: platform.confluent.io/v1beta1
 kind: ConfluentRolebinding
 metadata:
@@ -145,6 +136,67 @@ spec:
     - patternType: PREFIXED
       name: audit.log-
       resourceType: Subject
+---
+# ==============================================================================
+# dtm-context - context service (MCP)
+# ==============================================================================
+---
+# Materialize the compacted context and risk-signal topics.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: dtm-context-topics-read
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: dtm-context
+  role: DeveloperRead
+  resourcePatterns:
+    - patternType: LITERAL
+      name: device.context
+      resourceType: Topic
+    - patternType: LITERAL
+      name: customer.context
+      resourceType: Topic
+    - patternType: LITERAL
+      name: device.risk-signals
+      resourceType: Topic
+  kafkaRestClassRef:
+    name: default
+---
+# Consumer groups dtm.context-mcp.<uuid>.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: dtm-context-groups-read
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: dtm-context
+  role: DeveloperRead
+  resourcePatterns:
+    - patternType: PREFIXED
+      name: dtm.context-mcp.
+      resourceType: Group
+  kafkaRestClassRef:
+    name: default
+---
+# Schema lookups for the three context topics.
+apiVersion: platform.confluent.io/v1beta1
+kind: ConfluentRolebinding
+metadata:
+  name: dtm-context-subjects-read
+  namespace: kafka
+spec:
+  principal:
+    type: group
+    name: dtm-context
+  role: DeveloperRead
+  clustersScopeByIds:
+    schemaRegistryClusterId: id_schemaregistry_kafka
+  resourcePatterns:
     - patternType: PREFIXED
       name: device.context-
       resourceType: Subject

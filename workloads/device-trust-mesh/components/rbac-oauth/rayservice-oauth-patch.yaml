@@ -1,8 +1,7 @@
 # Kafka and Schema Registry OAuth for the Ray head and the mesh worker group,
-# as the sa-dtm-ray client (agents and context-mcp share one principal). The
-# image's dtm/common/kafka.py (osowski/flink-sandbox) builds both clients from
-# these variables and refuses to start when only some of the required ones are
-# set.
+# as the sa-dtm-ray client (the agents' principal). The image's
+# dtm/common/kafka.py (osowski/flink-sandbox) builds both clients from these
+# variables and refuses to start when only some of the required ones are set.
 #
 # RayService is a CRD with no merge keys, so a strategic-merge patch would
 # replace each env list wholesale and drop DEVICE_CAP and LLM_ENDPOINT. These
