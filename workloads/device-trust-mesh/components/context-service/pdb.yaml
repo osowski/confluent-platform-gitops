@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: device-trust-mesh-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "75"
+  labels:
+    app: device-trust-mesh-context
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: device-trust-mesh-context

@@ -4,8 +4,10 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Order matters: device-cap sets DEVICE_CAP before mesh-runtime copies it into
-# its consumers; ui and rbac-oauth patch resources that mesh-runtime declares.
+# Order matters: device-cap sets DEVICE_CAP before mesh-runtime and
+# context-service copy it into their consumers; ui and rbac-oauth patch
+# resources that mesh-runtime declares; context-service patches the ui and
+# session-reset resources, so it follows both, and precedes rbac-oauth.
 components:
   - device-cap
   - ../../components/mesh-runtime
@@ -14,6 +16,8 @@ components:
   - ../../components/session-reset
   # Agents call the in-cluster Ollama on the GPU node.
   - ../../components/ollama-in-cluster-mode
+  # Context service Deployment; points the UI and the reset script at it.
+  - ../../components/context-service
   # Keycloak OAuth identities, MDS role bindings and client OAuth settings.
   - ../../components/rbac-oauth
   # Prometheus PodMonitor for the Ray pods and the Grafana dashboard.

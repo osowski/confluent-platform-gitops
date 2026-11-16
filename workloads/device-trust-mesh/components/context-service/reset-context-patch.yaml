@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dtm-reset-settings
+  namespace: device-trust-mesh
+data:
+  DTM_RESET_CONTEXT_URL: "http://device-trust-mesh-context.device-trust-mesh.svc.cluster.local:8080"

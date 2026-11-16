@@ -1,0 +1,83 @@
+# Device Trust Mesh context service Deployment
+# Serves device and customer context over MCP (/mcp) and REST (/v1/...),
+# with /metrics for Prometheus. No Ray. The image is built from
+# osowski/flink-sandbox.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-trust-mesh-context
+  namespace: device-trust-mesh
+  annotations:
+    argocd.argoproj.io/sync-wave: "75"
+  labels:
+    app: device-trust-mesh-context
+spec:
+  # No replicas field: the HorizontalPodAutoscaler owns the replica count.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: device-trust-mesh-context
+  template:
+    metadata:
+      labels:
+        app: device-trust-mesh-context
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: context
+          image: quay.io/osowski/device-trust-mesh-context
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # Kafka connection (internal listener)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka.svc.cluster.local:9071"
+            - name: SCHEMA_REGISTRY_URL
+              value: "http://schemaregistry.kafka.svc.cluster.local:8081"
+            # Upper bound on unique device ids (copied from device-trust-mesh-config)
+            - name: DEVICE_CAP
+              value: "replaced-by-kustomize"
+            - name: DTM_CONTEXT_PORT
+              value: "8080"
+            # Host headers the service accepts: each form of its in-cluster name
+            - name: DTM_CONTEXT_ALLOWED_HOSTS
+              value: "device-trust-mesh-context,device-trust-mesh-context.device-trust-mesh,device-trust-mesh-context.device-trust-mesh.svc,device-trust-mesh-context.device-trust-mesh.svc.cluster.local"
+          # Startup allows 72 x 5s = 360s for the initial load before the
+          # readiness and liveness probes take over.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 72
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 1536Mi
