@@ -25,7 +25,6 @@ brew install colima \
 127.0.0.1  argocd.flink-demo.confluentdemo.local
 127.0.0.1  cmf.flink-demo.confluentdemo.local
 127.0.0.1  controlcenter.flink-demo.confluentdemo.local
-127.0.0.1  device-trust-mesh.flink-demo.confluentdemo.local
 127.0.0.1  grafana.flink-demo.confluentdemo.local
 127.0.0.1  headlamp.flink-demo.confluentdemo.local
 127.0.0.1  kafka.flink-demo.confluentdemo.local
@@ -43,7 +42,6 @@ brew install colima \
 > ::1  argocd.flink-demo.confluentdemo.local
 > ::1  cmf.flink-demo.confluentdemo.local
 > ::1  controlcenter.flink-demo.confluentdemo.local
-> ::1  device-trust-mesh.flink-demo.confluentdemo.local
 > ::1  grafana.flink-demo.confluentdemo.local
 > ::1  headlamp.flink-demo.confluentdemo.local
 > ::1  kafka.flink-demo.confluentdemo.local

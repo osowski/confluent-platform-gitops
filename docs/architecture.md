@@ -73,8 +73,8 @@ Platform infrastructure components deployed before workloads.
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
 - **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
-- **device-trust-mesh** (wave 122, flink-demo and eks-demo, opt-in) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style context layer (a standalone `device-trust-mesh-context` Deployment on eks-demo), shared Flink compute pool ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md), [ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md))
-- **kuberay-operator** (wave 117, flink-demo and eks-demo, opt-in) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
+- **device-trust-mesh** (wave 122, eks-demo only) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style context layer (a standalone `device-trust-mesh-context` Deployment on eks-demo), shared Flink compute pool ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md), [ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md))
+- **kuberay-operator** (wave 117, eks-demo only) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
 
 **Future components:**
@@ -314,11 +314,11 @@ Applications deploy in waves using `argocd.argoproj.io/sync-wave` annotations:
 | 110 | confluent-resources | Confluent Platform resources (KRaft, Kafka, Schema Registry, Control Center, Schema Registry IngressRoute) |
 | 110 | workload-ingresses | Traefik IngressRoutes for workload UIs |
 | 116 | flink-kubernetes-operator | Flink Kubernetes Operator (manages Flink deployments and jobs) |
-| 117 | kuberay-operator | KubeRay operator (RayService CRDs) for the device-trust-mesh agent runtime; opt-in on flink-demo and eks-demo |
+| 117 | kuberay-operator | KubeRay operator (RayService CRDs) for the device-trust-mesh agent runtime; eks-demo only |
 | 118 | cmf-operator | Confluent Manager for Apache Flink (central management interface) |
 | 119/120 | flink-resources | Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration; deployed on all four clusters — wave 119 on the three RBAC clusters (ahead of colors-and-shapes), wave 120 on flink-demo |
 | 120/121 | colors-and-shapes | Two-tenant Flink demo (`shapes-env`, `colors-env`) with a native `FlinkApplication` (JAR) and Flink SQL (`FlinkStatement`) side by side; anonymous on flink-demo (wave 121), Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the three RBAC clusters (wave 120) |
-| 122 | device-trust-mesh | Agentic Device Trust Mesh (topics, shared Flink compute pool, runtime config; RayService via the `mesh-runtime` component; on eks-demo also the `device-trust-mesh-context` Deployment via the `context-service` component, wave 75); opt-in on flink-demo and eks-demo — see [Device Trust Mesh README](../workloads/device-trust-mesh/README.md) |
+| 122 | device-trust-mesh | Agentic Device Trust Mesh (topics, shared Flink compute pool, runtime config; RayService via the `mesh-runtime` component; on eks-demo also the `device-trust-mesh-context` Deployment via the `context-service` component, wave 75); eks-demo only — see [Device Trust Mesh README](../workloads/device-trust-mesh/README.md) |
 | 105+ | workload apps | User-facing applications |
 
 Lower wave numbers deploy first. This ensures dependencies are satisfied (e.g., CRDs before resources that use them, ingress controller before applications with ingress).

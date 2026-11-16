@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`flink-agents` no longer created by default on `flink-demo`** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): it sat unsynced most of the time; apply it manually per the [Flink Agents README](../workloads/flink-agents/README.md) when needed.
 - **flink-agents Ollama default flipped to native macOS host** ([#439](https://github.com/osowski/confluent-platform-gitops/issues/439)): in-cluster Ollama is now opt-in per overlay instead of the default.
 
+### Removed
+- **Device Trust Mesh on `flink-demo`** ([#558](https://github.com/osowski/confluent-platform-gitops/issues/558)): the mesh runs on eks-demo only. The flink-demo `device-trust-mesh` and `kuberay-operator` Applications, their overlays and the UI route are gone.
+  If they were applied on flink-demo, delete both Applications and the `device-trust-mesh` namespace.
+
 ### Fixed
 - **Re-creating the Device Trust Mesh task router no longer re-runs every conversation** ([#549](https://github.com/osowski/confluent-platform-gitops/issues/549)): `dtm-a2a-task-router` resumes from its committed offsets instead of re-sending every retained `device.events` record to the agents.
   Roll it out by deleting `dtm-a2a-task-router` and syncing `device-trust-mesh`.
