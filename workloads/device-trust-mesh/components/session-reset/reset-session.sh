@@ -35,7 +35,10 @@ KAFKA_CLI_OPTS=""
 SIMULATOR="device-simulator"
 UI="device-trust-mesh-ui"
 RAY_SELECTOR="ray.io/is-ray-node=yes"
-CONTEXT_MCP_URL="http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp"
+# The context service REST base URL, without a trailing slash; GET /v1/devices hangs off it.
+CONTEXT_MCP_URL="${DTM_RESET_CONTEXT_URL:-http://device-trust-mesh-serve-svc.device-trust-mesh.svc.cluster.local:8000/context-mcp}"
+# Separate context service Deployment, where the cluster runs one; it holds its tables in memory.
+CONTEXT_DEPLOYMENT="device-trust-mesh-context"
 # Agent Cards are the agents' published identity, not session data.
 KEEP_TOPICS=" agent.cards agent.cards_human_readable "
 WAIT_TIMEOUT_S=600
@@ -69,12 +72,13 @@ Steps:
   2. Delete the long-running FlinkStatements (the dtm-ddl-* statements stay).
   3. Switch the compacted session topics to compact,delete so they can be purged.
   4. Purge every session topic in place with kafka-delete-records (Agent Cards stay).
-  5. Restart the Ray pods, so context-mcp reloads empty tables and in-flight agent work stops.
+  5. Restart the Ray pods and, where it exists, the ${CONTEXT_DEPLOYMENT} Deployment, so the
+     context service reloads empty tables and in-flight agent work stops.
   6. Purge again, to drop anything the agents wrote before they stopped.
   7. Sync the ${APPLICATION} Application: the statements come back and the topic
      policies return to what git declares.
   8. Wait for the statements to be RUNNING, then restart the UI.
-  9. Check that context-mcp lists no devices and the UI reports nothing stale.
+  9. Check that the context service lists no devices and the UI reports nothing stale.
 
 The simulator stays at 0 replicas; start the session with:
   kubectl -n ${NAMESPACE} scale deploy ${SIMULATOR} --replicas=1
@@ -85,6 +89,8 @@ Options:
 Environment (from the dtm-reset-settings ConfigMap):
   DTM_RESET_KAFKA_AUTH  none or oauth (default: none)
   DTM_RESET_TOKEN_URL   OAuth token endpoint, required with oauth
+  DTM_RESET_CONTEXT_URL Context service REST base URL for the final devices check
+                        (default: ${CONTEXT_MCP_URL})
 EOF
 }
 
@@ -303,9 +309,15 @@ fi
 info "4/9 Purging session topics"
 purge_topics
 
-info "5/9 Restarting the Ray pods"
+info "5/9 Restarting the Ray pods and the context service"
 run kc -n "$NAMESPACE" delete pod -l "$RAY_SELECTOR" --wait=true --timeout=300s
 [[ "$DRY_RUN" == "true" ]] || wait_for "the Ray pods to be Ready" ray_ready
+if kc -n "$NAMESPACE" get deploy "$CONTEXT_DEPLOYMENT" >/dev/null 2>&1; then
+    run kc -n "$NAMESPACE" rollout restart deploy "$CONTEXT_DEPLOYMENT"
+    run kc -n "$NAMESPACE" rollout status deploy "$CONTEXT_DEPLOYMENT" --timeout=600s
+else
+    debug "No ${CONTEXT_DEPLOYMENT} Deployment; skipping"
+fi
 
 info "6/9 Purging again to drop in-flight agent writes"
 purge_topics
@@ -337,7 +349,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 devices=$(ui_get "${CONTEXT_MCP_URL}/v1/devices" | tr -d '[:space:]')
 if [[ "$devices" != "[]" ]]; then
-    error "context-mcp still lists devices: ${devices:0:200}"
+    error "the context service still lists devices: ${devices:0:200}"
     exit 1
 fi
 health=$(ui_get "http://localhost:8080/healthz")
