@@ -2,7 +2,7 @@
 
 An agent mesh that manages **trusted customer devices** (browsers, phones, tablets) at a large financial institution, running on Confluent Platform, CP Flink and KubeRay on the `flink-demo` and `eks-demo` clusters. Agents enrol, deny, challenge and revoke devices. Every hand-off between them is an [A2A](https://a2a-protocol.org/latest/specification/) message on Kafka, so the whole conversation is visible in Control Center and queryable from Flink SQL.
 
-Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and `context-mcp` source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
+Work is tracked in [Epic #441](https://github.com/osowski/confluent-platform-gitops/issues/441). Agent, simulator and context service source lives in [osowski/flink-sandbox `device-trust-mesh/`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh).
 
 > [!NOTE]
 > Measured results are marked *to be recorded*.
@@ -24,7 +24,7 @@ Context is produced by Flink, materialized for millisecond lookup, consumed by a
 | Plane | Topics | How agents touch it |
 |---|---|---|
 | **Agent plane** (the meta-layer of agentic activity) | `agent.tasks.*`, `agent.task-events`, `agent.cards`, `agent.llm-interactions` | Kafka clients, directly, through the shared `AgentBus` wrapper |
-| **Business-data plane** | `device.events`, `device.context`, `customer.context`, `device.risk-signals` | Never consumed. Read only through the `context-mcp` FastMCP tools |
+| **Business-data plane** | `device.events`, `device.context`, `customer.context`, `device.risk-signals` | Never consumed. Read only through the context service's FastMCP tools |
 | **Business side effects / records** | `device.policy-commands`, `audit.log` | Produce only |
 
 The split follows Google's [Way Back Home Level 5 codelab](https://codelabs.developers.google.com/way-back-home-level-5/instructions) and Confluent's [Why Google's Agent2Agent Protocol Needs Apache Kafka](https://www.confluent.io/blog/google-agent2agent-protocol-needs-kafka/): A2A over Kafka for agents, with MCP kept separate for context. See [ADR-0015](../../adrs/0015-a2a-over-kafka-agent-communication.md).
@@ -49,7 +49,7 @@ The use-case-neutral A2A v1.0 binding: the agent-plane topics and the agents' Ka
 
 ### Device Trust Application
 
-The use case: the simulator, the business-data topics, the context and risk statements, the task router, `context-mcp`, the agents, the LLM and the UI. See [Agents](#agents).
+The use case: the simulator, the business-data topics, the context and risk statements, the task router, the context service, the agents, the LLM and the UI. See [Agents](#agents).
 
 ![Device trust application](diagrams/device-trust-application-highlight.drawio.svg)
 
@@ -59,9 +59,9 @@ The use case: the simulator, the business-data topics, the context and risk stat
 |---|---|---|
 | Device simulator | `Deployment` `device-simulator` (`replicas: 0` by default) | Produces `device.events` for a pool bounded by `DEVICE_CAP`; consumes `device.policy-commands` and `simulator.control`. |
 | Flink statements | `FlinkStatement` CRs on `dtm-shared-pool` | Context, risk signals, the A2A task router, human-readable views. |
-| `context-mcp` | Ray Serve deployment | Materializer + FastMCP context tools. Scale reads by adding replicas. |
+| Context service | eks-demo: `Deployment` `device-trust-mesh-context` (wave 75). flink-demo: the `context-mcp` Ray Serve application. | Materializer + FastMCP context tools. Scale reads by adding replicas. See [Context service](#context-service). |
 | Agents | Ray Serve deployments | Risk, Enrolment, Step-up, Compliance, Revocation (disabled). |
-| Mesh UI | `Deployment` `device-trust-mesh-ui` | Live board served at `https://device-trust-mesh.flink-demo.confluentdemo.local`. Reads the human-readable and aggregate topics and polls `context-mcp`; see [UI](#ui). |
+| Mesh UI | `Deployment` `device-trust-mesh-ui` | Live board served at `https://device-trust-mesh.flink-demo.confluentdemo.local`. Reads the human-readable and aggregate topics and polls the context service; see [UI](#ui). |
 | KubeRay operator | [`kuberay-operator`](../kuberay-operator/) Application (wave 117, opt-in) | Provides `ray.io/RayService`. |
 | LLM | Native macOS Ollama (default) or in-cluster Ollama | Same pattern as [Flink Agents](../flink-agents/README.md). |
 
@@ -144,11 +144,11 @@ A guardrail denial ends in `TASK_STATE_REJECTED`. While a step-up challenge is o
 
 ## Context Engine (RTCE Parallel)
 
-Confluent Cloud's Real-Time Context Engine keeps a materialized table per topic and serves millisecond lookups to agents over MCP. `context-mcp` is the Confluent Platform + KubeRay equivalent. See [ADR-0014](../../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md).
+Confluent Cloud's Real-Time Context Engine keeps a materialized table per topic and serves millisecond lookups to agents over MCP. The context service is the Confluent Platform equivalent. See [ADR-0014](../../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md) and, for how eks-demo hosts it, [ADR-0022](../../adrs/0022-dtm-context-service-off-ray-serve.md).
 
 - **Materializer.** Each replica loads `device.context`, `customer.context` and the last 50 `device.risk-signals` per device into memory. It uses manual partition assignment from the earliest offset, with offsets held alongside the data. A replica reports ready only after catching up.
 - **Kafka is the durable store.** The compacted context topics keep the latest value per key indefinitely. A restart re-reads them, which takes seconds at demo scale.
-- **Tools** (FastMCP, streamable HTTP, at `device-trust-mesh-serve-svc:8000/context-mcp/mcp`):
+- **Tools** (FastMCP, streamable HTTP, at `http://device-trust-mesh-context.device-trust-mesh.svc.cluster.local:8080/mcp` on eks-demo and `device-trust-mesh-serve-svc:8000/context-mcp/mcp` on flink-demo):
 
   | Tool | Returns |
   |---|---|
@@ -161,6 +161,21 @@ Confluent Cloud's Real-Time Context Engine keeps a materialized table per topic 
 
 > [!NOTE]
 > **Production.** A production deployment would add persistent backing to the serving layer: a snapshot plus stored offsets, so a restart resumes from the snapshot instead of re-reading every topic. See [#458](https://github.com/osowski/confluent-platform-gitops/issues/458).
+
+### Context service
+
+On eks-demo the [`context-service`](components/context-service/) component runs the context layer as its own Deployment, with no Ray. It runs the same FastAPI app as the Serve application, under uvicorn, from its own image. The component patches the UI and the reset settings, so the overlay lists it after `ui` and `session-reset`, and before `rbac-oauth`.
+
+| Item | Value |
+|---|---|
+| Workload | `Deployment` and `Service` `device-trust-mesh-context`, sync wave 75, so it exists before the RayService (wave 80), whose agents wait for context at start. Image `quay.io/osowski/device-trust-mesh-context`, port 8080 (`http`). |
+| Endpoints | `/mcp` (MCP), `/v1/...` (REST, used by the UI and the session reset), `/healthz` (503 until the replica has caught up; startup and readiness probes), `/livez` (500 once the materializer thread has died; liveness probe), `/metrics` |
+| Scaling | HorizontalPodAutoscaler on CPU (70%), 2 to 4 replicas. The Deployment has no `replicas` field, so a manual sync can't reset the count. Requests 500m CPU / 1 Gi, limits 1 CPU / 1536 Mi. |
+| Rollout | `RollingUpdate` with `maxSurge: 1` and `maxUnavailable: 0`, a PodDisruptionBudget with `minAvailable: 1`, and a 5 s `preStop` sleep. Rolling it doesn't touch the agents, and rolling the agents doesn't touch it. |
+| Clients | Agents (`context.mcpUrl` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml)), the UI (`DTM_UI_CONTEXT_URL`) and the session reset (`DTM_RESET_CONTEXT_URL`) |
+| Identity | Keycloak client `sa-dtm-context`, the only principal that can read the context topics; see [Secrets and OAuth flow](#secrets-and-oauth-flow) |
+
+Agents read `context.mcpUrl` once, when they start, so moving it takes a restart of the Ray pods.
 
 ---
 
@@ -401,8 +416,8 @@ SELECT agent, version, description, request_topic FROM `agent.cards_human_readab
 `DEVICE_CAP` in ConfigMap `device-trust-mesh-config` (default **20**) is the upper bound on unique device ids in a run. It is the only place to set it.
 
 - The simulator draws ids from the fixed pool `dev-0001..dev-<DEVICE_CAP>`, so it can't exceed the cap.
-- The `mesh-runtime` component's Kustomize `replacements` copy the value into the simulator and into the Ray head and worker containers.
-- `context-mcp` exports `dtm_tracked_devices` and flags `dtm_device_cap_exceeded`.
+- The `mesh-runtime` component's Kustomize `replacements` copy the value into the simulator and into the Ray head and worker containers. On eks-demo the `context-service` component copies it into the context Deployment.
+- The context service exports `dtm_tracked_devices` and flags `dtm_device_cap_exceeded`.
 - Partition counts are fixed at 6 and support caps up to 500. Agent replicas must stay ≤ 6. For larger fleets see [Scaling the fleet](#scaling-the-fleet).
 
 ---
@@ -430,7 +445,7 @@ Every arrow between agents is a Kafka hand-off: the sender produces an A2A `Send
 
 1. The simulator produces `ENROL_REQUESTED` to `device.events`.
 2. Flink updates `device.context` / `customer.context`, emits any risk signals, and the router sends `SendMessage` to `agent.tasks.risk`.
-3. **Risk** reads context through `context-mcp` and makes LLM call #1. It reports its task and `risk-assessment` on `agent.task-events`, then sends `SendMessage` to `agent.tasks.enrolment`.
+3. **Risk** reads context through the context service and makes LLM call #1. It reports its task and `risk-assessment` on `agent.task-events`, then sends `SendMessage` to `agent.tasks.enrolment`.
 4. **Enrolment** applies the guardrails and makes LLM call #2: `GRANT`, `DENY`, `CHALLENGE` or `GRANT_READ_ONLY`.
    - Non-challenge outcomes produce `ALLOW`, `BLOCK` or `READ_ONLY` to `device.policy-commands`.
    - `CHALLENGE` sets the task to `AUTH_REQUIRED` and sends `SendMessage` to `agent.tasks.step-up`.
@@ -525,7 +540,7 @@ Both models give the same enrolment decisions except in one scenario, `NEW_DEVIC
    ```
 6. **Watch the mesh:**
    - Control Center topic browser: `agent.tasks.*`, `agent.task-events`, `*_human_readable`
-   - The Ray dashboard and `context-mcp` (see [Inspecting the Mesh](#inspecting-the-mesh))
+   - The Ray dashboard and the context service (see [Inspecting the Mesh](#inspecting-the-mesh))
    - The ad-hoc queries above
 
    Scale `device-simulator` to 1 to start a run.
@@ -549,11 +564,11 @@ The Kafka steps run the Kafka CLI inside `kafka-0`. On flink-demo the internal l
 1. Scales the simulator to 0.
 2. Deletes the long-running statements.
 3. Purges every session topic in place with `kafka-delete-records`. The compacted `device.context` and `customer.context` topics switch to `compact,delete` for the purge, because Kafka refuses to delete records from a compaction-only topic.
-4. Restarts the Ray pods so context-mcp reloads empty tables, then purges again to catch in-flight agent writes.
+4. Restarts the Ray pods and, where the cluster runs one, the `device-trust-mesh-context` Deployment, so the context service reloads empty tables, then purges again to catch in-flight agent writes.
 5. Runs the manual `device-trust-mesh` sync. This recreates the statements and returns the topic policies to what git declares.
 6. Restarts the UI.
 
-The statements restart against empty topics, so there is no backlog to re-read. A run takes a few minutes, most of it waiting for CMF and Ray. It ends by checking that context-mcp lists no devices and that the UI reports nothing stale. The simulator stays at 0, so start the session with `kubectl -n device-trust-mesh scale deploy device-simulator --replicas=1`.
+The statements restart against empty topics, so there is no backlog to re-read. A run takes a few minutes, most of it waiting for CMF and Ray. It ends by checking that the context service lists no devices and that the UI reports nothing stale. The script reads the context service's base URL from `DTM_RESET_CONTEXT_URL` in `dtm-reset-settings`, which the `context-service` component sets. The simulator stays at 0, so start the session with `kubectl -n device-trust-mesh scale deploy device-simulator --replicas=1`.
 
 ### Inspecting the Mesh
 
@@ -567,41 +582,46 @@ At `http://localhost:8265`:
 
 | Tab | Shows |
 |---|---|
-| **Serve** | The six applications (`context-mcp` and the five agents), each with its deployments, replica count, health and per-replica logs |
+| **Serve** | The agent applications (and `context-mcp` on flink-demo), each with its deployments, replica count, health and per-replica logs |
 | **Cluster** | The head and worker nodes, with CPU and memory use |
 | **Actors** / **Logs** | Every Serve replica's process, and stdout/stderr per node |
 
 Without the dashboard, `kubectl -n device-trust-mesh get rayservice device-trust-mesh -o yaml` shows each Serve application's status under `.status`. Argo CD reports the RayService Healthy once its `Ready` condition is `True`, so the simulator (wave 90) and UI (wave 95) wait for Serve.
 
-**`context-mcp` directly.** The context engine serves a REST mirror of its MCP tools, and requests from localhost are allowed:
+**The context service directly.** It serves its MCP tools at `/mcp` and the same lookups as REST under `/v1`, and requests from localhost are allowed:
 
 ```bash
-kubectl -n device-trust-mesh port-forward svc/device-trust-mesh-serve-svc 8000:8000
+kubectl -n device-trust-mesh port-forward svc/device-trust-mesh-context 8080:8080
 
-curl -s localhost:8000/context-mcp/v1/devices | jq                       # every device (filters: ?customer_id=&trust_status=)
-curl -s localhost:8000/context-mcp/v1/devices/<device_id> | jq           # one device's context + as_of
-curl -s "localhost:8000/context-mcp/v1/devices/<device_id>?min_seq=N"    # waits up to 2 s for that context sequence
-curl -s localhost:8000/context-mcp/v1/customers/<customer_id> | jq       # customer context incl. device list
-curl -s "localhost:8000/context-mcp/v1/devices/<device_id>/signals?limit=10" | jq
-curl -s localhost:8000/context-mcp/healthz                               # 503 until the materializer has caught up
+curl -s localhost:8080/v1/devices | jq                       # every device (filters: ?customer_id=&trust_status=)
+curl -s localhost:8080/v1/devices/<device_id> | jq           # one device's context + as_of
+curl -s "localhost:8080/v1/devices/<device_id>?min_seq=N"    # waits up to 2 s for that context sequence
+curl -s localhost:8080/v1/customers/<customer_id> | jq       # customer context incl. device list
+curl -s "localhost:8080/v1/devices/<device_id>/signals?limit=10" | jq
+curl -s localhost:8080/healthz                               # 503 until the materializer has caught up
+curl -s localhost:8080/livez                                 # 500 once the materializer thread has died
 ```
 
-To query it the way the agents do, point an MCP client at `http://localhost:8000/context-mcp/mcp` (streamable HTTP) through the same port-forward. For example, `npx @modelcontextprotocol/inspector` opens a browser UI that lists and calls the four tools: `get_device_context`, `get_customer_context`, `list_risk_signals` and `list_devices`.
+To query it the way the agents do, point an MCP client at `http://localhost:8080/mcp` (streamable HTTP) through the same port-forward. For example, `npx @modelcontextprotocol/inspector` opens a browser UI that lists and calls the four tools: `get_device_context`, `get_customer_context`, `list_risk_signals` and `list_devices`.
+
+On flink-demo the same routes sit under `/context-mcp` on `svc/device-trust-mesh-serve-svc` port 8000 (`/context-mcp/v1/devices`, `/context-mcp/mcp`).
 
 #### Metrics
 
-The mesh records its `dtm_*` metrics through `ray.util.metrics`, and Ray's metrics agent on every Ray pod (port `metrics`, 8080) exports them as `ray_dtm_*`, next to Ray's own `ray_serve_*` metrics. Each Serve replica's series carries a `WorkerId` label, so sum across workers. The app's `/<app>/metrics` routes reach one replica through the Serve proxy; don't scrape them.
+The agents record their `dtm_*` metrics through `ray.util.metrics`, and Ray's metrics agent on every Ray pod (port `metrics`, 8080) exports them as `ray_dtm_*`, next to Ray's own `ray_serve_*` metrics. Each Serve replica's series carries a `WorkerId` label, so sum across workers. The app's `/<app>/metrics` routes reach one replica through the Serve proxy; don't scrape them.
 
-With [`components/observability`](components/observability/) (eks-demo), the PodMonitor `device-trust-mesh-ray` scrapes every Ray pod, and the **Device Trust Mesh** Grafana dashboard shows:
+The eks-demo context service exports its own un-prefixed `dtm_*` series at `/metrics` (port 8080). Each pod is its own series, so sum across pods.
+
+With [`components/observability`](components/observability/) (eks-demo), the PodMonitor `device-trust-mesh-ray` scrapes every Ray pod, the PodMonitor `device-trust-mesh-context` scrapes the context pods, and the **Device Trust Mesh** Grafana dashboard shows:
 
 | Panel | Metric | Target |
 |---|---|---|
-| Context tool p99 | `ray_dtm_context_tool_latency_ms` by `tool` | < 20 ms |
-| Materialization lag p99 | `ray_dtm_materialization_lag_ms` by `topic` | < 1 s |
+| Context tool p99 | `dtm_context_tool_latency_ms` by `tool` | < 20 ms |
+| Materialization lag p99 | `dtm_materialization_lag_ms` by `topic` | < 1 s |
 | Agent hop p99 | `ray_dtm_hop_latency_ms` by `agent` (envelope `eventTime` to consumption, no LLM time) | < 100 ms |
 | Agent processing, LLM latency and calls | `ray_dtm_agent_processing_latency_ms`, `ray_dtm_llm_latency_ms` by `agent`, `model`, `status` | |
-| Errors and skips | handler, loop and invalid-request counters by `agent`, skipped context records by `topic`, STALE lookups | |
-| Tracked devices, healthy replicas | `ray_dtm_tracked_devices`, `ray_serve_deployment_replica_healthy` | |
+| Errors and skips | `ray_dtm_*` handler, loop and invalid-request counters by `agent`; `dtm_*` skipped context records by `topic` and STALE lookups | |
+| Tracked devices, healthy replicas | `dtm_tracked_devices`, `ray_serve_deployment_replica_healthy` | |
 
 The acceptance-target stats and the **Agents** row are open by default. The **Context serving** and **Serve runtime** rows start collapsed, and their panels query Prometheus only once a row is expanded.
 
@@ -611,16 +631,16 @@ Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates 
 
 ## Running on eks-demo
 
-The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-device fleet, two Serve replicas for `context-mcp` and each enabled agent, OAuth on every Kafka and Schema Registry client, and Ollama on a GPU node.
+The `overlays/eks-demo` overlay runs the same mesh as `flink-demo` with a 100-device fleet, the standalone [context service](#context-service) (2 to 4 replicas), two Serve replicas for each enabled agent, OAuth on every Kafka and Schema Registry client, and Ollama on a GPU node.
 
 ### Prerequisites
 
-1. **Terraform.** In `terraform/clusters/eks-demo`, set `gpu_node_group_enabled = true` and apply. This adds the GPU node, the `dtm-eso` IRSA role and the four client secrets in Secrets Manager. Before applying, confirm the G-instance and Standard On-Demand vCPU quotas in `us-east-1`; the quota codes, offering check and variable reference are in [`terraform/clusters/eks-demo/README.md`](../../terraform/clusters/eks-demo/README.md#gpu-node-group). The `eks.amazonaws.com/role-arn` annotation in [`components/rbac-oauth/eso.yaml`](components/rbac-oauth/eso.yaml) must match the `dtm_eso_role_arn` output.
+1. **Terraform.** In `terraform/clusters/eks-demo`, set `gpu_node_group_enabled = true` and apply. This adds the GPU node, the `dtm-eso` IRSA role and the five client secrets in Secrets Manager. Before applying, confirm the G-instance and Standard On-Demand vCPU quotas in `us-east-1`; the quota codes, offering check and variable reference are in [`terraform/clusters/eks-demo/README.md`](../../terraform/clusters/eks-demo/README.md#gpu-node-group). The `eks.amazonaws.com/role-arn` annotation in [`components/rbac-oauth/eso.yaml`](components/rbac-oauth/eso.yaml) must match the `dtm_eso_role_arn` output.
 2. **Cluster infrastructure.** `cluster-autoscaler` and `nvidia-device-plugin` are synced (see [`clusters/eks-demo/README.md`](../../clusters/eks-demo/README.md#infrastructure-applications)). Check the GPU is allocatable:
    ```bash
    kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
    ```
-3. **Images.** The overlay pins the Ray, simulator and UI images to `v1.4.0-202611122118`, the `device-trust-mesh-v1.4.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)), and it has the OAuth client settings and exports its metrics through Ray (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
+3. **Images.** The overlay pins the Ray, simulator, UI and context service images to `v1.5.0-202611161830`, the `device-trust-mesh-v1.5.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)), and it has the OAuth client settings, exports agent metrics through Ray and context metrics from the context pods (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
 4. **Workload Applications.** `kuberay-operator` syncs automatically. `ollama` and `device-trust-mesh` are manual-sync. Sync `ollama` first, then `device-trust-mesh`:
    ```bash
    kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
@@ -646,16 +666,16 @@ The UI is at `https://dtm.eks-demo.platform.dspdemos.com` (IngressRoute `dtm-ui`
 
 The Ray dashboard is at `https://ray.eks-demo.platform.dspdemos.com` (IngressRoute `ray-dashboard`, same overlay). It has no authentication, and its Jobs API runs arbitrary code on the Ray cluster, so it is reachable only from inside the VPC. The Grafana dashboard **Device Trust Mesh** is at `https://grafana.eks-demo.platform.dspdemos.com`; see [Metrics](#metrics).
 
-For `context-mcp`, port-forward as in [Inspecting the Mesh](#inspecting-the-mesh), with `HTTPS_PROXY` set.
+For the context service, port-forward as in [Inspecting the Mesh](#inspecting-the-mesh), with `HTTPS_PROXY` set.
 
 ### Secrets and OAuth flow
 
 Every client authenticates to Kafka and Schema Registry as its own Keycloak service account. No secret value is in git.
 
 ```text
-Terraform -> AWS Secrets Manager  /device-trust-mesh/eks-demo/sa-dtm-{ray,simulator,ui,flink}
+Terraform -> AWS Secrets Manager  /device-trust-mesh/eks-demo/sa-dtm-{ray,context,simulator,ui,flink}
           -> ESO SecretStore dtm-secrets-manager (ServiceAccount dtm-eso, IRSA)
-          -> ExternalSecrets (wave -2) -> dtm-{ray,simulator,ui,flink}-oauth,
+          -> ExternalSecrets (wave -2) -> dtm-{ray,context,simulator,ui,flink}-oauth,
                                           dtm-cmf-kafka-credentials, dtm-cmf-sr-credentials
           -> Job dtm-service-account-setup (Sync hook, wave -1) sets each Keycloak client secret from them
           -> workloads fetch tokens (client credentials); ConfluentRolebindings authorize the dtm-* groups
@@ -663,7 +683,8 @@ Terraform -> AWS Secrets Manager  /device-trust-mesh/eks-demo/sa-dtm-{ray,simula
 
 | Keycloak client | Group | Used by |
 |---|---|---|
-| `sa-dtm-ray` | `dtm-ray` | Agents and `context-mcp` (one Ray principal) |
+| `sa-dtm-ray` | `dtm-ray` | Agents. Can't read the context topics; agents get business data only through the context service. |
+| `sa-dtm-context` | `dtm-context` | Context service: reads `device.context`, `customer.context` and `device.risk-signals`, their subjects and its `dtm.context-mcp.` consumer groups |
 | `sa-dtm-simulator` | `dtm-simulator` | `device-simulator` |
 | `sa-dtm-ui` | `dtm-ui` | Mesh UI |
 | `sa-dtm-flink` | `dtm-flink` | CMF catalog and Flink SQL statements, through the `FlinkSecret` and `FlinkEnvironmentSecretMapping` chain |
@@ -684,7 +705,7 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
   ```bash
   kubectl exec -n device-trust-mesh deploy/device-simulator -c simulator -- python -m dtm.simulator.ctl rate 2
   ```
-- **Rotating a client secret.** ESO refreshes the Kubernetes Secret within `refreshInterval: 1h`. Keycloak takes the new value only when the Keycloak Job runs, on the next `device-trust-mesh` sync, and pods read env at start. After a rotation, sync `device-trust-mesh`, then restart the RayService pods, `device-simulator` and `device-trust-mesh-ui`.
+- **Rotating a client secret.** ESO refreshes the Kubernetes Secret within `refreshInterval: 1h`. Keycloak takes the new value only when the Keycloak Job runs, on the next `device-trust-mesh` sync, and pods read env at start. After a rotation, sync `device-trust-mesh`, then restart the RayService pods, the `device-trust-mesh-context` Deployment, `device-simulator` and `device-trust-mesh-ui`.
 - **Ollama after a GPU node replacement.** The Ollama PVC is `gp3` (EBS, zonal). When the replacement GPU node lands in a different AZ, the `ollama` pod stays `Pending` on a volume node-affinity conflict. Recover by deleting the PVC and re-syncing the `ollama` Application; the PostSync `ollama-model-pull` Job re-pulls the models.
   ```bash
   kubectl delete pvc ollama-data -n ollama
@@ -702,15 +723,15 @@ Two drivers scale different components:
 
 | Driver | Set by | Drives |
 |---|---|---|
-| **Fleet size** | `DEVICE_CAP` | **State**: rows in `device.context` and `customer.context`, Flink keyed state for the context and risk-signal statements, and the in-memory tables every `context-mcp` replica holds (each replica materializes all devices) |
+| **Fleet size** | `DEVICE_CAP` | **State**: rows in `device.context` and `customer.context`, Flink keyed state for the context and risk-signal statements, and the in-memory tables every context service replica holds (each replica materializes all devices) |
 | **Event rate** | `dtm-ctl rate`, 0 to 100 enrolments/s | **Throughput**: records/s through `device.events`, the router, `agent.tasks.*` and LLM calls/s |
 
 | Component | Current setting | Bounds | Knob |
 |---|---|---|---|
 | Topic partitions | 6 per topic; 1 for `agent.cards`, `agent.cards_human_readable`, `agent.pair_counts`, `simulator.control`. The [`base/topics.yaml`](base/topics.yaml) header supports `DEVICE_CAP` up to 500 | Max consumer parallelism per topic, so the cap on agent replicas and Flink source parallelism. Partitions can't shrink. | `partitionCount` in `base/topics.yaml` |
-| Agent Serve replicas | 2 each for `context-mcp`, `risk`, `enrolment`, `step-up`, `compliance`; 1 for disabled `revocation` ([`rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml)). `flink-demo`: 1 each | Concurrent tasks per agent. Must stay ≤ partitions. | `num_replicas`, with `replicas` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml) |
-| Ray workers | 2 CPU / 3 Gi each; `replicas: 2`, `maxReplicas: 4` on eks-demo (`maxReplicas: 2` in [`base`](components/mesh-runtime/rayservice.yaml)). Agent replicas reserve 0.1 CPU, `ContextMcp` replicas 1 CPU. On eks-demo the head advertises 0 CPU, so only workers hold Serve replicas. | Room for Serve replicas | `replicas`, up to `maxReplicas` |
-| `context-mcp` | `max_ongoing_requests` = `MAX_CONCURRENT_LOOKUPS` = 32 per replica. Every replica holds all devices in memory. | Lookup p99; memory per replica grows with `DEVICE_CAP` and is added per replica | Replicas, worker memory |
+| Agent Serve replicas | 2 each for `risk`, `enrolment`, `step-up`, `compliance`; 1 for disabled `revocation` ([`rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml)). `flink-demo`: 1 each | Concurrent tasks per agent. Must stay ≤ partitions. | `num_replicas`, with `replicas` in [`agents-config-patch.yaml`](overlays/eks-demo/agents-config-patch.yaml) |
+| Ray workers | 2 CPU / 3 Gi each; `replicas: 2`, `maxReplicas: 4` on eks-demo (`maxReplicas: 2` in [`base`](components/mesh-runtime/rayservice.yaml)). Agent replicas reserve 0.1 CPU. On eks-demo the head advertises 0 CPU, so only workers hold Serve replicas. | Room for Serve replicas | `replicas`, up to `maxReplicas` |
+| Context service | HPA on CPU (70%), 2 to 4 replicas; requests 500m CPU / 1 Gi, limit 1536 Mi per pod. Every replica holds all devices in memory. There is no request-based autoscaling. | Lookup p99; memory per replica grows with `DEVICE_CAP` and is added per replica | `minReplicas` and `maxReplicas` in [`hpa.yaml`](components/context-service/hpa.yaml), pod memory in [`deployment.yaml`](components/context-service/deployment.yaml) |
 | Flink statements | `parallelism: 1` on all 10 long-running statements, on two `dtm-shared-pool` TaskManagers with 5 slots, 2 CPU and 4096m each, and managed memory at 0.1 ([`flink-statements.yaml`](base/flink-statements.yaml), [`flink-compute-pool-patch.yaml`](overlays/eks-demo/flink-compute-pool-patch.yaml)) | Per-hop latency and heap per statement (about 150 MiB each, mostly Kafka clients). No slots spare: another statement, or parallelism above 1, starts another TaskManager. | Statement `parallelism`, `taskmanager.numberOfTaskSlots`; see [Growing the shared pool](#growing-the-shared-pool) |
 | LLM (Ollama) | 1 GPU (`g4dn.xlarge`), `OLLAMA_NUM_PARALLEL=4` ([`ollama/overlays/eks-demo`](../ollama/overlays/eks-demo/deployment-gpu-patch.yaml)) | LLM calls/s, usually the first limit as event rate rises | `OLLAMA_NUM_PARALLEL`, model size, GPU count (the GPU group is fixed at 1 node) |
 | Simulator | 1 replica when scaled up; rate 0 to 100/s | Event-generation ceiling | Replicas |
@@ -724,8 +745,8 @@ Moves with fleet size:
 |---|---|
 | `DEVICE_CAP` | `"1000"` in [`overlays/eks-demo/device-cap`](overlays/eks-demo/device-cap/kustomization.yaml). It exceeds the 500 ceiling for 6 partitions. |
 | Partitions | Recreate the topics with 12 partitions, so replicas and Flink source parallelism can exceed 6. |
-| Replicas | Raise `context-mcp` and agent `num_replicas` (and `agents.yaml` `replicas`), up to the partition count. |
-| `context-mcp` memory | Each replica holds all 1,000 devices, so check worker memory before adding replicas. |
+| Replicas | Raise the context service HPA bounds, and agent `num_replicas` (and `agents.yaml` `replicas`) up to the partition count. |
+| Context service memory | Each replica holds all 1,000 devices, so check its pod memory limit before adding replicas. |
 | Ray workers | Raise `replicas` and `maxReplicas` for the added Serve replicas. |
 | Flink | Raise `parallelism` on the context and risk-signal statements, and `taskmanager.numberOfTaskSlots` or the TaskManager count to match. Roll out as in [Growing the shared pool](#growing-the-shared-pool). |
 | Nodes | The general node group tops out at 10 (`node_max_size`), and raising it needs `L-1216C47A` headroom. |
@@ -741,13 +762,13 @@ Tracks event rate, not fleet size:
 
 ## UI
 
-A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add the host to `/etc/hosts` with `./scripts/generate-hosts-entries.sh flink-demo`). The `ui` component deploys the `device-trust-mesh-ui` Deployment and Service, and the Certificate and IngressRoute live in [`workloads/ingresses/overlays/flink-demo`](../ingresses/overlays/flink-demo/). It requires the `mesh-runtime` component, because the device table comes from `context-mcp`. The service source is in [osowski/flink-sandbox `device-trust-mesh/dtm/ui`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh/dtm/ui).
+A live board at `https://device-trust-mesh.flink-demo.confluentdemo.local` (add the host to `/etc/hosts` with `./scripts/generate-hosts-entries.sh flink-demo`). The `ui` component deploys the `device-trust-mesh-ui` Deployment and Service, and the Certificate and IngressRoute live in [`workloads/ingresses/overlays/flink-demo`](../ingresses/overlays/flink-demo/). It requires the `mesh-runtime` component, because the device table comes from the context service (the `context-service` component points it at the standalone Deployment on eks-demo). The service source is in [osowski/flink-sandbox `device-trust-mesh/dtm/ui`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh/dtm/ui).
 
 The page has four panes, left column over right:
 
 | Pane | Shows | Source |
 |---|---|---|
-| **Devices · live** (top left) | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | `context-mcp` poll, `agent.decision_latency` |
+| **Devices · live** (top left) | Per device: customer, trust status, decision reason, time of last change, event-to-decision latency and freshness. A summary row sits above the table. | Context service poll, `agent.decision_latency` |
 | **Busiest agent pairs** (bottom left) | Messages per 60 s, averaged over the last 5 minutes, for each source and target pair, with a bar and a sparkline. | `agent.pair_counts` |
 | **Agent traffic** (top right) | A graph of the agents with a moving dot per message, and a feed of source, target, kind, device and `topic @ partition:offset`. Clicking an edge filters the feed. Compliance replies read `compliance → audit log`. | `agent.tasks_human_readable`, `agent.task-status_human_readable`, `agent.decisions_human_readable` |
 | **Agent activity** (bottom right) | One card per agent with a speech bubble for its latest outgoing message: who it went to, the customer, the device and the action, tinted by policy action and held for at least 4 s. Hovering a bubble highlights that device's row. | `agent.tasks_human_readable`, `agent.decisions_human_readable` |
@@ -759,7 +780,7 @@ Two latencies are shown for each device:
 | Latency | Measures |
 |---|---|
 | **Event to decision** | Time from the device event to the `enrolment-decision` artifact, from `dtm-decision-latency`. |
-| **Freshness** | How long `context-mcp` took to reflect the change in the context table, measured at a 500 ms poll interval. |
+| **Freshness** | How long the context service took to reflect the change in the context table, measured at a 500 ms poll interval. |
 
 The UI reads every topic with `read_committed`, and Flink Kafka sinks commit on checkpoint. `dtm-shared-pool` checkpoints every 10 s, so each Flink hop makes its output visible in batches about 10 s apart, and a decision shows up on the board within about 10-15 s. The UI adds no delay of its own. The browser never polls: the service pushes each change over Server-Sent Events, which Traefik streams without a buffering middleware.
 
@@ -771,7 +792,7 @@ Replaying one agent from a chosen point in the stream is a later phase ([#454](h
 
 | Requirement | How |
 |---|---|
-| Kafka is the source of truth | Agents are stateless per message; challenge tasks resume by `taskId`; `context-mcp` rebuilds from topics |
+| Kafka is the source of truth | Agents are stateless per message; challenge tasks resume by `taskId`; the context service rebuilds from topics |
 | Envelope on every message | A2A `metadata` extension, enforced by `AgentBus` |
 | Determinism | `temperature: 0`, `seed`, deterministic `messageId` / `taskId`, `configVersion` |
 | Recorded LLM responses | `agent.llm-interactions`, keyed by `request_hash`; a `RecordedProvider` replays them |

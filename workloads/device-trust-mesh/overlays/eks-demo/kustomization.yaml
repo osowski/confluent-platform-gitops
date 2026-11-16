@@ -20,7 +20,8 @@ components:
   - ../../components/context-service
   # Keycloak OAuth identities, MDS role bindings and client OAuth settings.
   - ../../components/rbac-oauth
-  # Prometheus PodMonitor for the Ray pods and the Grafana dashboard.
+  # Prometheus PodMonitors for the Ray pods and the context service, and the
+  # Grafana dashboard.
   - ../../components/observability
 
 patches:

@@ -68,7 +68,7 @@ data:
           "id": 2,
           "type": "stat",
           "title": "Context tool p99",
-          "description": "End-to-end context-mcp tool call, including any wait for a context sequence. Target < 20 ms.",
+          "description": "End-to-end context service tool call, including any wait for a context sequence. Target < 20 ms.",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -254,7 +254,7 @@ data:
           "id": 5,
           "type": "stat",
           "title": "Tracked devices",
-          "description": "Device rows held in the context table (highest across context-mcp replicas).",
+          "description": "Device rows held in the context table (highest across context service replicas).",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -740,7 +740,7 @@ data:
               "id": 8,
               "type": "timeseries",
               "title": "Context tool latency",
-              "description": "Per context-mcp tool. Dashed line: the 20 ms p99 target.",
+              "description": "Per context service tool. Dashed line: the 20 ms p99 target.",
               "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
