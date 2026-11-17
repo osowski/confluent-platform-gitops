@@ -451,14 +451,14 @@ WHERE device_id = 'dev-0007';
 
 The hops are `dtm-a2a-task-router → risk` and `risk → enrolment`, then `enrolment → step-up` and `dtm-a2a-task-router → enrolment` (`RESOLVE_CHALLENGE`) when the device is challenged. The final decision is the last `enrolment-decision` row. The bounded hints make the first query finish on its own; the second keeps running, so click **Stop** once its row arrives.
 
-- **Access:** the `admin@dspdemos.com` SSO login has ClusterAdmin on `dtm-env`, which covers the assistant. Any other user needs a DeveloperManage binding on `FlinkStatement:sql-assistant-` (prefixed) in `dtm-env`, plus View on `dtm-shared-pool`.
+- **Access:** the `admin@dspdemos.com` SSO login has ClusterAdmin on `dtm-env`, which covers the assistant. Any other user needs a DeveloperManage binding on `FlinkStatement:sql-assistant-` (prefixed) in `dtm-env`, plus View on `dtm-shared-pool` ([access](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/sql-assistant.html#cmf-sql-assistant-rbac)).
 - **Preview:** the SQL Assistant is a preview feature in CMF 2.5.
-- **Data sent to Google:** each request carries the conversation, up to 100 result rows per statement (`maxResultRows`), and the catalog, database and table names. CMF doesn't mask any of it. DTM data is synthetic.
+- **Data sent to Google:** each request carries the conversation, up to 100 result rows per statement (`maxResultRows`), and the catalog, database and table names. CMF doesn't mask any of it ([data sent to the model provider](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/sql-assistant.html#cmf-sql-assistant-data)). DTM data is synthetic.
 - **Conversations** belong to `dtm-env`; every user with View on `sql-assistant-*` statements there can open them.
 - **New tables** reach the model's catalog list within 15 minutes; name a newer table in the question.
 - **The model never runs statements itself.** Each one waits for **Run**, unless **Auto-accept** is on, which runs read-only statements only.
 
-See *Use the SQL Assistant with Confluent Manager for Apache Flink* in the [CMF documentation](https://docs.confluent.io/platform/current/flink/index.html) for the full feature.
+For the full feature, see [Use the SQL Assistant with Confluent Manager for Apache Flink](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/sql-assistant.html).
 
 ---
 
