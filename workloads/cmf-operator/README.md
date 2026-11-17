@@ -10,7 +10,7 @@ CMF's SQL Assistant is on for every cluster. It uses Gemini, through model entry
 |---|---|---|---|
 | `cmf-sql-assistant-llm` | `api-key` | `operator` | `not-configured` |
 
-The key is set by hand, so it stays out of Git, Secrets Manager and Terraform state ([ADR-0024](../../adrs/0024-cmf-sql-assistant-placeholder-key-secret.md)). CMF does not start while the Secret or its key is missing. So the `cmf-sql-assistant-key` Job in `cmf-operator-secrets` creates the Secret with the placeholder whenever it is absent, and never touches an existing one.
+The key is set by hand, so it stays out of Git, Secrets Manager and Terraform state ([ADR-0024](../../adrs/0024-cmf-sql-assistant-placeholder-key-secret.md)). CMF does not start while the Secret or its key is missing. So the `cmf-sql-assistant-key` Job in `cmf-operator-secrets` creates the Secret with the placeholder whenever it is absent, and never touches an existing one. Wave 117 doesn't make CMF wait for that Job: Argo CD applies the wave-118 `cmf-operator` without waiting for `cmf-operator-secrets` to finish. So wherever the Secret is absent (a cluster's first rollout, a fresh bootstrap, a recreated `operator` Namespace), CMF crash-loops for a minute or two until the Job creates it, then starts on its own.
 
 Without a real key, the SQL Assistant tab answers with an invalid-key error, and SQL mode still runs statements. Turning the assistant on or off needs no Git change: replace the value, then restart CMF.
 
@@ -67,5 +67,5 @@ kubectl --context "$CTX" logs deployment/confluent-manager-for-apache-flink -n o
 
 ### Troubleshooting
 
-- **CMF crash-loops with `Secret 'cmf-sql-assistant-llm' ... not found`:** the Secret was deleted. Sync `cmf-operator-secrets` to re-create the placeholder.
+- **CMF crash-loops with `Secret 'cmf-sql-assistant-llm' ... not found`:** within a few minutes of a rollout, the Job hasn't created the placeholder yet, and CMF starts once it has. If it keeps crash-looping, the Secret was deleted: sync `cmf-operator-secrets` to re-create the placeholder.
 - **The SQL Assistant answers with an invalid API key error:** the placeholder is in place, or the key is wrong. Turn the assistant on with steps 1-5.
