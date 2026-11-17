@@ -411,7 +411,7 @@ SELECT agent, version, description, request_topic FROM `agent.cards_human_readab
 
 ### SQL Assistant
 
-On eks-demo, CMF's SQL Assistant answers questions about the mesh in plain language and writes the Flink SQL for them. Open the CMF UI, select environment `dtm-env`, then **SQL Assistant**, and select compute pool `dtm-shared-pool`. It needs a Gemini API key, which is set by hand: see [CMF SQL Assistant API key](../../clusters/eks-demo/README.md#cmf-sql-assistant-api-key). Without one, the assistant answers with an invalid-key error, but SQL mode still runs statements.
+On eks-demo, CMF's SQL Assistant answers questions about the mesh in plain language and writes the Flink SQL for them. Open the CMF UI, select environment `dtm-env`, then **SQL Assistant**, and select compute pool `dtm-shared-pool`. It needs a Gemini API key, which is set by hand: see [SQL Assistant API key](../cmf-operator/README.md#sql-assistant-api-key). Without one, the assistant answers with an invalid-key error, but SQL mode still runs statements.
 
 Tables worth naming in a question:
 

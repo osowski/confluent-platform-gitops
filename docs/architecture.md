@@ -223,7 +223,7 @@ The following constraints are enforced by CEL rules on the CRDs or by CMF runtim
 | `FlinkSecret` requires CMF secret encryption (`encryption.enabled=true`) | Secrets cannot be stored encrypted at rest, so the sync fails |
 | CMF encryption mode is fixed at database initialization and the key cannot be rotated | Enabling encryption on an existing CMF database requires a **fresh database** — see [flink-demo-rbac README](../clusters/flink-demo-rbac/README.md#enabling-cmf-secret-encryption-requires-a-fresh-cmf-database) |
 | The CMF encryption key must be exactly 16 or 32 bytes | Any other length and CMF fails to start |
-| `cmf.sql.assistant.model` set and its API-key Secret missing or blank | CMF fails to start. On eks-demo, the `cmf-sql-assistant-key` Job creates a placeholder, and a real key is set by hand ([runbook](../clusters/eks-demo/README.md#cmf-sql-assistant-api-key), [ADR-0024](../adrs/0024-cmf-sql-assistant-placeholder-key-secret.md)) |
+| `cmf.sql.assistant.model` set and its API-key Secret missing or blank | CMF fails to start. The base values turn the assistant on, so every cluster's `cmf-operator-secrets` app includes the `sql-assistant-key` component, whose Job creates a placeholder; a real key is set by hand ([runbook](../workloads/cmf-operator/README.md#sql-assistant-api-key), [ADR-0024](../adrs/0024-cmf-sql-assistant-placeholder-key-secret.md)) |
 
 #### Changing the SQL of a running FlinkStatement
 

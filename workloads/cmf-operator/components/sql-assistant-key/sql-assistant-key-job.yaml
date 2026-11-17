@@ -49,8 +49,8 @@ subjects:
   - kind: ServiceAccount
     name: cmf-sql-assistant-key
 ---
-# A Sync hook at wave -1, after its RBAC (-2) and before the wave-0 postgres resources, so it
-# doesn't wait for postgres to be healthy, as a PostSync hook would.
+# A Sync hook at wave -1, after its RBAC (-2) and before any wave-0 resources, so on clusters
+# with postgres it doesn't wait for postgres to be healthy, as a PostSync hook would.
 apiVersion: batch/v1
 kind: Job
 metadata:

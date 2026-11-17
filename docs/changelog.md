@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **CMF SQL Assistant with Gemini on `eks-demo`** ([#553](https://github.com/osowski/confluent-platform-gitops/issues/553)): ask questions like "what was the approval path for device dev-0007?" in the CMF UI and get Flink SQL over the Device Trust Mesh topics.
-  No key is needed to deploy; to turn it on, add your Gemini key to the cluster by hand ([eks-demo README](../clusters/eks-demo/README.md#cmf-sql-assistant-api-key)).
+- **CMF SQL Assistant with Gemini on every cluster** ([#553](https://github.com/osowski/confluent-platform-gitops/issues/553)): ask questions in plain language in the CMF UI and get Flink SQL back, such as "what was the approval path for device dev-0007?" for the Device Trust Mesh on `eks-demo`.
+  No key is needed to deploy; to turn it on, add your Gemini key to the cluster by hand ([runbook](../workloads/cmf-operator/README.md#sql-assistant-api-key)).
 - **CMF compile workers on every cluster** ([#562](https://github.com/osowski/confluent-platform-gitops/issues/562)): `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo` each run one compile worker, so `USING JAR 'cmf://...'` UDFs compile there too.
 - **Flink dashboard job health rows** ([#527](https://github.com/osowski/confluent-platform-gitops/issues/527)): collapsed **Checkpoints**, **Restarts and uptime** and **Lag** rows show, for each selected job or statement, checkpoint duration and failures, restarts, and Kafka and event-time lag.
 - **Flink dashboard covers Flink SQL compute pools** ([#525](https://github.com/osowski/confluent-platform-gitops/issues/525)): Prometheus scrapes every Flink cluster in any namespace, including CMF compute pools, with no per-namespace Service.

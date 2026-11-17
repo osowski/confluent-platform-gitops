@@ -8,7 +8,7 @@ Accepted.
 
 ## Context
 
-CMF 2.5 adds the SQL Assistant, a preview page in the CMF UI that turns natural-language questions into Flink SQL with an LLM. On eks-demo it uses Gemini through the `google-genai` provider, with an API key from Google AI Studio.
+CMF 2.5 adds the SQL Assistant, a preview page in the CMF UI that turns natural-language questions into Flink SQL with an LLM. Every cluster here uses Gemini through the `google-genai` provider, with an API key from Google AI Studio.
 
 How CMF loads the key (`cp-flink-cmf` at `release-2.5.0`, `SqlAssistantModelConfiguration.java`):
 
@@ -27,9 +27,9 @@ Argo CD renders the chart with `helm template`, so the chart can't check whether
 
 ## Decision
 
-- **The eks-demo CMF values always turn the assistant on**: model entry `gemini-flash` (`google-genai`, `gemini-3.8-flash`), with its key in Secret `cmf-sql-assistant-llm`, key `api-key`, namespace `operator`.
-- **A Job creates that Secret with the placeholder `not-configured`, only when the Secret is absent.** It never reads, compares or overwrites an existing Secret. It is a `Sync` hook in `cmf-operator-secrets` (wave 117), ahead of `cmf-operator` (118), and uses the pinned `bitnami/kubectl` image and pattern of the `cmf-compile-tls` keygen Job ([ADR-0023](0023-cmf-2-5-flink-2-3-sql-compilation.md)). It runs as a `Sync` hook at wave -1, with its RBAC at wave -2, so it runs before the wave-0 PostgreSQL resources instead of waiting for them to become healthy, as a `PostSync` hook would.
-- **The real key is set by hand** with `kubectl create --dry-run=client -o yaml | kubectl replace -f -`, then a CMF restart. Turning the assistant off puts the placeholder back the same way. The runbook is in the [eks-demo README](../clusters/eks-demo/README.md#cmf-sql-assistant-api-key).
+- **The base CMF values turn the assistant on for every cluster**: model entry `gemini-flash` (`google-genai`, `gemini-3.8-flash`), with its key in Secret `cmf-sql-assistant-llm`, key `api-key`, namespace `operator`.
+- **A Job creates that Secret with the placeholder `not-configured`, only when the Secret is absent.** It never reads, compares or overwrites an existing Secret. It ships as the Kustomize component `workloads/cmf-operator/components/sql-assistant-key`, which every cluster's `cmf-operator-secrets` overlay includes (wave 117, ahead of `cmf-operator` at 118); flink-demo has a `cmf-operator-secrets` Application for this alone. The Job uses the pinned `bitnami/kubectl` image and pattern of the `cmf-compile-tls` keygen Job ([ADR-0023](0023-cmf-2-5-flink-2-3-sql-compilation.md)). It runs as a `Sync` hook at wave -1, with its RBAC at wave -2, so it runs before any wave-0 resources (PostgreSQL, on the RBAC clusters) instead of waiting for them to become healthy, as a `PostSync` hook would.
+- **The real key is set by hand** with `kubectl create --dry-run=client -o yaml | kubectl replace -f -`, then a CMF restart. Turning the assistant off puts the placeholder back the same way. The runbook is in the [CMF README](../workloads/cmf-operator/README.md#sql-assistant-api-key).
 
 The Secret is created with `kubectl create`, so it carries no Argo tracking label or annotation and no `last-applied-configuration`. Argo CD never prunes it or overwrites a real key.
 
@@ -37,7 +37,7 @@ The Secret is created with `kubectl create`, so it carries no Argo tracking labe
 
 **Positive:**
 
-- A deploy with no key starts CMF and the rest of eks-demo normally.
+- A deploy with no key starts CMF and the rest of the cluster normally.
 - The key lives only in the cluster's Secret: nothing in Git, Secrets Manager or Terraform state.
 - Switching the assistant on, off, or to a new key needs no commit.
 - A fresh bootstrap re-creates the placeholder. After a recreated `operator` namespace, one sync of `cmf-operator-secrets` does; the Application doesn't self-heal.
@@ -48,6 +48,8 @@ The Secret is created with `kubectl create`, so it carries no Argo tracking labe
 - Every switch restarts CMF. Its Deployment uses the `Recreate` strategy, so the CMF API and UI are briefly down.
 - Deleting the Secret by hand crash-loops CMF until the next `cmf-operator-secrets` sync re-creates the placeholder. The runbook turns the assistant off by replacing the value, never by deleting the Secret.
 - Anything that deletes the `operator` namespace also deletes the real key, which then has to be set again.
+- Each cluster has its own Secret, so the key is set once per cluster that should have the assistant on.
+- A new cluster with CMF must include the component in a wave-117 app, or CMF crash-loops there.
 - The Job's Role can `create` any Secret in `operator`, because `create` can't be limited by `resourceNames`.
 
 ## Alternatives considered
