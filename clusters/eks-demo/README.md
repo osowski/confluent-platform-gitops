@@ -149,6 +149,10 @@ In the ArgoCD UI:
 1. Click on `colors-and-shapes` → **Sync** → **Synchronize**
 2. Wait for `Healthy` status (~3-5 minutes)
 
+### Turn on the CMF SQL Assistant (optional)
+
+Bringup needs no Gemini API key: CMF starts with a placeholder key, and the SQL Assistant tab answers with an invalid-key error until a real one is set. To turn the assistant on, follow [CMF SQL Assistant API key](#cmf-sql-assistant-api-key).
+
 ## Environment Access
 
 <!-- Content in this section intentionally duplicated between this README.md and `terraform/eks-demo/README.md` -->
@@ -360,7 +364,68 @@ spec:
 
 See the [External Secrets Operator documentation](https://external-secrets.io/latest/) for supported providers and full API reference.
 
+### CMF SQL Assistant API key
+
+CMF's SQL Assistant uses Gemini (model entry `gemini-flash`, set in [`workloads/cmf-operator/overlays/eks-demo/values.yaml`](../../workloads/cmf-operator/overlays/eks-demo/values.yaml)). CMF reads the API key once, at startup, from:
+
+| Secret | Key | Namespace | Placeholder value |
+|---|---|---|---|
+| `cmf-sql-assistant-llm` | `api-key` | `operator` | `not-configured` |
+
+The key is set by hand, so it stays out of Git, Secrets Manager and Terraform state ([ADR-0024](../../adrs/0024-cmf-sql-assistant-placeholder-key-secret.md)). CMF does not start while the Secret or its key is missing, so the `cmf-sql-assistant-key` Job in `cmf-operator-secrets` creates the Secret with the placeholder whenever it is absent, and never touches an existing one. Turning the assistant on or off needs no Git change: replace the value, then restart CMF.
+
+These commands are zsh. With the placeholder, the state check reports 14 bytes; with a real Gemini key, 39.
+
+```zsh
+CTX=$(kubectl config get-contexts -o name | grep eks-demo)
+export HTTPS_PROXY=socks5://localhost:1080
+
+# 1. Read the key without echo or history
+read -rs 'GEMINI_API_KEY?Gemini API key: '; print
+
+# 2. Check the key and list Flash models (header from stdin, so the key is not in curl's argv)
+printf 'x-goog-api-key: %s\n' "$GEMINI_API_KEY" \
+  | env -u HTTPS_PROXY -u https_proxy curl -sS -H @- \
+      'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000' \
+  | jq -r '.models[] | select((.name | test("flash"; "i")) and (.supportedGenerationMethods | index("generateContent")))
+           | [(.name | ltrimstr("models/")), .displayName, (.inputTokenLimit | tostring)] | @tsv'
+
+# 3. Turn on, or rotate: replace the Secret in place; never `kubectl apply`
+printf '%s' "$GEMINI_API_KEY" \
+  | kubectl create secret generic cmf-sql-assistant-llm --namespace operator \
+      --from-file=api-key=/dev/stdin --dry-run=client -o yaml \
+  | kubectl --context "$CTX" replace -f -
+unset GEMINI_API_KEY
+
+# 3-off. Turn off: put the placeholder back (no key involved)
+kubectl create secret generic cmf-sql-assistant-llm --namespace operator \
+    --from-literal=api-key=not-configured --dry-run=client -o yaml \
+  | kubectl --context "$CTX" replace -f -
+
+# 4. State check without printing the value: 39 bytes = real key, 14 = placeholder
+kubectl --context "$CTX" get secret cmf-sql-assistant-llm -n operator -o json \
+  | jq '{keys: (.data | keys), bytes: (.data["api-key"] | @base64d | length), created: .metadata.creationTimestamp}'
+
+# 5. After any switch: restart CMF (Recreate strategy: a brief CMF outage) and confirm it loaded the model
+kubectl --context "$CTX" rollout restart deployment/confluent-manager-for-apache-flink -n operator
+kubectl --context "$CTX" rollout status deployment/confluent-manager-for-apache-flink -n operator --timeout=5m
+kubectl --context "$CTX" logs deployment/confluent-manager-for-apache-flink -n operator -c cmf | grep -F 'SQL Assistant'
+```
+
+- **Step 2** must list models. `API_KEY_INVALID` means the key is wrong: don't store it. If the model in `values.yaml` isn't listed, the key's project can't use it.
+- **Step 5** logs `SQL Assistant using model 'gemini-3.8-flash' (provider GOOGLE_GENAI, registry entry 'gemini-flash').` with a real key and with the placeholder alike: CMF doesn't check the key until the first request. A key replaced without a restart isn't used until CMF restarts.
+- **Never delete the Secret to turn the assistant off.** CMF does not start without it until the next `cmf-operator-secrets` sync re-creates the placeholder. Use step 3-off.
+- **Never create it with `kubectl apply`.** That stores the value in the `last-applied-configuration` annotation.
+- **What deletes the Secret:** deleting the `operator` Namespace, the `namespaces` Application or the `bootstrap` Application with cascade, or destroying the cluster. Argo CD never prunes it, because it carries no Argo tracking label. Afterwards the placeholder comes back on its own; run steps 1-5 to turn the assistant on again.
+
 ## Troubleshooting
+
+### CMF SQL Assistant
+
+See [CMF SQL Assistant API key](#cmf-sql-assistant-api-key).
+
+- **CMF crash-loops with `Secret 'cmf-sql-assistant-llm' ... not found`:** the Secret was deleted. Sync `cmf-operator-secrets` to re-create the placeholder.
+- **The SQL Assistant answers with an invalid API key error:** the placeholder is in place, or the key is wrong. Turn the assistant on with steps 1-5.
 
 ### CMF secret encryption on a persistent PostgreSQL backend
 

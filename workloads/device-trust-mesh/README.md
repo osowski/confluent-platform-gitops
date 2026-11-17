@@ -409,6 +409,57 @@ SELECT agent, version, description, request_topic FROM `agent.cards_human_readab
 
 `agent.cards_human_readable` is an upsert table, so a streaming query over it returns a changelog: a disabled agent's row arrives and is then retracted. The materialized result lists only the current agents.
 
+### SQL Assistant
+
+On eks-demo, CMF's SQL Assistant answers questions about the mesh in plain language and writes the Flink SQL for them. Open the CMF UI, select environment `dtm-env`, then **SQL Assistant**, and select compute pool `dtm-shared-pool`. It needs a Gemini API key, which is set by hand: see [CMF SQL Assistant API key](../../clusters/eks-demo/README.md#cmf-sql-assistant-api-key). Without one, the assistant answers with an invalid-key error, but SQL mode still runs statements.
+
+Tables worth naming in a question:
+
+| Table | Use |
+|---|---|
+| `agent.tasks_human_readable` | One row per A2A hop (`from_agent`, `to_agent`, `task_type`, `summary`) |
+| `agent.decisions_human_readable` | Decision artifacts (`agent`, `artifact_name`, `outcome`, `policy_action`, `risk_score`, `rationale`) |
+| `device.context` | Current `trust_status` per `device_id` (upsert) |
+| `audit.log` | Compliance record per decision (`subject_agent`, `outcome`, `policy_action`, `recorded_at`) |
+
+The device id is `envelope.device_id` on the append tables, and `device_id` (the key) on `device.context`.
+
+Example question: *What was the approval path for device dev-0007?* The reference SQL below answers it. It compiles on the pool image (`cp-flink-sql:2.3-cmf2.5-cp1`) but has not yet run on eks-demo:
+
+```sql
+-- Approval path for one device: each A2A hop and each decision artifact.
+-- Rows from the two tables interleave; read them by event_time.
+SELECT envelope.event_time AS event_time, CAST('hop' AS STRING) AS kind,
+       from_agent, to_agent, task_type AS step,
+       CAST(NULL AS STRING) AS outcome, CAST(NULL AS STRING) AS policy_action, summary AS detail
+FROM `agent.tasks_human_readable`
+  /*+ OPTIONS('scan.startup.mode' = 'earliest-offset', 'scan.bounded.mode' = 'latest-offset') */
+WHERE envelope.device_id = 'dev-0007'
+UNION ALL
+SELECT envelope.event_time, CAST('decision' AS STRING),
+       agent, CAST(NULL AS STRING), artifact_name,
+       outcome, policy_action, rationale
+FROM `agent.decisions_human_readable`
+  /*+ OPTIONS('scan.startup.mode' = 'earliest-offset', 'scan.bounded.mode' = 'latest-offset') */
+WHERE envelope.device_id = 'dev-0007';
+
+-- Where the device ended up
+SELECT device_id, trust_status, last_event_type, last_event_time
+FROM `device.context`
+WHERE device_id = 'dev-0007';
+```
+
+The hops are `dtm-a2a-task-router → risk` and `risk → enrolment`, then `enrolment → step-up` and `dtm-a2a-task-router → enrolment` (`RESOLVE_CHALLENGE`) when the device is challenged. The final decision is the last `enrolment-decision` row. The bounded hints make the first query finish on its own; the second keeps running, so click **Stop** once its row arrives.
+
+- **Access:** the `admin@dspdemos.com` SSO login has ClusterAdmin on `dtm-env`, which covers the assistant. Any other user needs a DeveloperManage binding on `FlinkStatement:sql-assistant-` (prefixed) in `dtm-env`, plus View on `dtm-shared-pool`.
+- **Preview:** the SQL Assistant is a preview feature in CMF 2.5.
+- **Data sent to Google:** each request carries the conversation, up to 100 result rows per statement (`maxResultRows`), and the catalog, database and table names. CMF doesn't mask any of it. DTM data is synthetic.
+- **Conversations** belong to `dtm-env`; every user with View on `sql-assistant-*` statements there can open them.
+- **New tables** reach the model's catalog list within 15 minutes; name a newer table in the question.
+- **The model never runs statements itself.** Each one waits for **Run**, unless **Auto-accept** is on, which runs read-only statements only.
+
+See *Use the SQL Assistant with Confluent Manager for Apache Flink* in the [CMF documentation](https://docs.confluent.io/platform/current/flink/index.html) for the full feature.
+
 ---
 
 ## Device Cap
