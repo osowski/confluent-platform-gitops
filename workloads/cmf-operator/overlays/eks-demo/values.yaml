@@ -122,6 +122,26 @@ cmf:
       basicAuthEnabled: false
       ssoEnabled: true
 
+  # SQL Assistant (preview) backed by Gemini. CMF reads the API key from
+  # Secret cmf-sql-assistant-llm (key api-key) once, at startup, and does not
+  # start while that Secret or key is missing. The sql-assistant-key Job
+  # creates it with a placeholder value, so CMF starts without a real key and
+  # the assistant answers with an invalid-key error until one is set; see
+  # clusters/eks-demo/README.md, "CMF SQL Assistant API key".
+  ai:
+    models:
+      gemini-flash:
+        provider: google-genai
+        model: gemini-3.8-flash
+        maxInputTokens: 1048576
+        apiKey:
+          kubernetesSecretName: cmf-sql-assistant-llm
+          kubernetesSecretProperty: api-key
+  sql:
+    assistant:
+      enabled: true
+      model: gemini-flash
+
 # Mount MDS token secret for public key validation of MDS-signed SSO tokens
 mountedVolumes:
   volumes:
