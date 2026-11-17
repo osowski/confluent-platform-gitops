@@ -387,8 +387,9 @@ read -rs 'GEMINI_API_KEY?Gemini API key: '; print
 printf 'x-goog-api-key: %s\n' "$GEMINI_API_KEY" \
   | env -u HTTPS_PROXY -u https_proxy curl -sS -H @- \
       'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000' \
-  | jq -r '.models[] | select((.name | test("flash"; "i")) and (.supportedGenerationMethods | index("generateContent")))
-           | [(.name | ltrimstr("models/")), .displayName, (.inputTokenLimit | tostring)] | @tsv'
+  | jq -r 'if .error then "\(.error.status) \([.error.details[]?.reason // empty] | join(",")): \(.error.message)\n" | halt_error(1)
+           else .models[] | select((.name | test("flash"; "i")) and (.supportedGenerationMethods | index("generateContent")))
+             | [(.name | ltrimstr("models/")), .displayName, (.inputTokenLimit | tostring)] | @tsv end'
 
 # 3. Turn on, or rotate: replace the Secret in place; never `kubectl apply`
 printf '%s' "$GEMINI_API_KEY" \
@@ -396,11 +397,6 @@ printf '%s' "$GEMINI_API_KEY" \
       --from-file=api-key=/dev/stdin --dry-run=client -o yaml \
   | kubectl --context "$CTX" replace -f -
 unset GEMINI_API_KEY
-
-# 3-off. Turn off: put the placeholder back (no key involved)
-kubectl create secret generic cmf-sql-assistant-llm --namespace operator \
-    --from-literal=api-key=not-configured --dry-run=client -o yaml \
-  | kubectl --context "$CTX" replace -f -
 
 # 4. State check without printing the value: 39 bytes = real key, 14 = placeholder
 kubectl --context "$CTX" get secret cmf-sql-assistant-llm -n operator -o json \
@@ -412,11 +408,19 @@ kubectl --context "$CTX" rollout status deployment/confluent-manager-for-apache-
 kubectl --context "$CTX" logs deployment/confluent-manager-for-apache-flink -n operator -c cmf | grep -F 'SQL Assistant'
 ```
 
-- **Step 2** must list models. `API_KEY_INVALID` means the key is wrong: don't store it. If the model in `values.yaml` isn't listed, the key's project can't use it.
+- **Step 2** must list models. `INVALID_ARGUMENT API_KEY_INVALID` means the key is wrong: don't store it, and `unset GEMINI_API_KEY`. If the model in `values.yaml` isn't listed, the key's project can't use it.
 - **Step 5** logs `SQL Assistant using model 'gemini-3.8-flash' (provider GOOGLE_GENAI, registry entry 'gemini-flash').` with a real key and with the placeholder alike: CMF doesn't check the key until the first request. A key replaced without a restart isn't used until CMF restarts.
-- **Never delete the Secret to turn the assistant off.** CMF does not start without it until the next `cmf-operator-secrets` sync re-creates the placeholder. Use step 3-off.
+- **To turn the assistant off,** put the placeholder back, then run steps 4 and 5:
+
+  ```zsh
+  kubectl create secret generic cmf-sql-assistant-llm --namespace operator \
+      --from-literal=api-key=not-configured --dry-run=client -o yaml \
+    | kubectl --context "$CTX" replace -f -
+  ```
+
+- **Never delete the Secret to turn the assistant off.** CMF does not start without it until the next `cmf-operator-secrets` sync re-creates the placeholder.
 - **Never create it with `kubectl apply`.** That stores the value in the `last-applied-configuration` annotation.
-- **What deletes the Secret:** deleting the `operator` Namespace, the `namespaces` Application or the `bootstrap` Application with cascade, or destroying the cluster. Argo CD never prunes it, because it carries no Argo tracking label. Afterwards the placeholder comes back on its own; run steps 1-5 to turn the assistant on again.
+- **What deletes the Secret:** deleting the `operator` Namespace, the `namespaces` Application or the `bootstrap` Application with cascade, or destroying the cluster. Argo CD never prunes it, because it carries no Argo tracking label or annotation. The next sync of `cmf-operator-secrets` re-creates the placeholder: a fresh bootstrap syncs it, but after a recreated Namespace sync it by hand (it doesn't self-heal). Then run steps 1-5 to turn the assistant on again.
 
 ## Troubleshooting
 

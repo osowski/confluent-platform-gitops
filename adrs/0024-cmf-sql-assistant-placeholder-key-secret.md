@@ -28,10 +28,10 @@ Argo CD renders the chart with `helm template`, so the chart can't check whether
 ## Decision
 
 - **The eks-demo CMF values always turn the assistant on**: model entry `gemini-flash` (`google-genai`, `gemini-3.8-flash`), with its key in Secret `cmf-sql-assistant-llm`, key `api-key`, namespace `operator`.
-- **A Job creates that Secret with the placeholder `not-configured`, only when the Secret is absent.** It never reads, compares or overwrites an existing Secret. It is a `Sync` hook in `cmf-operator-secrets` (wave 117), ahead of `cmf-operator` (118), and uses the pinned `bitnami/kubectl` image and pattern of the `cmf-compile-tls` keygen Job ([ADR-0023](0023-cmf-2-5-flink-2-3-sql-compilation.md)). It runs as a `Sync` hook, not `PostSync`, so it doesn't wait for PostgreSQL to become healthy.
+- **A Job creates that Secret with the placeholder `not-configured`, only when the Secret is absent.** It never reads, compares or overwrites an existing Secret. It is a `Sync` hook in `cmf-operator-secrets` (wave 117), ahead of `cmf-operator` (118), and uses the pinned `bitnami/kubectl` image and pattern of the `cmf-compile-tls` keygen Job ([ADR-0023](0023-cmf-2-5-flink-2-3-sql-compilation.md)). It runs as a `Sync` hook at wave -1, with its RBAC at wave -2, so it runs before the wave-0 PostgreSQL resources instead of waiting for them to become healthy, as a `PostSync` hook would.
 - **The real key is set by hand** with `kubectl create --dry-run=client -o yaml | kubectl replace -f -`, then a CMF restart. Turning the assistant off puts the placeholder back the same way. The runbook is in the [eks-demo README](../clusters/eks-demo/README.md#cmf-sql-assistant-api-key).
 
-The Secret is created with `kubectl create`, so it carries no Argo tracking label and no `last-applied-configuration`. Argo CD never prunes it or overwrites a real key.
+The Secret is created with `kubectl create`, so it carries no Argo tracking label or annotation and no `last-applied-configuration`. Argo CD never prunes it or overwrites a real key.
 
 ## Consequences
 
@@ -40,7 +40,7 @@ The Secret is created with `kubectl create`, so it carries no Argo tracking labe
 - A deploy with no key starts CMF and the rest of eks-demo normally.
 - The key lives only in the cluster's Secret: nothing in Git, Secrets Manager or Terraform state.
 - Switching the assistant on, off, or to a new key needs no commit.
-- After a re-bootstrap or a recreated `operator` namespace, the placeholder comes back on its own.
+- A fresh bootstrap re-creates the placeholder. After a recreated `operator` namespace, one sync of `cmf-operator-secrets` does; the Application doesn't self-heal.
 
 **Negative / constraints:**
 

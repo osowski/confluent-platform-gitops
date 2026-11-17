@@ -8,23 +8,23 @@
 # answers with an invalid-key error until one is set.
 #
 # The Job never reads, compares or overwrites an existing Secret, and it creates the Secret with
-# `kubectl create`, so the Secret carries no Argo tracking label and is never pruned. To turn the
-# assistant on or off, replace the Secret's value and restart CMF; see clusters/eks-demo/README.md,
-# "CMF SQL Assistant API key".
+# `kubectl create`, so the Secret carries no Argo tracking label or annotation and is never
+# pruned. To turn the assistant on or off, replace the Secret's value and restart CMF; see
+# clusters/eks-demo/README.md, "CMF SQL Assistant API key".
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: cmf-sql-assistant-key
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "-2"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: cmf-sql-assistant-key
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "-2"
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -40,7 +40,7 @@ kind: RoleBinding
 metadata:
   name: cmf-sql-assistant-key
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "-2"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -49,8 +49,8 @@ subjects:
   - kind: ServiceAccount
     name: cmf-sql-assistant-key
 ---
-# A Sync hook rather than PostSync, so it runs as soon as its RBAC exists instead of waiting for
-# postgres to be healthy, and ahead of cmf-operator in the next wave.
+# A Sync hook at wave -1, after its RBAC (-2) and before the wave-0 postgres resources, so it
+# doesn't wait for postgres to be healthy, as a PostSync hook would.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -58,7 +58,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3
