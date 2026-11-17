@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# Placeholder SQL Assistant API key Secret; see sql-assistant-key-job.yaml.
+# Every cluster's cmf-operator-secrets overlay includes this component,
+# because the base CMF values turn the SQL Assistant on.
+resources:
+  - sql-assistant-key-job.yaml

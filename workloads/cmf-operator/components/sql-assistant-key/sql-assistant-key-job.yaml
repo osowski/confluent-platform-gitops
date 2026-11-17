@@ -10,7 +10,7 @@
 # The Job never reads, compares or overwrites an existing Secret, and it creates the Secret with
 # `kubectl create`, so the Secret carries no Argo tracking label or annotation and is never
 # pruned. To turn the assistant on or off, replace the Secret's value and restart CMF; see
-# clusters/eks-demo/README.md, "CMF SQL Assistant API key".
+# workloads/cmf-operator/README.md, "SQL Assistant API key".
 ---
 apiVersion: v1
 kind: ServiceAccount
