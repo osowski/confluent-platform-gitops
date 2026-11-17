@@ -9,6 +9,13 @@
 # every replica. In-tree autoscaling is off, so KubeRay runs exactly
 # `replicas` workers; scale by editing `replicas` (up to maxReplicas: 4).
 #
+# max_replicas_per_node: 1 puts one replica of each 2-replica agent on each
+# mesh worker, so both workers run a Serve proxy and pass their readiness probe
+# (localhost:8000/-/healthz) whichever joins first. Without it, a worker that
+# registers after Serve has placed the replicas gets none and never becomes
+# Ready. The mesh group therefore needs at least as many workers as the largest
+# num_replicas, or the extra replicas stay pending.
+#
 # The test op pins index 0 to the mesh worker group, so a reordering in
 # components/mesh-runtime fails the build rather than patching another group.
 - op: test
@@ -24,24 +31,28 @@
         deployments:
           - name: RiskAgent
             num_replicas: 2
+            max_replicas_per_node: 1
       - name: enrolment
         route_prefix: /enrolment
         import_path: dtm.mesh.enrolment:app
         deployments:
           - name: EnrolmentAgent
             num_replicas: 2
+            max_replicas_per_node: 1
       - name: step-up
         route_prefix: /step-up
         import_path: dtm.mesh.step_up:app
         deployments:
           - name: StepUpAgent
             num_replicas: 2
+            max_replicas_per_node: 1
       - name: compliance
         route_prefix: /compliance
         import_path: dtm.mesh.compliance:app
         deployments:
           - name: ComplianceAgent
             num_replicas: 2
+            max_replicas_per_node: 1
       - name: revocation
         route_prefix: /revocation
         import_path: dtm.mesh.revocation:app
