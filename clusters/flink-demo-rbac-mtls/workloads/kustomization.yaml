@@ -12,6 +12,7 @@ resources:
   - flink-kubernetes-operator.yaml
   - observability-resources.yaml
   - cmf-operator-secrets.yaml
+  - cmf-compile-tls.yaml
   - cmf-operator.yaml
   - flink-resources.yaml
   - colors-and-shapes.yaml
