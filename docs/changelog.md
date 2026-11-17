@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CMF compile workers on every cluster** ([#562](https://github.com/osowski/confluent-platform-gitops/issues/562)): `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo` each run one compile worker, so `USING JAR 'cmf://...'` UDFs compile there too.
 - **Flink dashboard job health rows** ([#527](https://github.com/osowski/confluent-platform-gitops/issues/527)): collapsed **Checkpoints**, **Restarts and uptime** and **Lag** rows show, for each selected job or statement, checkpoint duration and failures, restarts, and Kafka and event-time lag.
 - **Flink dashboard covers Flink SQL compute pools** ([#525](https://github.com/osowski/confluent-platform-gitops/issues/525)): Prometheus scrapes every Flink cluster in any namespace, including CMF compute pools, with no per-namespace Service.
   The **Flink** dashboard selects by namespace, cluster and job (one per SQL statement on a shared pool), and shows TaskManager heap.
