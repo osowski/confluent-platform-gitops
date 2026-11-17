@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   If they were applied on flink-demo, delete both Applications and the `device-trust-mesh` namespace.
 
 ### Fixed
+- **Device Trust Mesh Ray workers always become Ready on eks-demo** ([#564](https://github.com/osowski/confluent-platform-gitops/issues/564)): each mesh worker holds one replica of every 2-replica agent, so a session reset or Ray restart no longer stalls on a worker with no Serve proxy.
 - **Re-creating the Device Trust Mesh task router no longer re-runs every conversation** ([#549](https://github.com/osowski/confluent-platform-gitops/issues/549)): `dtm-a2a-task-router` resumes from its committed offsets instead of re-sending every retained `device.events` record to the agents.
   Roll it out by deleting `dtm-a2a-task-router` and syncing `device-trust-mesh`.
 - **Other Flink SQL pools stop leaking Kafka producers** ([#544](https://github.com/osowski/confluent-platform-gitops/issues/544)): `shapes-pool`, `colors-pool`, `pool` and `secure-sql-pool` now chain operators like `dtm-shared-pool`, so long-running statements writing to Kafka no longer leak a producer thread on every checkpoint.
