@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - cfk-operator.yaml
+  - cmf-compile-tls.yaml
   - cmf-operator.yaml
   - confluent-resources.yaml
   - flink-kubernetes-operator.yaml
