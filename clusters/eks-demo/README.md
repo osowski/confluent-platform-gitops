@@ -149,6 +149,10 @@ In the ArgoCD UI:
 1. Click on `colors-and-shapes` → **Sync** → **Synchronize**
 2. Wait for `Healthy` status (~3-5 minutes)
 
+### Turn on the CMF SQL Assistant (optional)
+
+Bringup needs no Gemini API key: CMF starts with a placeholder key, and the SQL Assistant tab answers with an invalid-key error until a real one is set. To turn the assistant on, follow [SQL Assistant API key](../../workloads/cmf-operator/README.md#sql-assistant-api-key); on this cluster, set `CTX` and `HTTPS_PROXY` as its first lines describe.
+
 ## Environment Access
 
 <!-- Content in this section intentionally duplicated between this README.md and `terraform/eks-demo/README.md` -->

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - cfk-operator.yaml
   - cmf-compile-tls.yaml
+  - cmf-operator-secrets.yaml
   - cmf-operator.yaml
   - colors-and-shapes.yaml
   - confluent-resources.yaml

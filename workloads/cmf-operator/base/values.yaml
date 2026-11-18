@@ -56,11 +56,31 @@ cmf:
       fs.s3a.path.style.access: "true"
       fs.s3a.connection.ssl.enabled: "false"
 
+  # SQL Assistant (preview) backed by Gemini. CMF reads the API key from
+  # Secret cmf-sql-assistant-llm (key api-key) once, at startup, and does not
+  # start while that Secret or key is missing. The cmf-sql-assistant-key Job
+  # (components/sql-assistant-key, in every cluster's cmf-operator-secrets
+  # app) creates it with a placeholder value, so CMF starts without a real key
+  # and the assistant answers with an invalid-key error until one is set; see
+  # workloads/cmf-operator/README.md, "SQL Assistant API key".
+  ai:
+    models:
+      gemini-flash:
+        provider: google-genai
+        model: gemini-3.8-flash
+        maxInputTokens: 1048576
+        apiKey:
+          kubernetesSecretName: cmf-sql-assistant-llm
+          kubernetesSecretProperty: api-key
+
   sql:
     examples-catalog:
       enabled: true
     environmentCatalog:
       enabled: true
+    assistant:
+      enabled: true
+      model: gemini-flash
 
   # SQL compilation (see ADR 0023). Every compute pool runs Flink 2.3, so the
   # pod carries only the 2.3 shared compiler instead of the chart default of

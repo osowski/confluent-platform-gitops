@@ -1,0 +1,109 @@
+# CMF SQL Assistant placeholder API key
+#
+# CMF's SQL Assistant reads its Gemini API key from Secret cmf-sql-assistant-llm (key api-key) at
+# startup, and CMF does not start while that Secret or key is missing or blank. The key itself is
+# set by hand and never lives in Git. Helm `lookup` could keep an existing Secret, but Argo CD's
+# `helm template` never resolves it, so this Job creates the Secret with the placeholder value
+# `not-configured` only when it is absent. CMF then starts without a real key, and the assistant
+# answers with an invalid-key error until one is set.
+#
+# The Job never reads, compares or overwrites an existing Secret, and it creates the Secret with
+# `kubectl create`, so the Secret carries no Argo tracking label or annotation and is never
+# pruned. To turn the assistant on or off, replace the Secret's value and restart CMF; see
+# workloads/cmf-operator/README.md, "SQL Assistant API key".
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cmf-sql-assistant-key
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmf-sql-assistant-key
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["cmf-sql-assistant-llm"]
+  # create can't be limited by resourceNames
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmf-sql-assistant-key
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cmf-sql-assistant-key
+subjects:
+  - kind: ServiceAccount
+    name: cmf-sql-assistant-key
+---
+# A Sync hook at wave -1, after its RBAC (-2) and before any wave-0 resources, so on clusters
+# with postgres it doesn't wait for postgres to be healthy, as a PostSync hook would.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cmf-sql-assistant-key
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: cmf-sql-assistant-key
+    spec:
+      serviceAccountName: cmf-sql-assistant-key
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: placeholder
+          image: bitnami/kubectl@sha256:26496fc7c0b8549e3bb352b7c26238a20c1f264532ba42b6d9f67c884ffa0066  # kubectl v1.35.4
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              name=cmf-sql-assistant-llm
+              if kubectl -n "$NAMESPACE" get secret "$name" -o name >/dev/null 2>&1; then
+                echo "$name exists; leaving it unchanged"
+                exit 0
+              fi
+              # kubectl create, never apply: apply would add last-applied-configuration
+              if out=$(kubectl -n "$NAMESPACE" create secret generic "$name" \
+                    --from-literal=api-key=not-configured 2>&1); then
+                echo "Created $name with a placeholder key; the SQL Assistant stays off until a real key is set"
+              elif grep -q AlreadyExists <<<"$out"; then
+                echo "$name was created concurrently; leaving it unchanged"
+              else
+                echo "$out" >&2
+                exit 1
+              fi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

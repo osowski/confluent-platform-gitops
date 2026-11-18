@@ -8,3 +8,6 @@ resources:
   - cmf-encryption-key.yaml
   - postgres-secret.yaml
   - postgres.yaml
+
+components:
+  - ../../components/sql-assistant-key
