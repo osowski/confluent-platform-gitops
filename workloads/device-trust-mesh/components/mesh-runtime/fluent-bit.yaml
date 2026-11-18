@@ -1,0 +1,34 @@
+# Fluent Bit config for the sidecar on each mesh worker (rayservice.yaml).
+#
+# It tails the agents' Serve replica logs, which the Ray container writes to the
+# shared ray-logs volume as one JSON object per line (logging_config encoding
+# JSON), and prints them to the sidecar's stdout for `kubectl logs -c fluent-bit`.
+# The Ray dashboard reads the same files. refresh_interval picks up a replica
+# log created after start-up, such as after a replica restart; the position DB
+# on fluent-bit-state stops a sidecar restart from replaying lines.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-trust-mesh-fluent-bit
+  namespace: device-trust-mesh
+data:
+  fluent-bit.yaml: |
+    service:
+      flush: 1
+      log_level: warn
+      http_server: false
+      parsers_file: /fluent-bit/etc/parsers.conf
+    pipeline:
+      inputs:
+        - name: tail
+          path: /tmp/ray/session_latest/logs/serve/replica_*.log
+          tag: serve.replica
+          refresh_interval: 5
+          read_from_head: true
+          db: /fluent-bit/state/tail.db
+          mem_buf_limit: 5MB
+          parser: json
+      outputs:
+        - name: stdout
+          match: "*"
+          format: json_lines

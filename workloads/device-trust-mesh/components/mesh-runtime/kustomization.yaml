@@ -6,6 +6,7 @@ kind: Component
 # Requires the kuberay-operator Application (ray.io CRDs) on the cluster.
 resources:
   - rayservice.yaml
+  - fluent-bit.yaml
   - simulator.yaml
 
 # DEVICE_CAP has exactly one source: device-trust-mesh-config.

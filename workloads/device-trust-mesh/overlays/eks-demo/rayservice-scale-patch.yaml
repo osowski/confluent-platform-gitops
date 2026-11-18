@@ -28,6 +28,9 @@
       - name: risk
         route_prefix: /risk
         import_path: dtm.mesh.risk:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: RiskAgent
             num_replicas: 2
@@ -35,6 +38,9 @@
       - name: enrolment
         route_prefix: /enrolment
         import_path: dtm.mesh.enrolment:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: EnrolmentAgent
             num_replicas: 2
@@ -42,6 +48,9 @@
       - name: step-up
         route_prefix: /step-up
         import_path: dtm.mesh.step_up:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: StepUpAgent
             num_replicas: 2
@@ -49,6 +58,9 @@
       - name: compliance
         route_prefix: /compliance
         import_path: dtm.mesh.compliance:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: ComplianceAgent
             num_replicas: 2
@@ -56,6 +68,9 @@
       - name: revocation
         route_prefix: /revocation
         import_path: dtm.mesh.revocation:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: RevocationAgent
             num_replicas: 1
