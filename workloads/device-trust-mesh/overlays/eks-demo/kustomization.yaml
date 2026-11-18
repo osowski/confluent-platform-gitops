@@ -42,7 +42,7 @@ patches:
 # base in base/kustomization.yaml.
 images:
   - name: quay.io/osowski/device-trust-mesh-ray
-    newTag: v1.5.0-202611161830
+    newTag: v1.5.0-202611181730
   - name: quay.io/osowski/device-trust-mesh-simulator
     newTag: v1.5.0-202611161830
   - name: quay.io/osowski/device-trust-mesh-ui
