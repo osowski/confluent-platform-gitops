@@ -15,9 +15,9 @@ resources:
   - schemas.yaml
   # One ConfigMap per schema (dtm-schema-<subject>), generated in
   # osowski/flink-sandbox and referenced by the Schema CRs in schemas.yaml.
-  # Pinned to the commit of device-trust-mesh-v1.5.0; move it together with
+  # Pinned to the commit of device-trust-mesh-v1.6.0; move it together with
   # the image tags.
-  - https://github.com/osowski/flink-sandbox//device-trust-mesh/dtm/schemas?ref=3c04405b36f334aea37c6fa849378f856f9b833e
+  - https://github.com/osowski/flink-sandbox//device-trust-mesh/dtm/schemas?ref=746112773232824b8ebe3ff77e197615d580f636
 
 # Common labels applied to all resources
 labels:

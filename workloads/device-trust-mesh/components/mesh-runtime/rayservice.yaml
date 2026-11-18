@@ -9,6 +9,13 @@
 #
 # KubeRay exposes Serve on the device-trust-mesh-serve-svc Service (port 8000);
 # agents reach context-mcp at /context-mcp/mcp on that Service.
+#
+# Every application logs JSON (logging_config), so each replica's log under
+# /tmp/ray/session_latest/logs/serve/ is one JSON object per line, with the
+# agents' per-task trail nested under `dtm`. The mesh workers share /tmp/ray
+# with a Fluent Bit sidecar that prints those replica logs to its stdout
+# (kubectl logs -c fluent-bit); the Ray dashboard reads the same files. The
+# head runs no agent replica, so it has no sidecar.
 apiVersion: ray.io/v1
 kind: RayService
 metadata:
@@ -22,36 +29,54 @@ spec:
       - name: context-mcp
         route_prefix: /context-mcp
         import_path: dtm.mesh.context_mcp:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: ContextMcp
             num_replicas: 1
       - name: risk
         route_prefix: /risk
         import_path: dtm.mesh.risk:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: RiskAgent
             num_replicas: 1
       - name: enrolment
         route_prefix: /enrolment
         import_path: dtm.mesh.enrolment:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: EnrolmentAgent
             num_replicas: 1
       - name: step-up
         route_prefix: /step-up
         import_path: dtm.mesh.step_up:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: StepUpAgent
             num_replicas: 1
       - name: compliance
         route_prefix: /compliance
         import_path: dtm.mesh.compliance:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: ComplianceAgent
             num_replicas: 1
       - name: revocation
         route_prefix: /revocation
         import_path: dtm.mesh.revocation:app
+        logging_config:
+          encoding: JSON
+          log_level: INFO
         deployments:
           - name: RevocationAgent
             num_replicas: 1
@@ -83,6 +108,8 @@ spec:
                     configMapKeyRef:
                       name: device-trust-mesh-config
                       key: LLM_ENDPOINT
+                - name: DTM_LOG_LEVEL
+                  value: INFO
               resources:
                 requests:
                   cpu: "1"
@@ -130,6 +157,8 @@ spec:
                       configMapKeyRef:
                         name: device-trust-mesh-config
                         key: LLM_ENDPOINT
+                  - name: DTM_LOG_LEVEL
+                    value: INFO
                 resources:
                   requests:
                     cpu: "2"
@@ -141,7 +170,41 @@ spec:
                   - name: dtm-config
                     mountPath: /etc/dtm
                     readOnly: true
+                  - name: ray-logs
+                    mountPath: /tmp/ray
+              - name: fluent-bit
+                image: cr.fluentbit.io/fluent/fluent-bit:5.1.5
+                imagePullPolicy: IfNotPresent
+                args: ["-q", "-c", "/fluent-bit/config/fluent-bit.yaml"]
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 1000
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+                  limits:
+                    cpu: 50m
+                    memory: 64Mi
+                volumeMounts:
+                  - name: ray-logs
+                    mountPath: /tmp/ray
+                    readOnly: true
+                  - name: fluent-bit-state
+                    mountPath: /fluent-bit/state
+                  - name: fluent-bit-config
+                    mountPath: /fluent-bit/config
+                    readOnly: true
             volumes:
+              - name: ray-logs
+                emptyDir: {}
+              - name: fluent-bit-state
+                emptyDir: {}
+              - name: fluent-bit-config
+                configMap:
+                  name: device-trust-mesh-fluent-bit
               - name: dtm-config
                 projected:
                   sources:

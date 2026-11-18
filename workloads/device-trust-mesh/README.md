@@ -607,6 +607,8 @@ The statements restart against empty topics, so there is no backlog to re-read. 
 
 ### Inspecting the Mesh
 
+To follow what each agent is doing, task by task, see [Following one task](#following-one-task).
+
 **Ray dashboard.** The KubeRay operator has no UI of its own; it only reconciles the `RayService` and `RayCluster` resources. The Ray dashboard runs on the Ray head node:
 
 ```bash
@@ -660,6 +662,33 @@ The acceptance-target stats and the **Agents** row are open by default. The **Co
 
 Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates a histogram's `_sum` from bucket midpoints. End-to-end event-to-decision latency isn't a Prometheus metric; the UI shows it. Consumer lag per agent group needs a Kafka lag exporter, which isn't deployed.
 
+### Following one task
+
+Each agent logs a JSON trail of every task it handles: one line per step. Every line carries the agent and the task's ids, nested under `dtm`, because Ray Serve deletes a top-level `task_id` from its logs ([ADR-0025](../../adrs/0025-fluent-bit-sidecar-for-ray-agent-logs.md)). An agent logs only the steps it takes: compliance and revocation fetch no context and call no model, and enrolment's rule shortcuts skip the model.
+
+| `dtm.step` | Logged when | Fields beyond `agent`, `task_id`, `context_id` and `device_id` |
+|---|---|---|
+| `received` | The agent has parsed a record and started its task | `topic`, `partition`, `offset` |
+| `context` | A context tool call returns | `tool`, `status`, `seq`, `latency_ms` |
+| `model` | A model call is recorded on `agent.llm-interactions` | `request_hash`, `model`, `latency_ms`, `status`, `guardrail_result`, `llm_interaction_id` |
+| `decision` | The agent emits its result | `artifact`, `outcome`, and `rule` on rule-based paths |
+| `committed` | The record's offset is committed | `topic`, `partition`, `offset` |
+
+A failure inside a task logs at ERROR with `dtm.step` set to `handler_failed`, `commit_failed` or `task_failed`. Records that start no task, such as the task events compliance doesn't audit, log only at DEBUG. `DTM_LOG_LEVEL` on the Ray containers sets the level, default `INFO`; `WARNING` hides the trail.
+
+**From `kubectl`.** A Fluent Bit sidecar on each mesh worker prints the agents' replica logs:
+
+```bash
+kubectl -n device-trust-mesh logs -l ray.io/node-type=worker -c fluent-bit --tail=-1 \
+  | jq -cR 'fromjson? | select(.dtm.task_id == "<task_id>") | .dtm'
+```
+
+`-R` with `fromjson?` skips the lines that aren't JSON, such as Fluent Bit's own warnings. Filter on `.dtm.context_id` instead to follow one device's request through every agent, or on `.dtm.step == "decision"` with `-f` to watch decisions as they happen.
+
+**From the Ray dashboard.** Serve → an application → a replica → **Logs** shows the same lines for that replica.
+
+**From a `model` line to the model's exchange.** Its `request_hash` matches the `request_hash` of the record on `agent.llm-interactions`, and its `llm_interaction_id` is that record's `envelope.message_id`.
+
 ---
 
 ## Running on eks-demo
@@ -673,7 +702,7 @@ The `overlays/eks-demo` overlay runs the mesh with a 100-device fleet, the stand
    ```bash
    kubectl get nodes -l accelerator=nvidia -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu
    ```
-3. **Images.** The overlay pins the Ray, simulator, UI and context service images to `v1.5.0-202611161830`, the `device-trust-mesh-v1.5.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)), and it has the OAuth client settings, exports agent metrics through Ray and context metrics from the context pods (see [Metrics](#metrics)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
+3. **Images.** The overlay pins the Ray, simulator, UI and context service images to `v1.6.0-202611181810`, the `device-trust-mesh-v1.6.0` build of [osowski/flink-sandbox `device-trust-mesh`](https://github.com/osowski/flink-sandbox/tree/main/device-trust-mesh). That's the release the schema remote base is pinned to (see [Schemas](#schemas)). It has the OAuth client settings, exports agent metrics through Ray and context metrics from the context pods (see [Metrics](#metrics)), and logs the agent trail (see [Following one task](#following-one-task)). Without the OAuth client settings the clients connect anonymously and the brokers reject them.
 4. **Workload Applications.** `kuberay-operator` syncs automatically. `ollama` and `device-trust-mesh` are manual-sync. Sync `ollama` first, then `device-trust-mesh`:
    ```bash
    kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
@@ -744,6 +773,7 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
   kubectl delete pvc ollama-data -n ollama
   kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
   ```
+- **Agent logs live in the pod.** The mesh workers keep `/tmp/ray`, the Ray logs included, on an `emptyDir`, so the trail is lost when a worker pod is replaced. Nothing ships it off the cluster.
 - **Ray scaling is manual.** In-tree autoscaling is off, so KubeRay runs exactly `replicas` workers (2, up to `maxReplicas: 4`). Scale by editing `replicas` in [`overlays/eks-demo/rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml).
 
 ---

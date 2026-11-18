@@ -37,18 +37,18 @@ patches:
       kind: RayService
       name: device-trust-mesh
 
-# osowski/flink-sandbox device-trust-mesh-v1.5.0 images: the Ray, simulator, UI
+# osowski/flink-sandbox device-trust-mesh-v1.6.0 images: the Ray, simulator, UI
 # and context service images share one tag. Same release as the schema remote
 # base in base/kustomization.yaml.
 images:
   - name: quay.io/osowski/device-trust-mesh-ray
-    newTag: v1.5.0-202611161830
+    newTag: v1.6.0-202611181810
   - name: quay.io/osowski/device-trust-mesh-simulator
-    newTag: v1.5.0-202611161830
+    newTag: v1.6.0-202611181810
   - name: quay.io/osowski/device-trust-mesh-ui
-    newTag: v1.5.0-202611161830
+    newTag: v1.6.0-202611181810
   - name: quay.io/osowski/device-trust-mesh-context
-    newTag: v1.5.0-202611161830
+    newTag: v1.6.0-202611181810
 
 # Cluster-specific labels
 labels:
