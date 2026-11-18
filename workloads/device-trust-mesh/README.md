@@ -607,6 +607,8 @@ The statements restart against empty topics, so there is no backlog to re-read. 
 
 ### Inspecting the Mesh
 
+To follow what each agent is doing, task by task, see [Following one task](#following-one-task).
+
 **Ray dashboard.** The KubeRay operator has no UI of its own; it only reconciles the `RayService` and `RayCluster` resources. The Ray dashboard runs on the Ray head node:
 
 ```bash
@@ -659,6 +661,33 @@ With [`components/observability`](components/observability/) (eks-demo), the Pod
 The acceptance-target stats and the **Agents** row are open by default. The **Context serving** and **Serve runtime** rows start collapsed, and their panels query Prometheus only once a row is expanded.
 
 Latency panels use histogram buckets (p50 and p99), not averages: Ray estimates a histogram's `_sum` from bucket midpoints. End-to-end event-to-decision latency isn't a Prometheus metric; the UI shows it. Consumer lag per agent group needs a Kafka lag exporter, which isn't deployed.
+
+### Following one task
+
+Each agent logs a JSON trail of every task it handles: one line per step. Every line carries the agent and the task's ids, nested under `dtm`, because Ray Serve deletes a top-level `task_id` from its logs ([ADR-0025](../../adrs/0025-fluent-bit-sidecar-for-ray-agent-logs.md)). An agent logs only the steps it takes: compliance and revocation fetch no context and call no model, and enrolment's rule shortcuts skip the model.
+
+| `dtm.step` | Logged when | Fields beyond `agent`, `task_id`, `context_id` and `device_id` |
+|---|---|---|
+| `received` | The agent has parsed a record and started its task | `topic`, `partition`, `offset` |
+| `context` | A context tool call returns | `tool`, `status`, `seq`, `latency_ms` |
+| `model` | A model call is recorded on `agent.llm-interactions` | `request_hash`, `model`, `latency_ms`, `status`, `guardrail_result`, `llm_interaction_id` |
+| `decision` | The agent emits its result | `artifact`, `outcome`, and `rule` on rule-based paths |
+| `committed` | The record's offset is committed | `topic`, `partition`, `offset` |
+
+A failure inside a task logs at ERROR with `dtm.step` set to `handler_failed`, `commit_failed` or `task_failed`. Records that start no task, such as the task events compliance doesn't audit, log only at DEBUG. `DTM_LOG_LEVEL` on the Ray containers sets the level, default `INFO`; `WARNING` hides the trail.
+
+**From `kubectl`.** A Fluent Bit sidecar on each mesh worker prints the agents' replica logs:
+
+```bash
+kubectl -n device-trust-mesh logs -l ray.io/node-type=worker -c fluent-bit --tail=-1 \
+  | jq -c 'select(.dtm.task_id == "<task_id>") | .dtm'
+```
+
+Filter on `.dtm.context_id` instead to follow one device's request through every agent. `select(.dtm.step == "decision")` lists decisions as they happen, with `-f` to stream.
+
+**From the Ray dashboard.** Serve → an application → a replica → **Logs** shows the same lines for that replica.
+
+**From a `model` line to the model's exchange.** Its `request_hash` matches the `request_hash` of the record on `agent.llm-interactions`, and its `llm_interaction_id` is that record's `envelope.message_id`.
 
 ---
 
@@ -744,6 +773,7 @@ Secrets Manager is the source of truth. The Job creates each client or sets the 
   kubectl delete pvc ollama-data -n ollama
   kubectl patch application ollama -n argocd --type merge -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
   ```
+- **Agent logs live in the pod.** The mesh workers keep `/tmp/ray`, the Ray logs included, on an `emptyDir`, so the trail is lost when a worker pod is replaced. Nothing ships it off the cluster.
 - **Ray scaling is manual.** In-tree autoscaling is off, so KubeRay runs exactly `replicas` workers (2, up to `maxReplicas: 4`). Scale by editing `replicas` in [`overlays/eks-demo/rayservice-scale-patch.yaml`](overlays/eks-demo/rayservice-scale-patch.yaml).
 
 ---
