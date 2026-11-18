@@ -5,7 +5,9 @@
 # JSON), and prints them to the sidecar's stdout for `kubectl logs -c fluent-bit`.
 # The Ray dashboard reads the same files. refresh_interval picks up a replica
 # log created after start-up, such as after a replica restart; the position DB
-# on fluent-bit-state stops a sidecar restart from replaying lines.
+# on fluent-bit-state stops a sidecar restart from replaying lines. A JSON line
+# holds a whole traceback, so lines may be up to 1 MiB; a longer one is skipped
+# on its own instead of Fluent Bit dropping the whole file.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -27,6 +29,8 @@ data:
           read_from_head: true
           db: /fluent-bit/state/tail.db
           mem_buf_limit: 5MB
+          buffer_max_size: 1M
+          skip_long_lines: on
           parser: json
       outputs:
         - name: stdout

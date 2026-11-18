@@ -680,10 +680,10 @@ A failure inside a task logs at ERROR with `dtm.step` set to `handler_failed`, `
 
 ```bash
 kubectl -n device-trust-mesh logs -l ray.io/node-type=worker -c fluent-bit --tail=-1 \
-  | jq -c 'select(.dtm.task_id == "<task_id>") | .dtm'
+  | jq -cR 'fromjson? | select(.dtm.task_id == "<task_id>") | .dtm'
 ```
 
-Filter on `.dtm.context_id` instead to follow one device's request through every agent. `select(.dtm.step == "decision")` lists decisions as they happen, with `-f` to stream.
+`-R` with `fromjson?` skips the lines that aren't JSON, such as Fluent Bit's own warnings. Filter on `.dtm.context_id` instead to follow one device's request through every agent, or on `.dtm.step == "decision"` with `-f` to watch decisions as they happen.
 
 **From the Ray dashboard.** Serve → an application → a replica → **Logs** shows the same lines for that replica.
 

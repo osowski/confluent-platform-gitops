@@ -175,7 +175,7 @@ spec:
               - name: fluent-bit
                 image: cr.fluentbit.io/fluent/fluent-bit:5.1.5
                 imagePullPolicy: IfNotPresent
-                args: ["-c", "/fluent-bit/config/fluent-bit.yaml"]
+                args: ["-q", "-c", "/fluent-bit/config/fluent-bit.yaml"]
                 securityContext:
                   runAsNonRoot: true
                   runAsUser: 1000
