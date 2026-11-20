@@ -72,7 +72,7 @@ Platform infrastructure components deployed before workloads.
 - **workload-ingresses** (wave 110) - Traefik IngressRoutes for workload UIs
 - **flink-kubernetes-operator** (wave 116) - Flink Kubernetes Operator for managing Flink deployments
 - **cmf-operator** (wave 118) - Confluent Manager for Apache Flink (CMF) for central Flink management
-- **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo) for Kafka integration, deployed on all four clusters
+- **flink-resources** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Flink integration resources (CMFRestClass, single `default` FlinkEnvironment, generic Flink SQL demo, PVC-backed `ttm` model server for the AI functions) for Kafka integration, deployed on all four clusters
 - **device-trust-mesh** (wave 122, eks-demo only) - [Agentic Device Trust Mesh](../workloads/device-trust-mesh/README.md): A2A v1.0 agents over Kafka on KubeRay, RTCE-style context layer (a standalone `device-trust-mesh-context` Deployment on eks-demo), shared Flink compute pool, a per-task agent log trail streamed by a Fluent Bit sidecar on the mesh workers ([ADR-0014](../adrs/0014-rtce-style-context-engine-on-cp-kuberay.md), [ADR-0015](../adrs/0015-a2a-over-kafka-agent-communication.md), [ADR-0022](../adrs/0022-dtm-context-service-off-ray-serve.md), [ADR-0025](../adrs/0025-fluent-bit-sidecar-for-ray-agent-logs.md))
 - **kuberay-operator** (wave 117, eks-demo only) - KubeRay operator providing `ray.io/RayService` for `device-trust-mesh`
 - **colors-and-shapes** (see [Sync Waves](#sync-waves) for the exact per-cluster wave) - Two-tenant Flink demo (`shapes-env`, `colors-env`); anonymous on flink-demo, Kubernetes RBAC + OAuth/Keycloak via the `rbac-oauth` Kustomize Component on the RBAC clusters
@@ -200,7 +200,7 @@ Apply in that order and delete in reverse, so each CMF-side resource is removed 
 
 | App | Wave scheme |
 |---|---|
-| `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50 (RBAC clusters additionally use waves 10/20/30 for a `default`-env Secret/FlinkSecret/mapping chain via a Kustomize Component — coexists with the reference application at wave 10 since neither depends on the other) |
+| `flink-resources` | environment 5; application 10; topics 30; schemas 35; catalog 40; database 45; pool 50; model server (PVC, Deployment, Service, NetworkPolicy) 90, after every other resource so a slow model download cannot stall the rest (RBAC clusters additionally use waves 10/20/30 for a `default`-env Secret/FlinkSecret/mapping chain via a Kustomize Component — coexists with the reference application at wave 10 since neither depends on the other) |
 | `colors-and-shapes` | environment 5; catalog 40; database 50; pool 60; statement 70; application 80 (waves 10/20/30 are reserved for the Secret/FlinkSecret/mapping chain a Kustomize Component adds on RBAC clusters — not present in the anonymous base) |
 | `device-trust-mesh` | environment 5; topics 30; schemas 35; catalog 40; database 50; shared pool 60; DDL 65; statements 70; `device-trust-mesh-context` 75 (eks-demo); RayService 80; simulator 90. eks-demo's `rbac-oauth` component adds ServiceAccount and SecretStore -3, ExternalSecrets -2, Keycloak Job -1 |
 

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`ttm` model server for the Flink AI functions** ([#574](https://github.com/osowski/confluent-platform-gitops/issues/574)): `flink-resources` runs `model-server-ttm` on every cluster, with its model download kept on a PVC and reachable only from Flink pods.
+  Flink SQL reaches it at `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`.
 - **Device Trust Mesh agent log trail** ([#555](https://github.com/osowski/confluent-platform-gitops/issues/555)): every agent logs a JSON line for each step of each task, from `received` to `committed`, in `kubectl logs -c fluent-bit` on the mesh workers and in the Ray dashboard's replica logs.
   Follow one task with `jq 'select(.dtm.task_id == "...")'` ([README](../workloads/device-trust-mesh/README.md#following-one-task)).
 - **CMF SQL Assistant with Gemini on every cluster** ([#553](https://github.com/osowski/confluent-platform-gitops/issues/553)): ask questions in plain language in the CMF UI and get Flink SQL back, such as "what was the approval path for device dev-0007?" for the Device Trust Mesh on `eks-demo`.

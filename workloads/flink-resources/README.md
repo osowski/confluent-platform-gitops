@@ -62,6 +62,17 @@ practice, confirmed by direct REST API testing during #349.
   `FlinkKafkaCatalog` (`kafka-cat`) bound to Schema Registry, a
   `FlinkKafkaDatabase` (`main-kafka-cluster`) bound to the Kafka cluster, and a
   `FlinkComputePool` (`pool`, DEDICATED) with S3 checkpoint/savepoint storage.
+- **Model server** (`model-server-ttm`) — serves the `ttm` time series model
+  that the `AI_FORECAST` and `AI_DETECT_ANOMALIES` functions call, at
+  `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`. It is a
+  one-replica Deployment with a Service, a NetworkPolicy and a 5Gi PVC
+  (`model-server-ttm-cache`, `gp3` on eks-demo, `standard` elsewhere) that
+  keeps the Hugging Face download across pod restarts. The pod is ready only
+  after the model is downloaded and loaded (the probe allows up to 10 minutes).
+  The NetworkPolicy admits only Flink pods (`type: flink-native-kubernetes`)
+  from the `flink`, `flink-colors` and `flink-shapes` namespaces. All four
+  resources sit in sync wave 90, after every other resource in this
+  Application, so a slow model download never holds up the Flink SQL chain.
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
