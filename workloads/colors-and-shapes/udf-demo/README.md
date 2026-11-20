@@ -16,8 +16,12 @@ outside GitOps by design, submitted as ad-hoc statements through the CMF UI.
 > [!NOTE]
 > The manual upload-and-register flow below is for your own UDFs. The AI
 > functions (`AI_FORECAST`, `AI_DETECT_ANOMALIES`) are set up automatically in
-> the `default` environment by `flink-resources`, with no JAR to upload; see
-> its [README](../../flink-resources/README.md#ai-functions-default-environment).
+> `colors-env` and `shapes-env` by `colors-and-shapes` (see its
+> [README](../README.md#ai-functions)) and in `default` by `flink-resources`,
+> with no JAR to upload; see that
+> [README](../../flink-resources/README.md#ai-functions-default-environment).
+> They are registered from their own artifact, `ai-functions.jar`, so they sit
+> alongside `to_upper` in `colors-env` without touching `udfs.jar`.
 
 ## Prerequisites
 

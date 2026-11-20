@@ -458,5 +458,13 @@ class EnvironmentUpdateBodyTests(unittest.TestCase):
             client.update_environment("other", setup.environment_update_body(environment_payload()))
 
 
+class ScriptCopyTests(unittest.TestCase):
+    def test_ai_functions_script_copies_are_identical(self):
+        # Each Application carries its own copy so it can sync alone.
+        copy_path = REPO / "workloads/colors-and-shapes/base/ai-functions/ai_functions_setup.py"
+        self.assertTrue(copy_path.is_file(), f"{copy_path} is missing")
+        self.assertEqual(SCRIPT.read_bytes(), copy_path.read_bytes())
+
+
 if __name__ == "__main__":
     unittest.main()

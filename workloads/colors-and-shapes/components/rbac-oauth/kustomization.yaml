@@ -3,7 +3,8 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 
 # Layers Kubernetes RBAC and Keycloak OAuth onto the anonymous
-# colors-and-shapes base, for clusters that run Keycloak/MDS
+# colors-and-shapes base (including a bearer token for the AI function setup
+# Jobs), for clusters that run Keycloak/MDS
 # (flink-demo-rbac, flink-demo-rbac-mtls, eks-demo). The base intentionally
 # carries no auth-specific fields of its own - see docs/architecture.md's
 # Flink SQL sections for what CMF/CFK require of each field this component
@@ -39,3 +40,4 @@ patches:
   - path: flink-application-colors-oauth-patch.yaml
   - path: producer-shapes-oauth-patch.yaml
   - path: producer-colors-oauth-patch.yaml
+  - path: ai-functions-jobs-oauth-patch.yaml

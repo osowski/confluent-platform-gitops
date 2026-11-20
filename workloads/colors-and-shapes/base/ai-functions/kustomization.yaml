@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# AI function setup for the `colors-env` and `shapes-env` FlinkEnvironments: an
+# upload Job per environment (artifact plus model-server URL) and the CREATE
+# FUNCTION statements that register the functions from that artifact. The Jobs
+# and their ConfigMap live in the `flink` namespace, next to the OAuth Secret
+# the Jobs read on the OAuth clusters.
+
+resources:
+  - jobs.yaml
+  - create-functions.yaml
+
+# Not a hook: the ConfigMap syncs with the resources before the wave-62 Jobs, so
+# the script is in place when a Job's pod starts. The fixed name lets the Jobs
+# mount it by name. The `-cs` suffix keeps it apart from the ConfigMap of the
+# same script that flink-resources generates in this namespace.
+configMapGenerator:
+  - name: ai-functions-setup-script-cs
+    namespace: flink
+    files:
+      - ai_functions_setup.py
+
+generatorOptions:
+  disableNameSuffixHash: true

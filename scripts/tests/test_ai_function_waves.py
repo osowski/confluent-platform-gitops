@@ -1,4 +1,4 @@
-"""Render checks for the AI function resources in flink-resources (stdlib unittest only).
+"""Render checks for the AI function resources in flink-resources and colors-and-shapes (stdlib unittest only).
 
 Two things have to hold across every overlay. The model server owns a PVC that
 stays Pending until its pod exists, and Argo CD waits for a Deployment to be
@@ -8,8 +8,11 @@ environments, the compute pool and the topics. And the upload Job, the compute
 pool and the two CREATE FUNCTION statements form a chain that only works in one
 order, with OAuth wiring that differs per overlay.
 
-These tests render every flink-resources overlay with `kustomize build` and
-check the sync waves, the Job's environment and the statements' SQL.
+colors-and-shapes repeats the chain for `colors-env` and `shapes-env`.
+
+These tests render every flink-resources and colors-and-shapes overlay with
+`kustomize build` and check the sync waves, the Jobs' environment and OAuth
+wiring and the statements' SQL.
 
 Run from the repository root:
     python3 -I -m unittest discover -s scripts/tests -v
@@ -24,6 +27,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 FLINK_RESOURCES = REPO / "workloads" / "flink-resources"
+COLORS_AND_SHAPES = REPO / "workloads" / "colors-and-shapes"
 
 JOB = "ai-functions-setup-default"
 STATEMENTS = ("create-ai-forecast", "create-ai-detect-anomalies")
@@ -41,8 +45,8 @@ MODEL_SERVER_WAVE = 90
 MODEL_SERVER_KINDS = {"PersistentVolumeClaim", "Deployment", "Service", "NetworkPolicy"}
 
 
-def overlays():
-    return sorted(p for p in (FLINK_RESOURCES / "overlays").iterdir() if (p / "kustomization.yaml").is_file())
+def overlays(workload=FLINK_RESOURCES):
+    return sorted(p for p in (workload / "overlays").iterdir() if (p / "kustomization.yaml").is_file())
 
 
 def render_docs(path):
@@ -66,9 +70,9 @@ def parse_doc(text):
     return doc
 
 
-def find(docs, kind, name):
+def find(docs, kind, name, namespace=None):
     for doc in docs:
-        if doc["kind"] == kind and doc["name"] == name:
+        if doc["kind"] == kind and doc["name"] == name and namespace in (None, doc["namespace"]):
             return doc
     raise AssertionError(f"{kind} {name} not rendered")
 
@@ -216,6 +220,135 @@ class FlinkResourcesAiFunctionTest(unittest.TestCase):
                 self.assertIn("PersistentVolumeClaim", by_kind)
                 self.assertIn("Deployment", by_kind)
                 self.assertEqual(by_kind["PersistentVolumeClaim"]["wave"], by_kind["Deployment"]["wave"])
+
+
+# One entry per colors-and-shapes tenant: the environment, its pool, the
+# namespace its statements live in, the setup Job and the statement that
+# already runs on the pool.
+TENANTS = {
+    "colors": {
+        "environment": "colors-env",
+        "pool": "colors-pool",
+        "namespace": "flink-colors",
+        "job": "ai-functions-setup-colors",
+        "existing_statement": "colors-sql-enrich",
+    },
+    "shapes": {
+        "environment": "shapes-env",
+        "pool": "shapes-pool",
+        "namespace": "flink-shapes",
+        "job": "ai-functions-setup-shapes",
+        "existing_statement": "shapes-sql-enrich",
+    },
+}
+TENANT_SCRIPT_CONFIGMAP = "ai-functions-setup-script-cs"
+FLINK_RESOURCES_SCRIPT_CONFIGMAP = "ai-functions-setup-script"
+JOB_WAVE = "62"
+STATEMENT_WAVE = "65"
+# Waves the colors-and-shapes Application already uses (-1 is the RBAC
+# component's PreSync Job; 10/20/30 its Secret chain).
+TENANT_EXISTING_WAVES = {"-1", "5", "10", "20", "30", "40", "50", "60", "70", "80"}
+FUNCTIONS = {
+    "create-ai-forecast": ("AI_FORECAST", "io.confluent.cpflink.udf.ai.AIForecastFunction"),
+    "create-ai-detect-anomalies": ("AI_DETECT_ANOMALIES", "io.confluent.cpflink.udf.ai.AIDetectAnomaliesFunction"),
+}
+
+
+@unittest.skipUnless(shutil.which("kustomize"), "kustomize is not installed")
+class ColorsAndShapesAiFunctionTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.rendered = {path.name: render_docs(path) for path in overlays(COLORS_AND_SHAPES)}
+
+    def overlay_docs(self):
+        self.assertEqual(sorted(ALL_OVERLAYS), sorted(self.rendered), "colors-and-shapes overlays changed")
+        return list(self.rendered.items())
+
+    def each_tenant(self):
+        for overlay, docs in self.overlay_docs():
+            for tenant, spec in TENANTS.items():
+                with self.subTest(overlay=overlay, tenant=tenant):
+                    yield overlay, docs, spec
+
+    def test_ai_wave_order_per_environment(self):
+        for _, docs, spec in self.each_tenant():
+            environment = find(docs, "FlinkEnvironment", spec["environment"])
+            pool = find(docs, "FlinkComputePool", spec["pool"])
+            job = find(docs, "Job", spec["job"])
+            statements = [find(docs, "FlinkStatement", s, spec["namespace"]) for s in FUNCTIONS]
+            existing = find(docs, "FlinkStatement", spec["existing_statement"])
+            self.assertEqual(job["wave"], JOB_WAVE)
+            for statement in statements:
+                self.assertEqual(statement["wave"], STATEMENT_WAVE)
+            # The Job follows the pool, so a stuck Job cannot block the base
+            # SQL demo, and the statements need the artifact the Job uploads.
+            self.assertLess(int(environment["wave"]), int(pool["wave"]))
+            self.assertLess(int(pool["wave"]), int(job["wave"]))
+            self.assertLess(int(job["wave"]), int(STATEMENT_WAVE))
+            self.assertLess(int(STATEMENT_WAVE), int(existing["wave"]))
+            for added in (JOB_WAVE, STATEMENT_WAVE):
+                self.assertNotIn(added, TENANT_EXISTING_WAVES)
+
+    def test_job_is_a_sync_hook_that_mounts_its_own_script_configmap(self):
+        for _, docs, spec in self.each_tenant():
+            job = find(docs, "Job", spec["job"])
+            self.assertEqual(job["namespace"], "flink")
+            self.assertEqual(job["hook"], "Sync")
+            self.assertIn("argocd.argoproj.io/hook-delete-policy: BeforeHookCreation", job["text"])
+            # flink-resources generates ai-functions-setup-script in the same
+            # namespace; two Applications must not own one object.
+            self.assertRegex(job["text"], rf"configMap:\n\s+name: {TENANT_SCRIPT_CONFIGMAP}\n")
+            config_map = find(docs, "ConfigMap", TENANT_SCRIPT_CONFIGMAP)
+            self.assertEqual(config_map["namespace"], "flink")
+            self.assertIsNone(config_map["hook"])
+            self.assertIn("ai_functions_setup.py", config_map["text"])
+            self.assertNotEqual(TENANT_SCRIPT_CONFIGMAP, FLINK_RESOURCES_SCRIPT_CONFIGMAP)
+
+    def test_job_targets_its_own_environment_and_the_ttm_server(self):
+        for _, docs, spec in self.each_tenant():
+            env = job_env(find(docs, "Job", spec["job"]))
+            self.assertEqual(env["ENVIRONMENT"], spec["environment"])
+            self.assertEqual(
+                json.loads(env["MODEL_ENDPOINTS"])["ttm"],
+                "http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast",
+            )
+
+    def test_environments_carry_no_statement_defaults(self):
+        # CFK does not send statementDefaults to CMF; the Job writes them.
+        for _, docs, spec in self.each_tenant():
+            self.assertNotIn("statementDefaults", find(docs, "FlinkEnvironment", spec["environment"])["text"])
+
+    def test_create_function_statements_target_the_tenant_environment(self):
+        for _, docs, spec in self.each_tenant():
+            for name, (function, klass) in FUNCTIONS.items():
+                text = find(docs, "FlinkStatement", name, spec["namespace"])["text"]
+                self.assertIn(f"CREATE FUNCTION IF NOT EXISTS {function} AS '{klass}'", text)
+                self.assertIn(f"USING JAR 'cmf://{spec['environment']}/ai-functions.jar'", text)
+                self.assertIn(f"flinkEnvironment: {spec['environment']}", text)
+                self.assertIn(f"computePoolName: {spec['pool']}", text)
+                self.assertIn(f"sql.current-catalog: _env_{spec['environment']}", text)
+                self.assertIn(f"sql.current-database: default", text)
+
+    def test_oauth_wiring_only_on_oauth_overlays(self):
+        self.overlay_docs()
+        for overlay in sorted(ALL_OVERLAYS):
+            for spec in TENANTS.values():
+                with self.subTest(overlay=overlay, job=spec["job"]):
+                    job = find(self.rendered[overlay], "Job", spec["job"])
+                    if overlay in OAUTH_OVERLAYS:
+                        env = job_env(job)
+                        self.assertEqual(
+                            env["TOKEN_URL"],
+                            "http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token",
+                        )
+                        self.assertEqual(env["OAUTH_FILE"], "/oauth/oauth.txt")
+                        self.assertRegex(job["text"], r"- mountPath: /oauth\n\s+name: oauth\n\s+readOnly: true")
+                        self.assertRegex(
+                            job["text"], r"- name: oauth\n\s+secret:\n\s+secretName: cfk-cmf-oauth-client"
+                        )
+                    else:
+                        for token in ("TOKEN_URL", "OAUTH_FILE", "cfk-cmf-oauth-client"):
+                            self.assertNotIn(token, job["text"])
 
 
 if __name__ == "__main__":

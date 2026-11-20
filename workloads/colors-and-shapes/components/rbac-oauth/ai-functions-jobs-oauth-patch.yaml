@@ -1,0 +1,51 @@
+# Strategic-merge patches giving the two AI function setup Jobs a bearer token
+# for CMF: each reads the client id and secret from the `cfk-cmf-oauth-client`
+# Secret (the same client CFK uses for CMFRestClass) and fetches a token from
+# Keycloak. The Secret is in the `flink` namespace, where both Jobs run.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-functions-setup-colors
+  namespace: flink
+spec:
+  template:
+    spec:
+      containers:
+        - name: setup
+          env:
+            - name: TOKEN_URL
+              value: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            - name: OAUTH_FILE
+              value: /oauth/oauth.txt
+          volumeMounts:
+            - name: oauth
+              mountPath: /oauth
+              readOnly: true
+      volumes:
+        - name: oauth
+          secret:
+            secretName: cfk-cmf-oauth-client
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-functions-setup-shapes
+  namespace: flink
+spec:
+  template:
+    spec:
+      containers:
+        - name: setup
+          env:
+            - name: TOKEN_URL
+              value: http://keycloak.keycloak.svc.cluster.local:8080/realms/confluent/protocol/openid-connect/token
+            - name: OAUTH_FILE
+              value: /oauth/oauth.txt
+          volumeMounts:
+            - name: oauth
+              mountPath: /oauth
+              readOnly: true
+      volumes:
+        - name: oauth
+          secret:
+            secretName: cfk-cmf-oauth-client
