@@ -281,8 +281,9 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
             self.assertEqual(job["wave"], JOB_WAVE)
             for statement in statements:
                 self.assertEqual(statement["wave"], STATEMENT_WAVE)
-            # The Job follows the pool, so a stuck Job cannot block the base
-            # SQL demo, and the statements need the artifact the Job uploads.
+            # The Job follows the pools, so a stuck Job leaves everything before
+            # them applied. The create statements need the artifact the Job
+            # uploads, and the existing statements come after them.
             self.assertLess(int(environment["wave"]), int(pool["wave"]))
             self.assertLess(int(pool["wave"]), int(job["wave"]))
             self.assertLess(int(job["wave"]), int(STATEMENT_WAVE))
