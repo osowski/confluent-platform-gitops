@@ -10,6 +10,9 @@ order, with OAuth wiring that differs per overlay.
 
 These tests render every flink-resources overlay with `kustomize build` and
 check the sync waves, the Job's environment and the statements' SQL.
+
+Run from the repository root:
+    python3 -I -m unittest discover -s scripts/tests -v
 """
 
 import json

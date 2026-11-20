@@ -80,7 +80,8 @@ practice, confirmed by direct REST API testing during #349.
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
 applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50/52/55
-enforce both directions (RBAC clusters additionally use waves 10/20/30 for
+enforce both directions (the model server's wave 90 sits after the chain,
+outside it; RBAC clusters additionally use waves 10/20/30 for
 the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
 `FlinkApplication` at wave 10 — the two don't depend on each other, so
 sharing a wave number is harmless). See
@@ -105,7 +106,9 @@ environment. CMF's environment update (`POST /cmf/api/v1/environments`)
 replaces every default it omits, so the Job reads the environment first and
 changes only the `ai.models.*` keys. Re-running changes nothing: the update is
 skipped when the keys are already set, and the upload when the artifact
-exists. The Job's script is `base/ai-functions/ai_functions_setup.py`, run
+exists. Editing the `default` FlinkEnvironment CR makes CFK post the
+environment again without `statementDefaults`, which clears those keys until
+the next sync of this Application runs the Job. The Job's script is `base/ai-functions/ai_functions_setup.py`, run
 from a ConfigMap; on `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo`
 the `oauth` component gives it a token for the `cmf` client
 (`cfk-cmf-oauth-client`). According to the Confluent access-control role
