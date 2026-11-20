@@ -135,17 +135,66 @@ Running and Ready (for example while it downloads the model), a call fails at
 runtime because the Service `model-server-ttm` has no ready endpoint or is
 unavailable, which is a different error.
 
-CMF refuses to delete an environment that still holds an artifact (`Environment
-'<env>' cannot be deleted because it has 1 artifact ('ai-functions.jar') that
-must be deleted first.`). Deleting the `default` FlinkEnvironment CR therefore
-leaves it in CFK state `ERROR`, holding its finalizer, until the artifact is
-deleted through the CMF API. Deleting the `bootstrap` Application cascades to
-`flink-resources`, so the Application can stay in Deleting until then; see
+CMF refuses to delete an environment that still holds an artifact or a
+registered function (`Environment '<env>' cannot be deleted because it has 1
+artifact ('ai-functions.jar') that must be deleted first.` and `... it has 2
+functions ('ai_detect_anomalies', 'ai_forecast') in the default catalog
+database that must be deleted first.`). Deleting the `default` FlinkEnvironment
+CR therefore leaves it in CFK state `ERROR`, holding its finalizer, until both
+are gone. Deleting the `bootstrap` Application cascades to `flink-resources`,
+so the Application can stay in Deleting until then; see
 [Removing Bootstrap](../../docs/bootstrap-procedure.md#removing-bootstrap).
 
-On `flink-demo` (anonymous CMF), use two terminals and an explicit `--context`,
-with that cluster's context in place of `<ctx>`. In the first, keep a
-port-forward running:
+Remove them before deleting the Application or any of its resources, while the
+compute pool still exists, because dropping a function runs a statement on the
+pool. Use an explicit `--context`, with that cluster's context in place of
+`<ctx>`. First drop the two functions and wait for both statements to complete:
+
+```bash
+kubectl --context <ctx> -n flink apply -f - <<'EOF'
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: drop-ai-forecast
+  namespace: flink
+spec:
+  flinkEnvironment: default
+  computePoolName: pool
+  properties:
+    sql.current-catalog: _env_default
+    sql.current-database: default
+  statement: DROP FUNCTION AI_FORECAST;
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: FlinkStatement
+metadata:
+  name: drop-ai-detect-anomalies
+  namespace: flink
+spec:
+  flinkEnvironment: default
+  computePoolName: pool
+  properties:
+    sql.current-catalog: _env_default
+    sql.current-database: default
+  statement: DROP FUNCTION AI_DETECT_ANOMALIES;
+  parallelism: 1
+  stopped: false
+  cmfRestClassRef:
+    name: cmf-rest-class
+    namespace: flink
+EOF
+kubectl --context <ctx> -n flink wait --for=jsonpath='{.status.phase}'=COMPLETED \
+  flinkstatement/drop-ai-forecast flinkstatement/drop-ai-detect-anomalies --timeout=180s
+kubectl --context <ctx> -n flink delete flinkstatement drop-ai-forecast drop-ai-detect-anomalies
+```
+
+Then delete the artifact. On `flink-demo` (anonymous CMF), use two terminals. In
+the first, keep a port-forward running:
 
 ```bash
 kubectl --context <ctx> -n operator port-forward svc/cmf-service 18080:80
