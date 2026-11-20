@@ -116,9 +116,10 @@ The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
 `packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
 reach that host. The Job runs after the compute pool (wave 50), so a stuck Job
 cannot block the base SQL demo, and it has a 30-minute deadline
-(`activeDeadlineSeconds`). A change to only the Job (for example `MODEL_ENDPOINTS`
-or `JAR_SHA256`) does not show the Application as OutOfSync, because hook-only
-edits do not trigger an automated sync; sync the Application manually. See
+(`activeDeadlineSeconds`). A change to only the Job (for example a new
+`MODEL_ENDPOINTS` value) leaves the Application Synced, so nothing prompts a
+sync; sync it manually to run the Job again. A new JAR needs a new artifact
+version, which the Job does not handle. See
 [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 
 Call a function from a statement in `default` with the argument forms in the CMF
@@ -139,11 +140,19 @@ deleted through the CMF API. Deleting the `bootstrap` Application cascades to
 `flink-resources`, so the Application can stay in Deleting until then; see
 [Removing Bootstrap](../../docs/bootstrap-procedure.md#removing-bootstrap).
 
-On `flink-demo` (anonymous CMF), run this with an explicit `--context`, using
-that cluster's context in place of `<ctx>`:
+On `flink-demo` (anonymous CMF), use two terminals and an explicit `--context`,
+with that cluster's context in place of `<ctx>`. In the first, keep a
+port-forward running:
 
 ```bash
-kubectl --context <ctx> -n operator port-forward svc/cmf-service 18080:80 & PF=$!; sleep 3; curl -fsS -X DELETE http://localhost:18080/cmf/api/v1/environments/default/artifacts/ai-functions.jar; kill $PF
+kubectl --context <ctx> -n operator port-forward svc/cmf-service 18080:80
+```
+
+In the second, delete the artifact, then stop the port-forward with Ctrl-C in
+the first:
+
+```bash
+curl -X DELETE http://localhost:18080/cmf/api/v1/environments/default/artifacts/ai-functions.jar
 ```
 
 On the OAuth clusters (`flink-demo-rbac`, `flink-demo-rbac-mtls`, `eks-demo`),

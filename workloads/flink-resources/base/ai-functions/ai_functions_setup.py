@@ -139,8 +139,9 @@ def environment_update_body(environment):
     Keys whose value is null are omitted; CMF stores the same null either way.
 
     The body is built from an allow-list of fields. A settable field that a later
-    CMF version adds is dropped from the update until the list is extended, so
-    re-check the environment's fields on a CMF upgrade.
+    CMF version adds is not carried over, and because the update replaces
+    everything it omits, that field would be reset to its default. Re-check the
+    environment's fields on a CMF upgrade and extend the list.
     """
     metadata = environment.get("metadata") or {}
     name = metadata.get("name") or environment.get("name")
