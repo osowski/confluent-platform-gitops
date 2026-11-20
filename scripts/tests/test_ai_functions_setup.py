@@ -44,12 +44,16 @@ ARTIFACT_PATH = f"{ARTIFACTS_PATH}/{ARTIFACT}"
 OAUTH_TXT = "clientId=cmf\nclientSecret=cmf-secret\n"
 
 
+class Truncated(bytes):
+    """A response body the server cuts short of its declared Content-Length."""
+
+
 class FakeServer:
     """Records every request and answers from scripted responses.
 
     `routes` maps (method, path) to a list of (status, body) tuples; the last
-    one repeats. A dict or list body is sent as JSON, bytes as-is. Unrouted
-    requests get a 404.
+    one repeats. A dict or list body is sent as JSON, bytes as-is, and a
+    Truncated body is sent short of its Content-Length. Unrouted requests get a 404.
     """
 
     def __init__(self, routes=None):
@@ -70,9 +74,11 @@ class FakeServer:
                 if not isinstance(payload, bytes):
                     payload = json.dumps(payload).encode()
                 self.send_response(status)
-                self.send_header("Content-Length", str(len(payload)))
+                declared = len(payload) + (100 if isinstance(payload, Truncated) else 0)
+                self.send_header("Content-Length", str(declared))
                 self.end_headers()
                 self.wfile.write(payload)
+                self.close_connection = True
 
             do_GET = do_POST = do_PUT = _handle
 
@@ -268,8 +274,9 @@ class MainTests(NetworkTestCase):
         for secret in secrets:
             self.assertNotIn(secret, self.stderr)
 
-    def token_setup(self, status=200):
-        token_server = self.serve({("POST", "/token"): [(status, {"access_token": "tok-secret-1"})]})
+    def token_setup(self, status=200, body=None):
+        body = {"access_token": "tok-secret-1"} if body is None else body
+        token_server = self.serve({("POST", "/token"): [(status, body)]})
         oauth = Path(self.tmp.name) / "oauth.txt"
         oauth.write_text(OAUTH_TXT)
         return {"TOKEN_URL": token_server.url + "/token", "OAUTH_FILE": str(oauth)}
@@ -306,6 +313,13 @@ class MainTests(NetworkTestCase):
         self.assertEqual(cmf.calls("POST"), [])
         self.assert_single_stderr_line_without()
 
+    def test_main_reports_truncated_jar_download_in_one_line(self):
+        self.jar_host.routes[("GET", "/ai-functions.jar")] = [(200, Truncated(JAR_BYTES[:5]))]
+        cmf = self.cmf()
+        self.assertNotEqual(self.run_main(self.environ(cmf)), 0)
+        self.assertEqual(cmf.calls("POST"), [])
+        self.assert_single_stderr_line_without("Traceback")
+
     # auth
 
     def test_main_sends_bearer_only_when_token_url_set(self):
@@ -327,6 +341,13 @@ class MainTests(NetworkTestCase):
         self.assertNotEqual(self.run_main(self.environ(cmf, **self.token_setup(status=500))), 0)
         self.assertEqual(cmf.requests, [])
         self.assert_single_stderr_line_without("cmf-secret", "tok-secret-1")
+
+    def test_main_reports_non_object_token_response_in_one_line(self):
+        for body in (["leaked-array-body"], "leaked-string-body", 7):
+            cmf = self.cmf()
+            self.assertNotEqual(self.run_main(self.environ(cmf, **self.token_setup(body=body))), 0, body)
+            self.assertEqual(cmf.requests, [], body)
+            self.assert_single_stderr_line_without("cmf-secret", "leaked-array-body", "leaked-string-body", "Traceback")
 
     def test_main_reports_incomplete_oauth_file_without_echoing_it(self):
         cmf = self.cmf()

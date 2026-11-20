@@ -24,6 +24,7 @@ secrets and the OAuth file contents are never printed.
 
 import copy
 import hashlib
+import http.client
 import json
 import os
 import sys
@@ -84,7 +85,8 @@ def fetch_token(token_url, client_id, client_secret):
     )
     if status != 200:
         raise CmfError(f"token request returned HTTP {status}")
-    token = json.loads(body).get("access_token")
+    payload = json.loads(body)
+    token = payload.get("access_token") if isinstance(payload, dict) else None
     if not token:
         raise CmfError("token response has no access_token")
     return token
@@ -298,7 +300,7 @@ def _run(environ, sleep):
 def main(environ=os.environ, sleep=time.sleep):
     try:
         return _run(environ, sleep)
-    except (ChecksumMismatch, CmfError, TimeoutError, ValueError, OSError) as error:
+    except (ChecksumMismatch, CmfError, TimeoutError, ValueError, OSError, http.client.HTTPException) as error:
         message = " ".join(str(error).split()) or type(error).__name__
         print(f"ai-functions-setup: {message}", file=sys.stderr)
         return 1
