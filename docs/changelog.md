@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AI functions in the `default` Flink environment** ([#575](https://github.com/osowski/confluent-platform-gitops/issues/575)): `AI_FORECAST` and `AI_DETECT_ANOMALIES` work in `default` as soon as `flink-resources` syncs, with the `ttm` model server's URL already set.
+  A hook Job uploads the function JAR and two `CREATE FUNCTION` statements register it ([ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md)).
 - **Device Trust Mesh agent log trail** ([#555](https://github.com/osowski/confluent-platform-gitops/issues/555)): every agent logs a JSON line for each step of each task, from `received` to `committed`, in `kubectl logs -c fluent-bit` on the mesh workers and in the Ray dashboard's replica logs.
   Follow one task with `jq 'select(.dtm.task_id == "...")'` ([README](../workloads/device-trust-mesh/README.md#following-one-task)).
 - **CMF SQL Assistant with Gemini on every cluster** ([#553](https://github.com/osowski/confluent-platform-gitops/issues/553)): ask questions in plain language in the CMF UI and get Flink SQL back, such as "what was the approval path for device dev-0007?" for the Device Trust Mesh on `eks-demo`.

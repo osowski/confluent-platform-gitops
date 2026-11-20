@@ -62,16 +62,55 @@ practice, confirmed by direct REST API testing during #349.
   `FlinkKafkaCatalog` (`kafka-cat`) bound to Schema Registry, a
   `FlinkKafkaDatabase` (`main-kafka-cluster`) bound to the Kafka cluster, and a
   `FlinkComputePool` (`pool`, DEDICATED) with S3 checkpoint/savepoint storage.
+- **AI functions** (`base/ai-functions/`) — `AI_FORECAST` and
+  `AI_DETECT_ANOMALIES` ready to use in `default`; see
+  [AI functions](#ai-functions-default-environment).
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
 applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50
-enforce both directions (RBAC clusters additionally use waves 10/20/30 for
+(plus 12 and 55 for the AI functions) enforce both directions (RBAC clusters additionally use waves 10/20/30 for
 the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
 `FlinkApplication` at wave 10 — the two don't depend on each other, so
 sharing a wave number is harmless). See
 [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources)
 for the constraints that apply to the whole chain.
+
+## AI functions (`default` environment)
+
+`AI_FORECAST` and `AI_DETECT_ANOMALIES` work in the `default` environment with
+no manual steps, once the `ttm` model server is running. Three pieces make it
+so:
+
+| Wave | Resource | What it does |
+|---|---|---|
+| 12 | Job `ai-functions-setup-default` (Sync hook) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists |
+| 55 | FlinkStatement `create-ai-forecast` | `CREATE FUNCTION IF NOT EXISTS AI_FORECAST ... USING JAR 'cmf://default/ai-functions.jar'` |
+| 55 | FlinkStatement `create-ai-detect-anomalies` | The same for `AI_DETECT_ANOMALIES` |
+
+The Job writes the statement defaults instead of the `FlinkEnvironment` CR
+because CFK does not send `statementDefaults` to CMF when it creates an
+environment. CMF's environment update (`POST /cmf/api/v1/environments`)
+replaces every default it omits, so the Job reads the environment first and
+changes only the `ai.models.*` keys. Re-running changes nothing: the update is
+skipped when the keys are already set, and the upload when the artifact
+exists. The Job's script is `base/ai-functions/ai_functions_setup.py`, run
+from a ConfigMap; on `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo`
+the `oauth` component gives it a token for the `cmf` client
+(`cfk-cmf-oauth-client`), whose `ClusterAdmin` binding on `default` covers
+artifacts, the environment and statements.
+
+The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
+`packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
+reach that host. See
+[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
+
+Call a function from a statement in `default` with the argument forms in the CMF
+documentation
+([forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
+[detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
+A model with no URL in the environment fails with `has no model server URL in
+this environment`.
 
 ## Prerequisites
 
