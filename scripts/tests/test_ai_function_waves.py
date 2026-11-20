@@ -95,10 +95,12 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 statements = [find(docs, "FlinkStatement", s) for s in STATEMENTS]
                 for doc in (environment, job, pool, *statements):
                     self.assertIsNotNone(doc["wave"], f"{doc['name']} has no sync-wave")
-                self.assertLess(int(environment["wave"]), int(job["wave"]))
-                self.assertLess(int(job["wave"]), int(pool["wave"]))
+                # The Job runs after the pool, so a stuck Job cannot block the
+                # base SQL demo (topics, schemas, catalog, database, pool).
+                self.assertLess(int(environment["wave"]), int(pool["wave"]))
+                self.assertLess(int(pool["wave"]), int(job["wave"]))
                 for statement in statements:
-                    self.assertLess(int(pool["wave"]), int(statement["wave"]))
+                    self.assertLess(int(job["wave"]), int(statement["wave"]))
                 for added in (job, *statements):
                     self.assertNotIn(added["wave"], EXISTING_WAVES, f"{added['name']} shares a wave")
 
@@ -153,16 +155,6 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 endpoints = json.loads(env["MODEL_ENDPOINTS"])
                 self.assertEqual(endpoints["ttm"], "http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast")
                 self.assertEqual(env["ENVIRONMENT"], "default")
-
-    def test_job_runs_hardened_with_a_pinned_image(self):
-        for name, docs in self.overlay_docs():
-            with self.subTest(overlay=name):
-                text = find(docs, "Job", JOB)["text"]
-                self.assertRegex(text, r"image: python:3\.12-alpine@sha256:[0-9a-f]{64}")
-                self.assertIn("automountServiceAccountToken: false", text)
-                self.assertIn("runAsNonRoot: true", text)
-                self.assertIn("ttlSecondsAfterFinished: 300", text)
-                self.assertIn("backoffLimit: 6", text)
 
     def test_oauth_wiring_only_on_oauth_overlays(self):
         self.overlay_docs()

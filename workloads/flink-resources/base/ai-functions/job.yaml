@@ -9,10 +9,14 @@
 #
 # Safe to run on every sync. The environment update is skipped when the keys
 # already hold the target values, and the upload is skipped when the artifact
-# exists. A CMF that is still starting is waited for.
+# exists. A CMF that has not created the environment yet (HTTP 404) is waited
+# for, up to WAIT_SECONDS. A refused connection or a 5xx fails the pod, and
+# backoffLimit retries it.
 #
-# Runs as a Sync hook at wave 12: after the FlinkEnvironment (5), before the
-# compute pool (50) and the CREATE FUNCTION statements (55).
+# Runs as a Sync hook at wave 52: after the compute pool (50), before the
+# CREATE FUNCTION statements (55). It follows the pool because the pool needs
+# neither the statement defaults nor the artifact, so a stuck Job cannot block
+# the base SQL demo (topics, schemas, catalog, database, pool).
 #
 # The base talks to CMF anonymously. The `oauth` component adds a bearer token
 # from the `cfk-cmf-oauth-client` Secret.
@@ -22,10 +26,13 @@ metadata:
   name: ai-functions-setup-default
   namespace: flink
   annotations:
-    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/sync-wave: "52"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
+  # Bounds the Job's total run time, across retries, so a stuck run fails the
+  # sync instead of holding it.
+  activeDeadlineSeconds: 1800
   # A CMF restart should not use up the retries.
   backoffLimit: 6
   ttlSecondsAfterFinished: 300

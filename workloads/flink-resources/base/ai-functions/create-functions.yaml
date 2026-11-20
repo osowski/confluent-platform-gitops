@@ -3,8 +3,11 @@
 #
 # Each statement is DDL: it settles to COMPLETED, and re-running it is a no-op
 # because of IF NOT EXISTS. They run on the `pool` compute pool, so they sync
-# after it (wave 50). `spec.statement` is immutable once running, so a change to
-# either statement is a new CR with a versioned name.
+# after it (wave 50) and after the setup Job (wave 52). `spec.statement` is
+# immutable once running, so a change to either statement is a new CR with a
+# versioned name. With IF NOT EXISTS a new CR is a no-op while the function is
+# still registered, so changing the class or the JAR also needs a DROP FUNCTION
+# first.
 apiVersion: platform.confluent.io/v1beta1
 kind: FlinkStatement
 metadata:

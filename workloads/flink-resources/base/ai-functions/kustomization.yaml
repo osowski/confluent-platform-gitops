@@ -10,7 +10,7 @@ resources:
   - job.yaml
   - create-functions.yaml
 
-# Not a hook: the ConfigMap syncs with the resources before the wave-12 Job, so
+# Not a hook: the ConfigMap syncs with the resources before the wave-52 Job, so
 # the script is in place when the Job's pod starts. The fixed name lets the Job
 # mount it by name.
 configMapGenerator:
