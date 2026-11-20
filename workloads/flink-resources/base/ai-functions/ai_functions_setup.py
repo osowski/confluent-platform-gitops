@@ -137,6 +137,10 @@ def environment_update_body(environment):
                                authorization check)
       the top-level name      (sending it next to metadata.name is rejected)
     Keys whose value is null are omitted; CMF stores the same null either way.
+
+    The body is built from an allow-list of fields. A settable field that a later
+    CMF version adds is dropped from the update until the list is extended, so
+    re-check the environment's fields on a CMF upgrade.
     """
     metadata = environment.get("metadata") or {}
     name = metadata.get("name") or environment.get("name")
@@ -198,6 +202,7 @@ class CmfClient:
         """Create-or-update the environment named env with body (see environment_update_body)."""
         if body.get("metadata", {}).get("name") != env:
             raise ValueError(f"update body is not for environment {env}")
+        # createOrUpdate: this would create the environment if it vanished between the wait and this POST.
         status, _ = self._call("POST", "/cmf/api/v1/environments", json.dumps(body).encode(), "application/json")
         if not 200 <= status < 300:
             raise CmfError(f"updating environment {env} returned HTTP {status}")

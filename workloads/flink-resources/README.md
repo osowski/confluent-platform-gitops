@@ -68,7 +68,7 @@ practice, confirmed by direct REST API testing during #349.
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
-applied in order and deleted in reverse; sync waves 5/10/12/30/35/40/45/50/55
+applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50/52/55
 enforce both directions (RBAC clusters additionally use waves 10/20/30 for
 the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
 `FlinkApplication` at wave 10 — the two don't depend on each other, so
@@ -84,7 +84,7 @@ so:
 
 | Wave | Resource | What it does |
 |---|---|---|
-| 12 | Job `ai-functions-setup-default` (Sync hook) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists |
+| 52 | Job `ai-functions-setup-default` (Sync hook, after the compute pool) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists |
 | 55 | FlinkStatement `create-ai-forecast` | `CREATE FUNCTION IF NOT EXISTS AI_FORECAST ... USING JAR 'cmf://default/ai-functions.jar'` |
 | 55 | FlinkStatement `create-ai-detect-anomalies` | The same for `AI_DETECT_ANOMALIES` |
 
@@ -103,7 +103,11 @@ artifacts and statements.
 
 The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
 `packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
-reach that host. See
+reach that host. The Job runs after the compute pool (wave 50), so a stuck Job
+cannot block the base SQL demo, and it has a 30-minute deadline
+(`activeDeadlineSeconds`). A change to only the Job (for example `MODEL_ENDPOINTS`
+or `JAR_SHA256`) does not show the Application as OutOfSync, because hook-only
+edits do not trigger an automated sync; sync the Application manually. See
 [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 
 Call a function from a statement in `default` with the argument forms in the CMF
@@ -111,14 +115,29 @@ documentation
 ([forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
 [detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
 A model with no URL in the environment fails with `has no model server URL in
-this environment`.
+this environment`. If the URL is set but the model server is not running, a
+call fails at runtime because the Service `model-server-ttm` is unresolvable or
+unavailable, which is a different error.
 
 CMF refuses to delete an environment that still holds an artifact (`Environment
 '<env>' cannot be deleted because it has 1 artifact ('ai-functions.jar') that
 must be deleted first.`). Deleting the `default` FlinkEnvironment CR therefore
 leaves it in CFK state `ERROR`, holding its finalizer, until the artifact is
-deleted through the CMF API
-(`DELETE /cmf/api/v1/environments/default/artifacts/ai-functions.jar`).
+deleted through the CMF API. Deleting the `bootstrap` Application cascades to
+`flink-resources`, so the Application can stay in Deleting until then; see
+[Removing Bootstrap](../../docs/bootstrap-procedure.md#removing-bootstrap).
+
+On `flink-demo` (anonymous CMF), run this with an explicit `--context`, using
+that cluster's context in place of `<ctx>`:
+
+```bash
+kubectl --context <ctx> -n operator port-forward svc/cmf-service 18080:80 & PF=$!; sleep 3; curl -fsS -X DELETE http://localhost:18080/cmf/api/v1/environments/default/artifacts/ai-functions.jar; kill $PF
+```
+
+On the OAuth clusters (`flink-demo-rbac`, `flink-demo-rbac-mtls`, `eks-demo`),
+send the same `DELETE` with an `Authorization: Bearer` header, using a token
+obtained the way the Job does: a client-credentials grant against the
+`TOKEN_URL` with the client id and secret from Secret `cfk-cmf-oauth-client`.
 
 ## Prerequisites
 

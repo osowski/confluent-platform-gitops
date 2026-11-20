@@ -378,7 +378,7 @@ class MainTests(NetworkTestCase):
             self.assertEqual(cmf.calls("POST", ENVS_PATH), [])
             self.assertEqual(len(cmf.calls("GET", ENV_PATH)), 1, "only the existence check")
 
-    def test_main_puts_merged_environment_once(self):
+    def test_main_posts_merged_environment_once(self):
         cmf = self.cmf()
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
         (_, _, headers, body), = cmf.calls("POST", ENVS_PATH)
@@ -396,7 +396,7 @@ class MainTests(NetworkTestCase):
         self.assertEqual(sent["metadata"]["annotations"], {"owner": "gitops"})
         self.assertEqual(sent["kubernetesNamespace"], "flink")
 
-    def test_main_puts_when_statement_defaults_are_null_blocks(self):
+    def test_main_posts_when_statement_defaults_are_null_blocks(self):
         self.environment["statementDefaults"] = {"detached": None, "interactive": None}
         cmf = self.cmf()
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
@@ -405,7 +405,7 @@ class MainTests(NetworkTestCase):
         for kind in ("interactive", "detached"):
             self.assertEqual(sent["statementDefaults"][kind], {"flinkConfiguration": {"ai.models.ttm.endpoint": ENDPOINT}})
 
-    def test_main_skips_put_when_values_already_set(self):
+    def test_main_skips_post_when_values_already_set(self):
         self.environment = with_endpoint(environment_payload())
         cmf = self.cmf()
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
@@ -423,7 +423,7 @@ class MainTests(NetworkTestCase):
         self.assertEqual(cmf.calls("POST", ARTIFACTS_PATH), [], "no artifact work after a failed merge")
         self.assert_single_stderr_line_without()
 
-    def test_put_body_never_contains_server_populated_fields(self):
+    def test_update_body_never_contains_server_populated_fields(self):
         cmf = self.cmf()
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
         (_, _, _, body), = cmf.calls("POST", ENVS_PATH)
@@ -440,7 +440,6 @@ class MainTests(NetworkTestCase):
             cmf = self.cmf()
             self.assertNotEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=bad)), 0, bad)
             self.assertEqual(cmf.calls("POST"), [], bad)
-            self.assertEqual(cmf.calls("PUT"), [], bad)
             self.assert_single_stderr_line_without()
 
     def test_missing_required_variable_fails_with_one_line(self):
