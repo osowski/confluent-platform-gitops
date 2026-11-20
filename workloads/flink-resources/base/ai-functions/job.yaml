@@ -1,0 +1,86 @@
+# Uploads the AI function JAR to the `default` environment and writes the model
+# server URLs into the environment's statement defaults, through the CMF REST API.
+#
+# CFK does not send `spec.statementDefaults` to CMF when it creates an
+# environment, so the URLs cannot live on the FlinkEnvironment CR. The script
+# reads the environment, merges only the `ai.models.*` keys into its statement
+# defaults, and posts the result back: an environment update replaces every
+# default it omits.
+#
+# Safe to run on every sync. The environment update is skipped when the keys
+# already hold the target values, and the upload is skipped when the artifact
+# exists. A CMF that is still starting is waited for.
+#
+# Runs as a Sync hook at wave 12: after the FlinkEnvironment (5), before the
+# compute pool (50) and the CREATE FUNCTION statements (55).
+#
+# The base talks to CMF anonymously. The `oauth` component adds a bearer token
+# from the `cfk-cmf-oauth-client` Secret.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-functions-setup-default
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  # A CMF restart should not use up the retries.
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: ai-functions-setup
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: setup
+          image: python:3.12-alpine@sha256:c5ba3deef00c7758561a0f03c26f44f10589263d40e732b8748e0d1f38f6dd89
+          command: ["python3", "/scripts/ai_functions_setup.py"]
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: CMF_URL
+              value: http://cmf-service.operator.svc.cluster.local:80
+            - name: ENVIRONMENT
+              value: default
+            - name: ARTIFACT_NAME
+              value: ai-functions.jar
+            # io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0 from the
+            # Confluent Maven repository. The script refuses a JAR whose sha256
+            # differs.
+            - name: JAR_URL
+              value: https://packages.confluent.io/maven/io/confluent/flink/cp-flink-ai-detect-anomalies/1.0.0/cp-flink-ai-detect-anomalies-1.0.0.jar
+            - name: JAR_SHA256
+              value: afaf0c2ec6fea1ee8043d72cab80da4786c9eea49a102cfb3ea934e73ffda2de
+            - name: MODEL_ENDPOINTS
+              value: '{"ttm":"http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast"}'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: ai-functions-setup-script

@@ -2,11 +2,12 @@
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 
-# Layers CFK-operator OAuth (CMFRestClass) and a new OAuth-secured
-# credential chain for the `default` FlinkEnvironment's Kafka SQL catalog/
-# database onto the anonymous flink-resources base, for clusters that run
-# Keycloak/MDS (flink-demo-rbac, flink-demo-rbac-mtls, eks-demo). Those
-# clusters have no anonymous Kafka/SR listener, unlike flink-demo.
+# Layers CFK-operator OAuth (CMFRestClass), a bearer token for the AI function
+# setup Job, and a new OAuth-secured credential chain for the `default`
+# FlinkEnvironment's Kafka SQL catalog/database onto the anonymous
+# flink-resources base, for clusters that run Keycloak/MDS (flink-demo-rbac,
+# flink-demo-rbac-mtls, eks-demo). Those clusters have no anonymous Kafka/SR
+# listener, unlike flink-demo.
 
 resources:
   - cfk-oauth-secret.yaml
@@ -17,3 +18,4 @@ patches:
   - path: flink-environment-oauth-patch.yaml
   - path: flink-catalog-database-oauth-patch.yaml
   - path: flink-compute-pool-oauth-patch.yaml
+  - path: ai-functions-job-oauth-patch.yaml
