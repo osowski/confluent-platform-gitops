@@ -23,6 +23,7 @@ JOB = "ai-functions-setup-default"
 STATEMENTS = ("create-ai-forecast", "create-ai-detect-anomalies")
 OAUTH_OVERLAYS = ("eks-demo", "flink-demo-rbac", "flink-demo-rbac-mtls")
 ANONYMOUS_OVERLAYS = ("flink-demo",)
+ALL_OVERLAYS = OAUTH_OVERLAYS + ANONYMOUS_OVERLAYS
 JAR_REFERENCE = "USING JAR 'cmf://default/ai-functions.jar'"
 
 # Waves the flink-resources Application already uses (the RBAC component uses
@@ -79,8 +80,14 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
     def setUpClass(cls):
         cls.rendered = {path.name: render_docs(path) for path in overlays()}
 
+    def overlay_docs(self):
+        """Return (name, docs) for every overlay, failing if one of the four is missing."""
+        self.assertTrue(self.rendered, "no flink-resources overlays found")
+        self.assertEqual(sorted(ALL_OVERLAYS), sorted(set(ALL_OVERLAYS) & set(self.rendered)), "overlay missing")
+        return list(self.rendered.items())
+
     def test_default_env_ai_wave_order(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 environment = find(docs, "FlinkEnvironment", "default")
                 job = find(docs, "Job", JOB)
@@ -96,7 +103,7 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                     self.assertNotIn(added["wave"], EXISTING_WAVES, f"{added['name']} shares a wave")
 
     def test_job_is_a_sync_hook_in_the_flink_namespace(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 job = find(docs, "Job", JOB)
                 self.assertEqual(job["namespace"], "flink")
@@ -104,15 +111,23 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 self.assertIn("argocd.argoproj.io/hook-delete-policy: BeforeHookCreation", job["text"])
 
     def test_script_configmap_is_not_a_hook_and_has_a_stable_name(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 config_map = find(docs, "ConfigMap", "ai-functions-setup-script")
                 self.assertEqual(config_map["namespace"], "flink")
                 self.assertIsNone(config_map["hook"])
                 self.assertIn("ai_functions_setup.py", config_map["text"])
 
+    def test_job_mounts_the_generated_script_configmap(self):
+        for name, docs in self.overlay_docs():
+            with self.subTest(overlay=name):
+                job = find(docs, "Job", JOB)
+                self.assertRegex(job["text"], r"configMap:\n\s+name: ai-functions-setup-script")
+                self.assertRegex(job["text"], r"- mountPath: /scripts\n\s+name: script\n\s+readOnly: true")
+                find(docs, "ConfigMap", "ai-functions-setup-script")
+
     def test_default_env_has_two_create_function_statements(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 expected = {
                     "create-ai-forecast": ("AI_FORECAST", "io.confluent.cpflink.udf.ai.AIForecastFunction"),
@@ -132,7 +147,7 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                     self.assertIn("sql.current-database: default", statement["text"])
 
     def test_job_model_endpoints_name_the_ttm_server(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 env = job_env(find(docs, "Job", JOB))
                 endpoints = json.loads(env["MODEL_ENDPOINTS"])
@@ -140,7 +155,7 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 self.assertEqual(env["ENVIRONMENT"], "default")
 
     def test_job_runs_hardened_with_a_pinned_image(self):
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 text = find(docs, "Job", JOB)["text"]
                 self.assertRegex(text, r"image: python:3\.12-alpine@sha256:[0-9a-f]{64}")
@@ -150,6 +165,7 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 self.assertIn("backoffLimit: 6", text)
 
     def test_oauth_wiring_only_on_oauth_overlays(self):
+        self.overlay_docs()
         for name in OAUTH_OVERLAYS:
             with self.subTest(overlay=name):
                 job = find(self.rendered[name], "Job", JOB)
@@ -160,6 +176,10 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
                 )
                 self.assertEqual(env["OAUTH_FILE"], "/oauth/oauth.txt")
                 self.assertIn("secretName: cfk-cmf-oauth-client", job["text"])
+                self.assertRegex(
+                    job["text"], r"- mountPath: /oauth\n\s+name: oauth\n\s+readOnly: true"
+                )
+                self.assertRegex(job["text"], r"- name: oauth\n\s+secret:\n\s+secretName: cfk-cmf-oauth-client")
         for name in ANONYMOUS_OVERLAYS:
             with self.subTest(overlay=name):
                 job = find(self.rendered[name], "Job", JOB)
@@ -171,7 +191,7 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
         # CFK does not send statementDefaults to CMF when it creates an
         # environment, so the Job writes the model URLs. A CR block would be
         # ignored and would hide that.
-        for name, docs in self.rendered.items():
+        for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 self.assertNotIn("statementDefaults", find(docs, "FlinkEnvironment", "default")["text"])
 

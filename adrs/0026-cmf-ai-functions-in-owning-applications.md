@@ -24,7 +24,7 @@ The standard environments are `default` (owned by `flink-resources`), and `color
 
 ## Decision
 
-- **Each Application sets up the environments it owns.** `flink-resources` sets up `default`; `colors-and-shapes` sets up its two. A cluster without `colors-and-shapes` is unaffected.
+- **Each Application sets up the environments it owns.** `flink-resources` sets up `default`. The same Job and script are used by `colors-and-shapes`, which sets up its own two environments. A cluster without `colors-and-shapes` is unaffected.
 - **Statement defaults are written by the setup Job through the CMF API**, not by the `FlinkEnvironment` CR. The CR carries no `statementDefaults`. The Job reads the environment, sets only the `ai.models.*` keys in the `interactive` and `detached` blocks, and posts the whole environment back through createOrUpdate, leaving every other default as read. It skips the post when the keys already hold the target values.
 - **Artifact upload is an idempotent Argo CD hook Job** (`Sync`, `BeforeHookCreation`, wave 12 in `flink-resources`). It waits for CFK to create the environment in CMF, checks whether `ai-functions.jar` exists, and only otherwise downloads the JAR, verifies its pinned sha256 and uploads it. The pinned `python:3.12-alpine` image runs a standard-library-only script from a ConfigMap generated from `ai_functions_setup.py`. The Job runs in the `flink` namespace on every cluster. On the three OAuth clusters a component patch adds a client-credentials token fetch from the `cfk-cmf-oauth-client` Secret.
 - **`CREATE FUNCTION` stays a `FlinkStatement`.** `create-ai-forecast` and `create-ai-detect-anomalies` (wave 55, after the compute pool) use `IF NOT EXISTS`. The live gate on the fallback conditions passed, so no statement-submitting code goes in the Job.
@@ -40,8 +40,9 @@ The standard environments are `default` (owned by `flink-resources`), and `color
 
 ## Consequences
 
-- **The setup runs on Argo CD sync and does not repair itself.** If CMF loses its state, the artifact, functions and defaults are not restored until the cluster is rebuilt from zero. `eks-demo`, `flink-demo-rbac` and `flink-demo-rbac-mtls` back CMF with Postgres, so a CMF restart keeps them.
+- **The setup runs on Argo CD sync and does not repair itself.** If CMF loses its state, the artifact, functions and defaults are not restored until the cluster is rebuilt from zero.
 - **A change to either `CREATE FUNCTION` statement is a new CR with a versioned name,** because `spec.statement` is immutable once running.
 - **The JAR is pinned.** Moving to a later JAR needs a new URL and checksum, a new artifact version, and a re-registration; it is not handled automatically.
-- **On the RBAC clusters the Job's principal is `cmf`.** The existing `ClusterAdmin` binding on the `default` environment covers artifacts and statements there ([access-control](https://docs.confluent.io/cp-flink/current/configure/access-control.html)).
+- **On the RBAC clusters the Job's principal is `cmf`.** According to the Confluent access-control role table ([access-control](https://docs.confluent.io/cp-flink/current/configure/access-control.html)), the `cmf` principal's `ClusterAdmin` binding on `default` covers artifacts and statements.
+- **Deleting the `default` FlinkEnvironment CR needs the artifact deleted first.** CMF refuses to delete an environment that still holds an artifact (`Environment '<env>' cannot be deleted because it has 1 artifact ('ai-functions.jar') that must be deleted first.`). The CR stays in CFK state `ERROR` with its finalizer until `DELETE /cmf/api/v1/environments/<env>/artifacts/<name>` removes the artifact.
 - **The script has two copies to keep in step.**

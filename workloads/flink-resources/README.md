@@ -68,8 +68,8 @@ practice, confirmed by direct REST API testing during #349.
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
-applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50
-(plus 12 and 55 for the AI functions) enforce both directions (RBAC clusters additionally use waves 10/20/30 for
+applied in order and deleted in reverse; sync waves 5/10/12/30/35/40/45/50/55
+enforce both directions (RBAC clusters additionally use waves 10/20/30 for
 the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
 `FlinkApplication` at wave 10 — the two don't depend on each other, so
 sharing a wave number is harmless). See
@@ -97,8 +97,9 @@ skipped when the keys are already set, and the upload when the artifact
 exists. The Job's script is `base/ai-functions/ai_functions_setup.py`, run
 from a ConfigMap; on `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo`
 the `oauth` component gives it a token for the `cmf` client
-(`cfk-cmf-oauth-client`), whose `ClusterAdmin` binding on `default` covers
-artifacts, the environment and statements.
+(`cfk-cmf-oauth-client`). According to the Confluent access-control role
+table, the `cmf` principal's `ClusterAdmin` binding on `default` covers
+artifacts and statements.
 
 The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
 `packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
@@ -111,6 +112,13 @@ documentation
 [detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
 A model with no URL in the environment fails with `has no model server URL in
 this environment`.
+
+CMF refuses to delete an environment that still holds an artifact (`Environment
+'<env>' cannot be deleted because it has 1 artifact ('ai-functions.jar') that
+must be deleted first.`). Deleting the `default` FlinkEnvironment CR therefore
+leaves it in CFK state `ERROR`, holding its finalizer, until the artifact is
+deleted through the CMF API
+(`DELETE /cmf/api/v1/environments/default/artifacts/ai-functions.jar`).
 
 ## Prerequisites
 
