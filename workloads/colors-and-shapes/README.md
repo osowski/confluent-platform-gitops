@@ -156,6 +156,9 @@ gives both Jobs a token for the `cmf` client (`cfk-cmf-oauth-client`); on
 [`flink-resources` README](../flink-resources/README.md#ai-functions-default-environment)
 and [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 
+After editing `colors-env` or `shapes-env`, sync this Application (not
+`flink-resources`) to restore the model endpoints.
+
 **Teardown.** CMF refuses to delete an environment that still holds an
 artifact or a registered function, so deleting `colors-env` or `shapes-env`
 (directly, or by deleting the Application) leaves the CR in CFK state `ERROR`

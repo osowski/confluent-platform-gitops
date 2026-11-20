@@ -20,8 +20,7 @@ outside GitOps by design, submitted as ad-hoc statements through the CMF UI.
 > [README](../README.md#ai-functions)) and in `default` by `flink-resources`,
 > with no JAR to upload; see that
 > [README](../../flink-resources/README.md#ai-functions-default-environment).
-> They are registered from their own artifact, `ai-functions.jar`, so they sit
-> alongside `to_upper` in `colors-env` without touching `udfs.jar`.
+> They use their own artifact, `ai-functions.jar`, not `udfs.jar`.
 
 ## Prerequisites
 

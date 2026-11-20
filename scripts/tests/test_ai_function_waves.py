@@ -242,12 +242,8 @@ TENANTS = {
     },
 }
 TENANT_SCRIPT_CONFIGMAP = "ai-functions-setup-script-cs"
-FLINK_RESOURCES_SCRIPT_CONFIGMAP = "ai-functions-setup-script"
 JOB_WAVE = "62"
 STATEMENT_WAVE = "65"
-# Waves the colors-and-shapes Application already uses (-1 is the RBAC
-# component's PreSync Job; 10/20/30 its Secret chain).
-TENANT_EXISTING_WAVES = {"-1", "5", "10", "20", "30", "40", "50", "60", "70", "80"}
 FUNCTIONS = {
     "create-ai-forecast": ("AI_FORECAST", "io.confluent.cpflink.udf.ai.AIForecastFunction"),
     "create-ai-detect-anomalies": ("AI_DETECT_ANOMALIES", "io.confluent.cpflink.udf.ai.AIDetectAnomaliesFunction"),
@@ -259,6 +255,7 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rendered = {path.name: render_docs(path) for path in overlays(COLORS_AND_SHAPES)}
+        cls.flink_resources = {path.name: render_docs(path) for path in overlays(FLINK_RESOURCES)}
 
     def overlay_docs(self):
         self.assertEqual(sorted(ALL_OVERLAYS), sorted(self.rendered), "colors-and-shapes overlays changed")
@@ -276,6 +273,10 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
             pool = find(docs, "FlinkComputePool", spec["pool"])
             job = find(docs, "Job", spec["job"])
             statements = [find(docs, "FlinkStatement", s, spec["namespace"]) for s in FUNCTIONS]
+            jobs = [find(docs, "Job", t["job"]) for t in TENANTS.values()]
+            all_statements = [
+                find(docs, "FlinkStatement", s, t["namespace"]) for t in TENANTS.values() for s in FUNCTIONS
+            ]
             existing = find(docs, "FlinkStatement", spec["existing_statement"])
             self.assertEqual(job["wave"], JOB_WAVE)
             for statement in statements:
@@ -286,8 +287,11 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
             self.assertLess(int(pool["wave"]), int(job["wave"]))
             self.assertLess(int(job["wave"]), int(STATEMENT_WAVE))
             self.assertLess(int(STATEMENT_WAVE), int(existing["wave"]))
-            for added in (JOB_WAVE, STATEMENT_WAVE):
-                self.assertNotIn(added, TENANT_EXISTING_WAVES)
+            # The new waves are not shared with any other rendered resource.
+            added = {id(doc) for doc in (*jobs, *all_statements)}
+            other_waves = {doc["wave"] for doc in docs if id(doc) not in added and doc["wave"] is not None}
+            for doc in (*jobs, *all_statements):
+                self.assertNotIn(doc["wave"], other_waves, f"{doc['name']} shares a wave")
 
     def test_job_is_a_sync_hook_that_mounts_its_own_script_configmap(self):
         for _, docs, spec in self.each_tenant():
@@ -302,7 +306,16 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
             self.assertEqual(config_map["namespace"], "flink")
             self.assertIsNone(config_map["hook"])
             self.assertIn("ai_functions_setup.py", config_map["text"])
-            self.assertNotEqual(TENANT_SCRIPT_CONFIGMAP, FLINK_RESOURCES_SCRIPT_CONFIGMAP)
+
+    def test_no_object_is_owned_by_both_flink_resources_and_colors_and_shapes(self):
+        # Both Applications deploy into the `flink` namespace; two Applications
+        # must not own one object.
+        for overlay, docs in self.overlay_docs():
+            with self.subTest(overlay=overlay):
+                self.assertIn(overlay, self.flink_resources)
+                ours = {(d["kind"], d["namespace"], d["name"]) for d in docs}
+                theirs = {(d["kind"], d["namespace"], d["name"]) for d in self.flink_resources[overlay]}
+                self.assertEqual(ours & theirs, set())
 
     def test_job_targets_its_own_environment_and_the_ttm_server(self):
         for _, docs, spec in self.each_tenant():
@@ -327,7 +340,7 @@ class ColorsAndShapesAiFunctionTest(unittest.TestCase):
                 self.assertIn(f"flinkEnvironment: {spec['environment']}", text)
                 self.assertIn(f"computePoolName: {spec['pool']}", text)
                 self.assertIn(f"sql.current-catalog: _env_{spec['environment']}", text)
-                self.assertIn(f"sql.current-database: default", text)
+                self.assertIn("sql.current-database: default", text)
 
     def test_oauth_wiring_only_on_oauth_overlays(self):
         self.overlay_docs()

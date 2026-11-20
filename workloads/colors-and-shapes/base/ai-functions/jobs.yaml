@@ -15,9 +15,12 @@
 # backoffLimit retries it.
 #
 # Each Job runs as a Sync hook at wave 62: after the compute pools (60), before
-# the CREATE FUNCTION statements (65). It follows the pools because a pool
-# needs neither the statement defaults nor the artifact, so a stuck Job cannot
-# block the base SQL demo (topics, schemas, catalogs, databases, pools).
+# the CREATE FUNCTION statements (65). A pool needs neither the statement
+# defaults nor the artifact, so topics, schemas, catalogs, databases and pools
+# sync before the Jobs and are unaffected by them. A Job that fails
+# (backoffLimit) or runs past its deadline fails the sync at wave 62: the
+# CREATE FUNCTION statements (65), the existing SQL statements (70) and the
+# FlinkApplications (80) are not applied until a Job succeeds.
 #
 # The model server runs in the flink-resources Application. The base talks to
 # CMF anonymously. The `rbac-oauth` component adds a bearer token from the
