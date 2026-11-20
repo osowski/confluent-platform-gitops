@@ -62,6 +62,17 @@ practice, confirmed by direct REST API testing during #349.
   `FlinkKafkaCatalog` (`kafka-cat`) bound to Schema Registry, a
   `FlinkKafkaDatabase` (`main-kafka-cluster`) bound to the Kafka cluster, and a
   `FlinkComputePool` (`pool`, DEDICATED) with S3 checkpoint/savepoint storage.
+- **Model server** (`model-server-ttm`) — serves the `ttm` time series model
+  that the `AI_FORECAST` and `AI_DETECT_ANOMALIES` functions call, at
+  `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`. It is a
+  one-replica Deployment with a Service, a NetworkPolicy and a 5Gi PVC
+  (`model-server-ttm-cache`, `gp3` on eks-demo, `standard` elsewhere) that
+  keeps the Hugging Face download across pod restarts. The pod is ready only
+  after the model is downloaded and loaded (the probe allows up to 10 minutes).
+  The NetworkPolicy admits only Flink pods (`type: flink-native-kubernetes`)
+  from the `flink`, `flink-colors` and `flink-shapes` namespaces. All four
+  resources sit in sync wave 90, after every other resource in this
+  Application, so a slow model download never holds up the Flink SQL chain.
 - **AI functions** (`base/ai-functions/`) — `AI_FORECAST` and
   `AI_DETECT_ANOMALIES` ready to use in `default`; see
   [AI functions](#ai-functions-default-environment).
@@ -79,8 +90,8 @@ for the constraints that apply to the whole chain.
 ## AI functions (`default` environment)
 
 `AI_FORECAST` and `AI_DETECT_ANOMALIES` work in the `default` environment with
-no manual steps, once the `ttm` model server is running. Three pieces make it
-so:
+no manual steps, once the `ttm` model server (deployed by this Application, see
+above) is Ready. Three pieces make the functions usable:
 
 | Wave | Resource | What it does |
 |---|---|---|
@@ -115,8 +126,9 @@ documentation
 ([forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
 [detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
 A model with no URL in the environment fails with `has no model server URL in
-this environment`. If the URL is set but the model server is not running, a
-call fails at runtime because the Service `model-server-ttm` is unresolvable or
+this environment`. If the URL is set but the `model-server-ttm` pod is not
+Running and Ready (for example while it downloads the model), a call fails at
+runtime because the Service `model-server-ttm` has no ready endpoint or is
 unavailable, which is a different error.
 
 CMF refuses to delete an environment that still holds an artifact (`Environment

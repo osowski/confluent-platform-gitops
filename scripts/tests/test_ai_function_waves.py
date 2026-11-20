@@ -1,12 +1,15 @@
-"""Render checks for the `default` environment's AI function setup (stdlib unittest only).
+"""Render checks for the AI function resources in flink-resources (stdlib unittest only).
 
-The upload Job, the compute pool and the two CREATE FUNCTION statements form a
-chain that only works in one order, and the OAuth wiring differs per overlay.
+Two things have to hold across every overlay. The model server owns a PVC that
+stays Pending until its pod exists, and Argo CD waits for a Deployment to be
+Ready before it starts the next wave, so its resources sit in one wave after
+every other resource: a slow model download would otherwise stall the
+environments, the compute pool and the topics. And the upload Job, the compute
+pool and the two CREATE FUNCTION statements form a chain that only works in one
+order, with OAuth wiring that differs per overlay.
+
 These tests render every flink-resources overlay with `kustomize build` and
 check the sync waves, the Job's environment and the statements' SQL.
-
-Run from the repository root:
-    python3 -I -m unittest discover -s scripts/tests -v
 """
 
 import json
@@ -29,6 +32,10 @@ JAR_REFERENCE = "USING JAR 'cmf://default/ai-functions.jar'"
 # Waves the flink-resources Application already uses (the RBAC component uses
 # 10/20/30). The Job and statements must not share a wave with any of them.
 EXISTING_WAVES = {"5", "10", "20", "30", "35", "40", "45", "50"}
+
+MODEL_SERVER_PREFIX = "model-server-ttm"
+MODEL_SERVER_WAVE = 90
+MODEL_SERVER_KINDS = {"PersistentVolumeClaim", "Deployment", "Service", "NetworkPolicy"}
 
 
 def overlays():
@@ -75,7 +82,7 @@ def job_env(doc):
 
 
 @unittest.skipUnless(shutil.which("kustomize"), "kustomize is not installed")
-class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
+class FlinkResourcesAiFunctionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rendered = {path.name: render_docs(path) for path in overlays()}
@@ -186,6 +193,26 @@ class DefaultEnvironmentAiFunctionTest(unittest.TestCase):
         for name, docs in self.overlay_docs():
             with self.subTest(overlay=name):
                 self.assertNotIn("statementDefaults", find(docs, "FlinkEnvironment", "default")["text"])
+
+    def test_model_server_waves_follow_every_other_flink_resource(self):
+        for name, docs in self.overlay_docs():
+            with self.subTest(overlay=name):
+                server = [d for d in docs if d["name"].startswith(MODEL_SERVER_PREFIX)]
+                self.assertEqual({d["kind"] for d in server}, MODEL_SERVER_KINDS)
+                for doc in server:
+                    self.assertEqual(doc["wave"], str(MODEL_SERVER_WAVE), f"{doc['kind']}/{doc['name']}")
+                for doc in docs:
+                    if doc not in server:
+                        # Argo CD's default wave, with no annotation, is 0.
+                        self.assertLess(int(doc["wave"] or 0), MODEL_SERVER_WAVE, f"{doc['kind']}/{doc['name']}")
+
+    def test_model_server_pvc_and_deployment_share_a_wave(self):
+        for name, docs in self.overlay_docs():
+            with self.subTest(overlay=name):
+                by_kind = {d["kind"]: d for d in docs if d["name"].startswith(MODEL_SERVER_PREFIX)}
+                self.assertIn("PersistentVolumeClaim", by_kind)
+                self.assertIn("Deployment", by_kind)
+                self.assertEqual(by_kind["PersistentVolumeClaim"]["wave"], by_kind["Deployment"]["wave"])
 
 
 if __name__ == "__main__":

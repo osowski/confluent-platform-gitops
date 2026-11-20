@@ -1,0 +1,61 @@
+---
+# Serves the ttm time series model to AI_FORECAST and AI_DETECT_ANOMALIES.
+# Recreate: the cache volume is ReadWriteOnce, so a second pod cannot start
+# while the first holds it. The CPU limit sets the server's thread count.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-server-ttm
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "90"
+  labels:
+    app: model-server-ttm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: model-server-ttm
+  template:
+    metadata:
+      labels:
+        app: model-server-ttm
+    spec:
+      # The image runs as uid 1000; fsGroup makes the volume writable by it.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: model-server
+          image: confluentinc/cp-flink-models:1.0.0@sha256:e5d5ea03d3a4bda9d8c52b0b3cfe89e2a139afc9f5fd36b69b184175404f18b9
+          env:
+            - name: MODEL
+              value: ttm
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # Ready only after the model is downloaded and loaded: up to 10 minutes.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 120
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /home/appuser/.cache/huggingface
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: model-server-ttm-cache

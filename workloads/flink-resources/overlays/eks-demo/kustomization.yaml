@@ -7,6 +7,12 @@ resources:
 components:
   - ../../components/oauth
 
+patches:
+  - path: model-server-pvc-patch.yaml
+    target:
+      kind: PersistentVolumeClaim
+      name: model-server-ttm-cache
+
 labels:
 - includeSelectors: false
   includeTemplates: true
