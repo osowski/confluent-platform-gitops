@@ -6,9 +6,12 @@ Steps, in order:
   1. Fetch an OAuth token (only when TOKEN_URL is set).
   2. Wait for the environment to exist in CMF.
   3. Write the model-server URLs into the environment's statement defaults
-     (only when MODEL_ENDPOINTS is set).
-  4. Check whether the artifact exists; if not, download the JAR, verify its
-     sha256, and upload it.
+     (only when MODEL_ENDPOINTS is set). The script owns every
+     `ai.models.<name>.endpoint` key in the `interactive` and `detached` blocks:
+     a key for a model not in MODEL_ENDPOINTS is removed.
+  4. Check the artifact. If it is missing, download the JAR, verify its sha256,
+     and upload it. If it exists, its latest version must be READY with the
+     pinned sha256; otherwise the script fails and changes nothing.
 
 Environment variables:
   CMF_URL, ENVIRONMENT, ARTIFACT_NAME, JAR_URL, JAR_SHA256   required
@@ -18,7 +21,11 @@ Environment variables:
                              e.g. {"ttm": "http://model-server:8080/v1/forecast"}
   WAIT_SECONDS               how long to wait for the environment (default 300)
 
-Every failure writes one line to stderr and exits non-zero. Tokens, client
+Every failure writes one line to stderr. The exit code is 2 for an error that
+running again cannot fix (a missing or malformed variable, a JAR or artifact
+that does not match the pinned sha256, an artifact that is not READY, HTTP 401
+or 403, an environment body that fails its safety check) and 1 for everything
+else. A failed CMF call includes CMF's error detail, truncated. Tokens, client
 secrets and the OAuth file contents are never printed.
 """
 
@@ -27,6 +34,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -38,14 +46,78 @@ REQUEST_TIMEOUT_S = 60
 DOWNLOAD_TIMEOUT_S = 300
 DEFAULT_WAIT_S = 300
 STATEMENT_KINDS = ("interactive", "detached")
+ERROR_DETAIL_CHARS = 300
+EXIT_RETRYABLE = 1
+EXIT_NOT_RETRYABLE = 2
+SHA256_HEX = re.compile(r"[0-9a-fA-F]{64}")
+MODEL_KEY_PREFIX = "ai.models."
+MODEL_KEY_SUFFIX = ".endpoint"
 
 
-class ChecksumMismatch(Exception):
+class NotRetryable(Exception):
+    """An error that running the script again cannot fix; main exits 2 for it."""
+
+
+class ConfigError(NotRetryable, ValueError):
+    """A required environment variable is missing or malformed."""
+
+
+class UnsafeUpdate(NotRetryable, ValueError):
+    """An environment update body failed its safety check and was not sent."""
+
+
+class ChecksumMismatch(NotRetryable):
     """The downloaded JAR does not match the pinned sha256."""
+
+
+class ArtifactMismatch(NotRetryable):
+    """The existing artifact is not READY, does not match the pin, or could not be read."""
 
 
 class CmfError(Exception):
     """CMF (or the token endpoint) answered with an unexpected status."""
+
+
+class AuthError(CmfError, NotRetryable):
+    """CMF or the token endpoint answered HTTP 401 or 403."""
+
+
+def error_detail(body):
+    """Return a one-line, truncated summary of a CMF error body, or "" for an empty one.
+
+    CMF error bodies are `{"errors": [{"message": ...}]}`; their messages are
+    preferred, and any other body is used as text.
+    """
+    text = (body or b"").decode("utf-8", errors="replace").strip()
+    if not text:
+        return ""
+    try:
+        payload = json.loads(text)
+    except ValueError:
+        payload = text
+    if payload in ({}, [], None):
+        return ""
+    if isinstance(payload, dict) and isinstance(payload.get("errors"), list):
+        messages = [
+            error["message"]
+            for error in payload["errors"]
+            if isinstance(error, dict) and isinstance(error.get("message"), str) and error["message"].strip()
+        ]
+        if messages:
+            text = "; ".join(messages)
+    text = " ".join(text.split())
+    if len(text) > ERROR_DETAIL_CHARS:
+        text = text[: ERROR_DETAIL_CHARS - 3] + "..."
+    return text
+
+
+def cmf_error(what, status, body):
+    """Return the exception for a CMF call that answered `status`, with CMF's error detail."""
+    message = f"{what} returned HTTP {status}"
+    detail = error_detail(body)
+    if detail:
+        message = f"{message}: {detail}"
+    return (AuthError if status in (401, 403) else CmfError)(message)
 
 
 def parse_oauth_txt(text):
@@ -84,7 +156,8 @@ def fetch_token(token_url, client_id, client_secret):
         form.encode(),
     )
     if status != 200:
-        raise CmfError(f"token request returned HTTP {status}")
+        # The token endpoint's error body is left out: it is not CMF's and may echo the request.
+        raise (AuthError if status in (401, 403) else CmfError)(f"token request returned HTTP {status}")
     payload = json.loads(body)
     token = payload.get("access_token") if isinstance(payload, dict) else None
     if not token:
@@ -103,20 +176,32 @@ def download_jar(url, sha256_hex):
     return body
 
 
-def merge_model_endpoints(environment, endpoints):
-    """Return a copy of a CMF environment with `ai.models.<name>.endpoint` set.
+def is_model_endpoint_key(key):
+    """True for a key of the form `ai.models.<name>.endpoint` with a non-empty name."""
+    return (
+        key.startswith(MODEL_KEY_PREFIX)
+        and key.endswith(MODEL_KEY_SUFFIX)
+        and len(key) > len(MODEL_KEY_PREFIX) + len(MODEL_KEY_SUFFIX)
+    )
 
-    The key is set in both statementDefaults.interactive.flinkConfiguration and
-    statementDefaults.detached.flinkConfiguration. Null or missing blocks are
-    created; every other key is left as it was.
+
+def merge_model_endpoints(environment, endpoints):
+    """Return a copy of a CMF environment whose model endpoint keys match endpoints.
+
+    In both statementDefaults.interactive.flinkConfiguration and
+    statementDefaults.detached.flinkConfiguration, `ai.models.<name>.endpoint`
+    is set for each entry of endpoints and removed for any other name. Null or
+    missing blocks are created; every other key is left as it was.
     """
+    wanted = {f"{MODEL_KEY_PREFIX}{name}{MODEL_KEY_SUFFIX}": url for name, url in endpoints.items()}
     merged = copy.deepcopy(environment)
     defaults = merged.get("statementDefaults") or {}
     for kind in STATEMENT_KINDS:
         block = defaults.get(kind) or {}
         configuration = block.get("flinkConfiguration") or {}
-        for name, url in endpoints.items():
-            configuration[f"ai.models.{name}.endpoint"] = url
+        for key in [key for key in configuration if is_model_endpoint_key(key) and key not in wanted]:
+            del configuration[key]
+        configuration.update(wanted)
         block["flinkConfiguration"] = configuration
         defaults[kind] = block
     merged["statementDefaults"] = defaults
@@ -146,7 +231,7 @@ def environment_update_body(environment):
     metadata = environment.get("metadata") or {}
     name = metadata.get("name") or environment.get("name")
     if not name:
-        raise ValueError("environment has no name")
+        raise UnsafeUpdate("environment has no name")
     body_metadata = {"name": name}
     for key in ("labels", "annotations"):
         if metadata.get(key) is not None:
@@ -182,18 +267,18 @@ class CmfClient:
 
     def environment_exists(self, env):
         path = self._environment_path(env)
-        status, _ = self._call("GET", path)
+        status, body = self._call("GET", path)
         if status == 404:
             return False
         if status != 200:
-            raise CmfError(f"GET {path} returned HTTP {status}")
+            raise cmf_error(f"GET {path}", status, body)
         return True
 
     def get_environment(self, env):
         path = self._environment_path(env)
         status, body = self._call("GET", path)
         if status != 200:
-            raise CmfError(f"GET {path} returned HTTP {status}")
+            raise cmf_error(f"GET {path}", status, body)
         environment = json.loads(body)
         if not isinstance(environment, dict):
             raise CmfError(f"GET {path} did not return a JSON object")
@@ -202,20 +287,23 @@ class CmfClient:
     def update_environment(self, env, body):
         """Create-or-update the environment named env with body (see environment_update_body)."""
         if body.get("metadata", {}).get("name") != env:
-            raise ValueError(f"update body is not for environment {env}")
+            raise UnsafeUpdate(f"update body is not for environment {env}")
         # createOrUpdate: this would create the environment if it vanished between the wait and this POST.
-        status, _ = self._call("POST", "/cmf/api/v1/environments", json.dumps(body).encode(), "application/json")
+        status, response = self._call(
+            "POST", "/cmf/api/v1/environments", json.dumps(body).encode(), "application/json"
+        )
         if not 200 <= status < 300:
-            raise CmfError(f"updating environment {env} returned HTTP {status}")
+            raise cmf_error(f"updating environment {env}", status, response)
 
-    def artifact_exists(self, env, name):
+    def get_artifact(self, env, name):
+        """Return the artifact as CMF reports it (its status is the latest version's), or None if absent."""
         path = f"{self._environment_path(env)}/artifacts/{urllib.parse.quote(name, safe='')}"
-        status, _ = self._call("GET", path)
+        status, body = self._call("GET", path)
         if status == 404:
-            return False
+            return None
         if status != 200:
-            raise CmfError(f"GET {path} returned HTTP {status}")
-        return True
+            raise cmf_error(f"GET {path}", status, body)
+        return json.loads(body)
 
     def upload_artifact(self, env, name, jar):
         path = f"{self._environment_path(env)}/artifacts"
@@ -236,10 +324,33 @@ class CmfClient:
             + b"\r\n",
             f"--{boundary}--\r\n".encode(),
         ]
-        status, _ = self._call("POST", path, b"".join(parts), f"multipart/form-data; boundary={boundary}")
+        status, body = self._call("POST", path, b"".join(parts), f"multipart/form-data; boundary={boundary}")
         if status == 409 or 200 <= status < 300:
             return
-        raise CmfError(f"uploading artifact {name} returned HTTP {status}")
+        raise cmf_error(f"uploading artifact {name}", status, body)
+
+
+def check_existing_artifact(env, name, artifact, sha256_hex):
+    """Raise ArtifactMismatch unless the artifact's latest version is READY with the pinned sha256.
+
+    The script never replaces an existing artifact: the functions registered
+    from it keep using the stored JAR, so a mismatch is resolved by hand.
+    """
+    status = artifact.get("status") if isinstance(artifact, dict) else None
+    phase = status.get("phase") if isinstance(status, dict) else None
+    if not isinstance(phase, str) or not phase:
+        raise ArtifactMismatch(
+            f"artifact {name} in environment {env}: unexpected CMF response, no status.phase for its latest version"
+        )
+    checksum = status.get("checksum")
+    expected = f"sha256:{sha256_hex.strip().lower()}"
+    if phase == "READY" and isinstance(checksum, str) and checksum.lower() == expected:
+        return
+    raise ArtifactMismatch(
+        f"artifact {name} in environment {env} is {phase} with checksum {checksum or 'none'}, expected READY "
+        f"with {expected}; delete the registered functions and the artifact (see the Application README's "
+        "AI functions teardown), then sync again"
+    )
 
 
 def wait_for_environment(client, env, timeout_s, interval_s=5, sleep=time.sleep):
@@ -256,27 +367,36 @@ def parse_model_endpoints(raw):
     """Parse MODEL_ENDPOINTS into {name: url}; an unset or empty value means none."""
     if not raw or not raw.strip():
         return {}
-    endpoints = json.loads(raw)
+    message = "MODEL_ENDPOINTS must be a JSON object of model name to URL"
+    try:
+        endpoints = json.loads(raw)
+    except ValueError:
+        raise ConfigError(message) from None
     valid = isinstance(endpoints, dict) and all(
         isinstance(name, str) and name and isinstance(url, str) and url for name, url in endpoints.items()
     )
     if not valid:
-        raise ValueError("MODEL_ENDPOINTS must be a JSON object of model name to URL")
+        raise ConfigError(message)
     return endpoints
 
 
 def _run(environ, sleep):
     for key in ("CMF_URL", "ENVIRONMENT", "ARTIFACT_NAME", "JAR_URL", "JAR_SHA256"):
         if not environ.get(key):
-            raise ValueError(f"{key} is not set")
+            raise ConfigError(f"{key} is not set")
+    if not SHA256_HEX.fullmatch(environ["JAR_SHA256"].strip()):
+        raise ConfigError("JAR_SHA256 must be 64 hexadecimal characters")
     env = environ["ENVIRONMENT"]
     endpoints = parse_model_endpoints(environ.get("MODEL_ENDPOINTS"))
-    wait_seconds = float(environ.get("WAIT_SECONDS") or DEFAULT_WAIT_S)
+    try:
+        wait_seconds = float(environ.get("WAIT_SECONDS") or DEFAULT_WAIT_S)
+    except ValueError:
+        raise ConfigError("WAIT_SECONDS must be a number of seconds") from None
 
     token = None
     if environ.get("TOKEN_URL"):
         if not environ.get("OAUTH_FILE"):
-            raise ValueError("OAUTH_FILE is not set")
+            raise ConfigError("OAUTH_FILE is not set")
         with open(environ["OAUTH_FILE"], encoding="utf-8") as handle:
             client_id, client_secret = parse_oauth_txt(handle.read())
         token = fetch_token(environ["TOKEN_URL"], client_id, client_secret)
@@ -294,8 +414,10 @@ def _run(environ, sleep):
             print(f"environment {env}: model endpoints set")
 
     name = environ["ARTIFACT_NAME"]
-    if client.artifact_exists(env, name):
-        print(f"artifact {name} already exists in {env}")
+    artifact = client.get_artifact(env, name)
+    if artifact is not None:
+        check_existing_artifact(env, name, artifact, environ["JAR_SHA256"])
+        print(f"artifact {name} already exists in {env} (READY, sha256 matches)")
         return 0
     jar = download_jar(environ["JAR_URL"], environ["JAR_SHA256"])
     client.upload_artifact(env, name, jar)
@@ -303,13 +425,20 @@ def _run(environ, sleep):
     return 0
 
 
+def _report(error):
+    message = " ".join(str(error).split()) or type(error).__name__
+    print(f"ai-functions-setup: {message}", file=sys.stderr)
+
+
 def main(environ=os.environ, sleep=time.sleep):
     try:
         return _run(environ, sleep)
-    except (ChecksumMismatch, CmfError, TimeoutError, ValueError, OSError, http.client.HTTPException) as error:
-        message = " ".join(str(error).split()) or type(error).__name__
-        print(f"ai-functions-setup: {message}", file=sys.stderr)
-        return 1
+    except NotRetryable as error:
+        _report(error)
+        return EXIT_NOT_RETRYABLE
+    except (CmfError, TimeoutError, ValueError, OSError, http.client.HTTPException) as error:
+        _report(error)
+        return EXIT_RETRYABLE
 
 
 if __name__ == "__main__":

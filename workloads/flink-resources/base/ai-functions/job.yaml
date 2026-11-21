@@ -1,17 +1,18 @@
 # Uploads the AI function JAR to the `default` environment and writes the model
 # server URLs into the environment's statement defaults, through the CMF REST API.
 #
-# CFK does not send `spec.statementDefaults` to CMF when it creates an
-# environment, so the URLs cannot live on the FlinkEnvironment CR. The script
-# reads the environment, merges only the `ai.models.*` keys into its statement
-# defaults, and posts the result back: an environment update replaces every
-# default it omits.
+# CFK does not send `spec.statementDefaults` to CMF, on create or on any later
+# edit, so the URLs cannot live on the FlinkEnvironment CR. The script reads the
+# environment, sets the `ai.models.<name>.endpoint` keys to MODEL_ENDPOINTS in
+# its statement defaults (removing those for other names), and posts the result
+# back: an environment update replaces every default it omits.
 #
 # Safe to run on every sync. The environment update is skipped when the keys
 # already hold the target values, and the upload is skipped when the artifact
-# exists. A CMF that has not created the environment yet (HTTP 404) is waited
-# for, up to WAIT_SECONDS. A refused connection or a 5xx fails the pod, and
-# backoffLimit retries it.
+# exists, is READY and matches JAR_SHA256. An existing artifact that is not
+# READY or has another checksum is never replaced: the Job fails. A CMF that has
+# not created the environment yet (HTTP 404) is waited for, up to WAIT_SECONDS.
+# A refused connection or a 5xx fails the pod, and backoffLimit retries it.
 #
 # Runs as a Sync hook at wave 52: after the compute pool (50), before the
 # CREATE FUNCTION statements (55). It follows the pool because the pool needs
@@ -35,7 +36,14 @@ spec:
   activeDeadlineSeconds: 1800
   # A CMF restart should not use up the retries.
   backoffLimit: 6
-  ttlSecondsAfterFinished: 300
+  # Exit code 2 marks errors that a retry cannot fix; they fail the Job at once.
+  podFailurePolicy:
+    rules:
+      - action: FailJob
+        onExitCodes:
+          containerName: setup
+          operator: In
+          values: [2]
   template:
     metadata:
       labels:

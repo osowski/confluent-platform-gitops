@@ -129,6 +129,20 @@ def with_endpoint(environment):
     return setup.merge_model_endpoints(environment, {"ttm": ENDPOINT})
 
 
+def artifact_payload(phase="READY", checksum=f"sha256:{JAR_SHA}"):
+    """A GET /environments/<env>/artifacts/<name> response; status describes the latest version."""
+    status = {"version": 1, "path": f"s3://flink-artifacts/{ENV_NAME}/{ARTIFACT}", "size": len(JAR_BYTES), "phase": phase}
+    if checksum is not None:
+        status["checksum"] = checksum
+    return {
+        "apiVersion": "cmf.confluent.io/v1",
+        "kind": "Artifact",
+        "metadata": {"name": ARTIFACT, "uid": "uid-1"},
+        "spec": {},
+        "status": status,
+    }
+
+
 class ParseOauthTests(unittest.TestCase):
     def test_parse_oauth_txt_reads_both_values(self):
         self.assertEqual(setup.parse_oauth_txt(OAUTH_TXT), ("cmf", "cmf-secret"))
@@ -231,6 +245,43 @@ class MergeModelEndpointsTests(unittest.TestCase):
         once = setup.merge_model_endpoints(environment_payload(), {"ttm": ENDPOINT})
         self.assertEqual(setup.merge_model_endpoints(once, {"ttm": ENDPOINT}), once)
 
+    def stale_environment(self):
+        environment = environment_payload()
+        for kind in ("interactive", "detached"):
+            environment["statementDefaults"][kind]["flinkConfiguration"].update(
+                {
+                    "ai.models.old.endpoint": "http://old:8080/v1/forecast",
+                    "ai.models.old.timeout": "30s",
+                    "ai.models.endpoint": "not-owned",
+                    "x.ai.models.old.endpoint": "not-owned",
+                }
+            )
+        return environment
+
+    def test_merge_removes_endpoint_keys_not_in_model_endpoints(self):
+        original = self.stale_environment()
+        merged = setup.merge_model_endpoints(original, {"ttm": ENDPOINT})
+        for kind in ("interactive", "detached"):
+            configuration = merged["statementDefaults"][kind]["flinkConfiguration"]
+            self.assertNotIn("ai.models.old.endpoint", configuration, kind)
+            self.assertEqual(configuration["ai.models.ttm.endpoint"], ENDPOINT, kind)
+            for key in ("ai.models.old.timeout", "ai.models.endpoint", "x.ai.models.old.endpoint"):
+                self.assertEqual(
+                    configuration[key], original["statementDefaults"][kind]["flinkConfiguration"][key], (kind, key)
+                )
+        self.assertEqual(
+            merged["statementDefaults"]["detached"]["flinkConfiguration"]["state.backend.type"], "hashmap"
+        )
+        self.assertEqual(
+            merged["statementDefaults"]["interactive"]["flinkConfiguration"]["table.exec.resource.default-parallelism"],
+            "1",
+        )
+        self.assertIn("ai.models.old.endpoint", original["statementDefaults"]["detached"]["flinkConfiguration"])
+
+    def test_merge_with_removal_is_idempotent(self):
+        once = setup.merge_model_endpoints(self.stale_environment(), {"ttm": ENDPOINT})
+        self.assertEqual(setup.merge_model_endpoints(once, {"ttm": ENDPOINT}), once)
+
 
 class MainTests(NetworkTestCase):
     def setUp(self):
@@ -292,33 +343,155 @@ class MainTests(NetworkTestCase):
         self.assertIn(JAR_BYTES, body)
         self.assertTrue(headers["Content-Type"].startswith("multipart/form-data; boundary="))
 
-    def test_main_skips_download_and_upload_when_artifact_exists(self):
-        cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, {})]})
-        self.assertEqual(self.run_main(self.environ(cmf)), 0)
-        self.assertEqual(cmf.calls("POST"), [])
-        self.assertEqual(self.jar_host.requests, [])
+    def test_main_skips_download_and_upload_when_artifact_is_ready_and_matches(self):
+        for checksum in (f"sha256:{JAR_SHA}", f"sha256:{JAR_SHA.upper()}"):
+            cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(checksum=checksum))]})
+            self.assertEqual(self.run_main(self.environ(cmf)), 0, checksum)
+            self.assertEqual(cmf.calls("POST"), [], checksum)
+            self.assertEqual(self.jar_host.requests, [], checksum)
+
+    def assert_artifact_refused(self, cmf, *expected_in_message):
+        self.assertEqual(self.run_main(self.environ(cmf)), 2)
+        self.assertEqual(cmf.calls("POST"), [], "no upload")
+        self.assertEqual(cmf.calls("PUT"), [], "no replacement")
+        self.assertEqual(self.jar_host.requests, [], "no download")
+        self.assert_single_stderr_line_without("Traceback")
+        for text in expected_in_message:
+            self.assertIn(text, self.stderr)
+
+    def test_main_refuses_existing_artifact_with_another_checksum(self):
+        other = "sha256:" + "ab" * 32
+        cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(checksum=other))]})
+        self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, "READY", other, f"sha256:{JAR_SHA}", "delete")
+
+    def test_main_refuses_existing_artifact_that_is_not_ready(self):
+        for phase in ("FILE_MISSING", "STORE_UNREACHABLE", "UPLOADING"):
+            checksum = None if phase == "UPLOADING" else f"sha256:{JAR_SHA}"
+            cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(phase=phase, checksum=checksum))]})
+            with self.subTest(phase=phase):
+                self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, phase, f"sha256:{JAR_SHA}", "delete")
+
+    def test_main_refuses_unexpected_artifact_response(self):
+        no_phase = artifact_payload()
+        del no_phase["status"]["phase"]
+        for body in ({}, {"status": None}, {"status": {}}, {"status": []}, no_phase, [], "READY"):
+            cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, body)]})
+            with self.subTest(body=body):
+                self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, "unexpected")
 
     def test_main_treats_409_as_success(self):
         cmf = self.cmf({("POST", ARTIFACTS_PATH): [(409, {})]})
         self.assertEqual(self.run_main(self.environ(cmf)), 0)
 
-    def test_main_returns_nonzero_on_500(self):
+    def test_main_returns_1_on_500(self):
         cmf = self.cmf({("POST", ARTIFACTS_PATH): [(500, {"error": "boom"})]})
-        self.assertNotEqual(self.run_main(self.environ(cmf)), 0)
+        self.assertEqual(self.run_main(self.environ(cmf)), 1)
         self.assert_single_stderr_line_without()
 
-    def test_main_does_not_upload_on_checksum_mismatch(self):
+    def test_main_returns_2_on_checksum_mismatch(self):
         cmf = self.cmf()
-        self.assertNotEqual(self.run_main(self.environ(cmf, JAR_SHA256="0" * 64)), 0)
+        self.assertEqual(self.run_main(self.environ(cmf, JAR_SHA256="0" * 64)), 2)
         self.assertEqual(cmf.calls("POST"), [])
         self.assert_single_stderr_line_without()
 
     def test_main_reports_truncated_jar_download_in_one_line(self):
         self.jar_host.routes[("GET", "/ai-functions.jar")] = [(200, Truncated(JAR_BYTES[:5]))]
         cmf = self.cmf()
-        self.assertNotEqual(self.run_main(self.environ(cmf)), 0)
+        self.assertEqual(self.run_main(self.environ(cmf)), 1)
         self.assertEqual(cmf.calls("POST"), [])
         self.assert_single_stderr_line_without("Traceback")
+
+    # exit codes: 2 for errors a retry cannot fix, 1 for the rest
+
+    def test_main_returns_2_on_cmf_401_or_403(self):
+        cases = [
+            ("GET", ENV_PATH, {}),
+            ("POST", ENVS_PATH, {"MODEL_ENDPOINTS": json.dumps({"ttm": ENDPOINT})}),
+            ("GET", ARTIFACT_PATH, {}),
+            ("POST", ARTIFACTS_PATH, {}),
+        ]
+        for method, path, extra in cases:
+            for status in (401, 403):
+                cmf = self.cmf({(method, path): [(status, {"errors": [{"message": "denied"}]})]})
+                with self.subTest(method=method, path=path, status=status):
+                    self.assertEqual(self.run_main(self.environ(cmf, **extra)), 2)
+                    self.assertIn(f"HTTP {status}", self.stderr)
+                    self.assert_single_stderr_line_without("Traceback")
+
+    def test_main_returns_2_on_token_401_or_403(self):
+        for status in (401, 403):
+            cmf = self.cmf()
+            with self.subTest(status=status):
+                self.assertEqual(self.run_main(self.environ(cmf, **self.token_setup(status=status))), 2)
+                self.assertEqual(cmf.requests, [])
+                self.assert_single_stderr_line_without("cmf-secret", "tok-secret-1")
+
+    def test_main_returns_1_on_wait_timeout(self):
+        cmf = self.cmf({("GET", ENV_PATH): [(404, {})]})
+        self.assertEqual(self.run_main(self.environ(cmf, WAIT_SECONDS="10")), 1)
+        self.assert_single_stderr_line_without()
+
+    def test_main_returns_1_on_connection_error(self):
+        cmf = self.cmf()
+        self.assertEqual(self.run_main(self.environ(cmf, CMF_URL="http://127.0.0.1:1")), 1)
+        self.assert_single_stderr_line_without("Traceback")
+
+    def test_main_returns_2_on_malformed_variables(self):
+        for key, value in (
+            ("WAIT_SECONDS", "soon"),
+            ("JAR_SHA256", "not-a-sha"),
+            ("JAR_SHA256", "0" * 63),
+            ("MODEL_ENDPOINTS", "{not json"),
+        ):
+            cmf = self.cmf()
+            with self.subTest(key=key, value=value):
+                self.assertEqual(self.run_main(self.environ(cmf, **{key: value})), 2)
+                self.assertEqual(cmf.requests, [])
+                self.assert_single_stderr_line_without("Traceback")
+
+    def test_main_returns_2_when_token_url_has_no_oauth_file(self):
+        cmf = self.cmf()
+        self.assertEqual(self.run_main(self.environ(cmf, TOKEN_URL=self.jar_host.url + "/token")), 2)
+        self.assertEqual(cmf.requests, [])
+        self.assert_single_stderr_line_without()
+
+    def test_main_returns_2_when_environment_body_fails_the_safety_check(self):
+        for metadata_name in ("other", None):
+            self.environment = environment_payload()
+            self.environment["metadata"]["name"] = metadata_name
+            if metadata_name is None:
+                del self.environment["name"]
+            cmf = self.cmf()
+            with self.subTest(metadata_name=metadata_name):
+                self.assertEqual(
+                    self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 2
+                )
+                self.assertEqual(cmf.calls("POST"), [])
+                self.assert_single_stderr_line_without()
+
+    # CMF error detail
+
+    def test_main_includes_cmf_error_messages(self):
+        body = {"errors": [{"message": "Invalid   value\nfor statementDefaults"}, {"message": "second"}]}
+        cmf = self.cmf({("POST", ENVS_PATH): [(400, body)]})
+        self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 1)
+        self.assertIn("HTTP 400", self.stderr)
+        self.assertIn("Invalid value for statementDefaults; second", self.stderr)
+        self.assert_single_stderr_line_without()
+
+    def test_main_includes_truncated_cmf_body(self):
+        body = ("upstream   unavailable \n" * 200).encode()
+        cmf = self.cmf({("POST", ARTIFACTS_PATH): [(503, body)]})
+        self.assertEqual(self.run_main(self.environ(cmf)), 1)
+        self.assertIn("HTTP 503: upstream unavailable upstream", self.stderr)
+        self.assertLess(len(self.stderr), 450)
+        self.assert_single_stderr_line_without()
+
+    def test_main_omits_token_endpoint_error_body(self):
+        cmf = self.cmf()
+        token = self.token_setup(status=500, body={"error": "leaked-token-body"})
+        self.assertEqual(self.run_main(self.environ(cmf, **token)), 1)
+        self.assert_single_stderr_line_without("leaked-token-body", "cmf-secret")
 
     # auth
 
@@ -338,7 +511,7 @@ class MainTests(NetworkTestCase):
 
     def test_main_fails_without_anonymous_fallback_when_token_fetch_fails(self):
         cmf = self.cmf()
-        self.assertNotEqual(self.run_main(self.environ(cmf, **self.token_setup(status=500))), 0)
+        self.assertEqual(self.run_main(self.environ(cmf, **self.token_setup(status=500))), 1)
         self.assertEqual(cmf.requests, [])
         self.assert_single_stderr_line_without("cmf-secret", "tok-secret-1")
 
@@ -411,8 +584,22 @@ class MainTests(NetworkTestCase):
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
         self.assertEqual(cmf.calls("POST", ENVS_PATH), [])
 
+    def test_main_removes_stale_endpoint_keys(self):
+        self.environment = with_endpoint(environment_payload())
+        for kind in ("interactive", "detached"):
+            self.environment["statementDefaults"][kind]["flinkConfiguration"]["ai.models.old.endpoint"] = "http://old"
+        cmf = self.cmf()
+        self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
+        (_, _, _, body), = cmf.calls("POST", ENVS_PATH)
+        sent = json.loads(body)
+        for kind in ("interactive", "detached"):
+            configuration = sent["statementDefaults"][kind]["flinkConfiguration"]
+            self.assertNotIn("ai.models.old.endpoint", configuration, kind)
+            self.assertEqual(configuration["ai.models.ttm.endpoint"], ENDPOINT, kind)
+        self.assertEqual(sent["statementDefaults"]["detached"]["flinkConfiguration"]["state.backend.type"], "hashmap")
+
     def test_main_merges_even_when_artifact_exists(self):
-        cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, {})]})
+        cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload())]})
         self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=json.dumps({"ttm": ENDPOINT}))), 0)
         self.assertEqual(len(cmf.calls("POST", ENVS_PATH)), 1)
         self.assertEqual(cmf.calls("POST", ARTIFACTS_PATH), [])
@@ -438,17 +625,18 @@ class MainTests(NetworkTestCase):
     def test_malformed_model_endpoints_fail_without_any_cmf_write(self):
         for bad in ("{not json", "[]", '{"ttm": 3}', '{"ttm": ""}'):
             cmf = self.cmf()
-            self.assertNotEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=bad)), 0, bad)
+            self.assertEqual(self.run_main(self.environ(cmf, MODEL_ENDPOINTS=bad)), 2, bad)
             self.assertEqual(cmf.calls("POST"), [], bad)
             self.assert_single_stderr_line_without()
 
     def test_missing_required_variable_fails_with_one_line(self):
-        cmf = self.cmf()
-        environ = self.environ(cmf)
-        del environ["JAR_SHA256"]
-        self.assertNotEqual(self.run_main(environ), 0)
-        self.assertEqual(cmf.requests, [])
-        self.assert_single_stderr_line_without()
+        for key in ("CMF_URL", "ENVIRONMENT", "ARTIFACT_NAME", "JAR_URL", "JAR_SHA256"):
+            cmf = self.cmf()
+            environ = self.environ(cmf)
+            del environ[key]
+            self.assertEqual(self.run_main(environ), 2, key)
+            self.assertEqual(cmf.requests, [], key)
+            self.assert_single_stderr_line_without()
 
 
 class EnvironmentUpdateBodyTests(unittest.TestCase):

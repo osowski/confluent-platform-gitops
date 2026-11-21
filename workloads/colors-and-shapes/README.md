@@ -143,7 +143,7 @@ Per environment, three pieces make the functions usable:
 
 | Wave | Resource | What it does |
 |---|---|---|
-| 62 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the compute pools) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists |
+| 62 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the compute pools) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
 | 65 | FlinkStatements `create-ai-forecast`, `create-ai-detect-anomalies` (in `flink-colors` / `flink-shapes`, on `colors-pool` / `shapes-pool`) | `CREATE FUNCTION IF NOT EXISTS ... USING JAR 'cmf://<env>/ai-functions.jar'` in catalog `_env_<env>` |
 
 The Jobs run the same script as the `default` environment's Job in
@@ -151,8 +151,11 @@ The Jobs run the same script as the `default` environment's Job in
 byte-identical in both Applications), from a ConfigMap named
 `ai-functions-setup-script-cs`. On the RBAC clusters the `rbac-oauth` component
 gives both Jobs a token for the `cmf` client (`cfk-cmf-oauth-client`); on
-`flink-demo` CMF is anonymous. The mechanism, and why the Job rather than the
-`FlinkEnvironment` CR sets the statement defaults, is in the
+`flink-demo` CMF is anonymous. Each Job owns every `ai.models.<name>.endpoint`
+key in its environment's `interactive` and `detached` blocks, so a key added by
+hand is removed on the next sync. The mechanism, the artifact checks, which
+failures are retried, and why the Job rather than the `FlinkEnvironment` CR
+sets the statement defaults, are in the
 [`flink-resources` README](../flink-resources/README.md#ai-functions-default-environment)
 and [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 

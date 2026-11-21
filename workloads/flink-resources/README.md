@@ -100,7 +100,7 @@ above) is Ready. Three pieces make the functions usable:
 
 | Wave | Resource | What it does |
 |---|---|---|
-| 52 | Job `ai-functions-setup-default` (Sync hook, after the compute pool) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists |
+| 52 | Job `ai-functions-setup-default` (Sync hook, after the compute pool) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
 | 55 | FlinkStatement `create-ai-forecast` | `CREATE FUNCTION IF NOT EXISTS AI_FORECAST ... USING JAR 'cmf://default/ai-functions.jar'` |
 | 55 | FlinkStatement `create-ai-detect-anomalies` | The same for `AI_DETECT_ANOMALIES` |
 
@@ -108,7 +108,10 @@ The Job writes the statement defaults instead of the `FlinkEnvironment` CR
 because CFK does not send `statementDefaults` to CMF when it creates an
 environment. CMF's environment update (`POST /cmf/api/v1/environments`)
 replaces every default it omits, so the Job reads the environment first and
-changes only the `ai.models.*` keys. Re-running changes nothing: the update is
+changes only the `ai.models.*` keys. The Job owns every
+`ai.models.<name>.endpoint` key in the `interactive` and `detached` blocks: it
+sets one per `MODEL_ENDPOINTS` entry and removes the rest, so a key added by
+hand is removed on the next sync. Re-running changes nothing: the update is
 skipped when the keys are already set, and the upload when the artifact
 exists. Editing the `default` FlinkEnvironment CR makes CFK post the
 environment again without `statementDefaults`, which clears those keys until
@@ -121,12 +124,26 @@ artifacts and statements.
 
 The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
 `packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
-reach that host. The Job runs after the compute pool (wave 50), so a stuck Job
-cannot block the base SQL demo, and it has a 30-minute deadline
-(`activeDeadlineSeconds`). A change to only the Job (for example a new
-`MODEL_ENDPOINTS` value) leaves the Application Synced, so nothing prompts a
-sync; sync it manually to run the Job again. A new JAR needs a new artifact
-version, which the Job does not handle. See
+reach that host. An existing `ai-functions.jar` counts only when its latest
+version is `READY` with the pinned sha256. The Job never replaces an artifact:
+if it is in another phase (for example `FILE_MISSING` after the artifact
+bucket was rebuilt) or has another checksum (for example after a new JAR pin),
+the Job fails with the observed and expected values. Drop the functions and
+delete the artifact as in the teardown below, delete the `create-ai-forecast`
+and `create-ai-detect-anomalies` FlinkStatement CRs (a re-applied unchanged CR
+does not run again), then sync again.
+
+The script exits 2 for errors a retry cannot fix (a JAR or artifact that does
+not match the pin, an artifact that is not `READY`, a missing or malformed
+variable, HTTP 401 or 403 from the token endpoint or CMF), and the Job's
+`podFailurePolicy` fails the Job on the first such exit. Other failures
+(timeouts, 5xx, refused connections) are retried up to `backoffLimit`. A failed
+CMF call logs CMF's error message, truncated; the failed Job and its pod logs
+stay until the next sync replaces the Job. The Job runs after the compute pool
+(wave 50), so a stuck Job cannot block the base SQL demo, and it has a
+30-minute deadline (`activeDeadlineSeconds`). A change to only the Job (for
+example a new `MODEL_ENDPOINTS` value) leaves the Application Synced, so
+nothing prompts a sync; sync it manually to run the Job again. See
 [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 
 Call a function from a statement in `default` with the argument forms in the CMF
