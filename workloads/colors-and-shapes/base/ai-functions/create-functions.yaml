@@ -4,7 +4,7 @@
 #
 # Each statement is DDL: it settles to COMPLETED, and re-running it is a no-op
 # because of IF NOT EXISTS. They run on the environment's compute pool, so they
-# sync after the pools (wave 60) and after the setup Jobs (wave 62).
+# sync after the pools (wave 60) and after the setup Jobs (wave 82).
 # `spec.statement` is immutable once running, so a change to a statement is a
 # new CR with a versioned name. With IF NOT EXISTS a new CR is a no-op while the
 # function is still registered, so changing the class or the JAR also needs a
@@ -15,7 +15,7 @@ metadata:
   name: create-ai-forecast
   namespace: flink-colors
   annotations:
-    argocd.argoproj.io/sync-wave: "65"
+    argocd.argoproj.io/sync-wave: "85"
 spec:
   flinkEnvironment: colors-env
   computePoolName: colors-pool
@@ -38,7 +38,7 @@ metadata:
   name: create-ai-detect-anomalies
   namespace: flink-colors
   annotations:
-    argocd.argoproj.io/sync-wave: "65"
+    argocd.argoproj.io/sync-wave: "85"
 spec:
   flinkEnvironment: colors-env
   computePoolName: colors-pool
@@ -61,7 +61,7 @@ metadata:
   name: create-ai-forecast
   namespace: flink-shapes
   annotations:
-    argocd.argoproj.io/sync-wave: "65"
+    argocd.argoproj.io/sync-wave: "85"
 spec:
   flinkEnvironment: shapes-env
   computePoolName: shapes-pool
@@ -84,7 +84,7 @@ metadata:
   name: create-ai-detect-anomalies
   namespace: flink-shapes
   annotations:
-    argocd.argoproj.io/sync-wave: "65"
+    argocd.argoproj.io/sync-wave: "85"
 spec:
   flinkEnvironment: shapes-env
   computePoolName: shapes-pool

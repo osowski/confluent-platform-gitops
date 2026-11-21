@@ -83,7 +83,7 @@ operator itself authenticates successfully (Layer 2).
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+)
 forming a dependency chain applied in order and deleted in reverse. On
-`flink-demo` (base only) sync waves are 5/40/50/60/62/65/70/80; on the RBAC
+`flink-demo` (base only) sync waves are 5/40/50/60/70/80/82/85; on the RBAC
 clusters, the `rbac-oauth` component reintroduces the Secret/FlinkSecret/
 mapping chain at waves 10/20/30. See
 [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources)
@@ -143,8 +143,14 @@ Per environment, three pieces make the functions usable:
 
 | Wave | Resource | What it does |
 |---|---|---|
-| 62 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the compute pools) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
-| 65 | FlinkStatements `create-ai-forecast`, `create-ai-detect-anomalies` (in `flink-colors` / `flink-shapes`, on `colors-pool` / `shapes-pool`) | `CREATE FUNCTION IF NOT EXISTS ... USING JAR 'cmf://<env>/ai-functions.jar'` in catalog `_env_<env>` |
+| 82 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the wave-80 FlinkApplications are Healthy) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
+| 85 | FlinkStatements `create-ai-forecast`, `create-ai-detect-anomalies` (in `flink-colors` / `flink-shapes`, on `colors-pool` / `shapes-pool`) | `CREATE FUNCTION IF NOT EXISTS ... USING JAR 'cmf://<env>/ai-functions.jar'` in catalog `_env_<env>` |
+
+Nothing else in the Application waits for the AI setup: topics, schemas, the
+catalog, database, pools, the `*-sql-enrich` statements (70) and the
+FlinkApplications (80) are applied first. A failed or stuck Job fails the sync at
+wave 82 and only the `CREATE FUNCTION` statements (85) wait; the Job's
+`activeDeadlineSeconds: 1800` bounds it.
 
 The Jobs run the same script as the `default` environment's Job in
 `flink-resources` (`base/ai-functions/ai_functions_setup.py`, kept

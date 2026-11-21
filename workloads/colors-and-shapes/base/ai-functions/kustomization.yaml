@@ -11,7 +11,7 @@ resources:
   - jobs.yaml
   - create-functions.yaml
 
-# Not a hook: the ConfigMap syncs with the resources before the wave-62 Jobs, so
+# Not a hook: the ConfigMap syncs with the resources before the wave-82 Jobs, so
 # the script is in place when a Job's pod starts. The fixed name lets the Jobs
 # mount it by name. The `-cs` suffix keeps it apart from the ConfigMap of the
 # same script that flink-resources generates in this namespace.

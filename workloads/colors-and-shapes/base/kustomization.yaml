@@ -6,7 +6,7 @@ resources:
   # (synced at wave 100, ahead of flink-kubernetes-operator's wave-116
   # startup bootstrap into them) - not declared here.
   # Flink SQL CR chain, applied in dependency order via sync waves 5-80
-  # (ai-functions: setup Jobs at 62, CREATE FUNCTION statements at 65)
+  # (ai-functions: setup Jobs at 82, CREATE FUNCTION statements at 85)
   - flink-catalogs-databases.yaml
   - flink-compute-pools.yaml
   - flink-statements.yaml

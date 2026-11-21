@@ -15,13 +15,14 @@
 # not created the environment yet (HTTP 404) is waited for, up to WAIT_SECONDS.
 # A refused connection or a 5xx fails the pod, and backoffLimit retries it.
 #
-# Each Job runs as a Sync hook at wave 62: after the compute pools (60), before
-# the CREATE FUNCTION statements (65). A pool needs neither the statement
-# defaults nor the artifact, so topics, schemas, catalogs, databases and pools
-# sync before the Jobs and are unaffected by them. A Job that fails (exit code
-# 2, or backoffLimit) or runs past its deadline fails the sync at wave 62: the
-# CREATE FUNCTION statements (65), the existing SQL statements (70) and the
-# FlinkApplications (80) are not applied until a Job succeeds.
+# Each Job runs as a Sync hook at wave 82: after the FlinkApplications (80) are
+# Healthy, before the CREATE FUNCTION statements (85). The AI setup needs
+# nothing the rest of the Application provides beyond the environment, and
+# nothing waits for it: topics, schemas, catalogs, databases, pools, the
+# existing SQL statements (70) and the FlinkApplications (80) are applied first.
+# A Job that fails (exit code 2, or backoffLimit) or runs past its
+# activeDeadlineSeconds fails the sync at wave 82, and only the CREATE FUNCTION
+# statements (85) wait for a Job to succeed.
 #
 # The model server runs in the flink-resources Application. The base talks to
 # CMF anonymously. The `rbac-oauth` component adds a bearer token from the
@@ -32,7 +33,7 @@ metadata:
   name: ai-functions-setup-colors
   namespace: flink
   annotations:
-    argocd.argoproj.io/sync-wave: "62"
+    argocd.argoproj.io/sync-wave: "82"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
@@ -111,7 +112,7 @@ metadata:
   name: ai-functions-setup-shapes
   namespace: flink
   annotations:
-    argocd.argoproj.io/sync-wave: "62"
+    argocd.argoproj.io/sync-wave: "82"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
