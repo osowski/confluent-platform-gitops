@@ -146,36 +146,18 @@ Per environment, three pieces make the functions usable:
 | 82 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the wave-80 FlinkApplications are Healthy) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
 | 85 | FlinkStatements `create-ai-forecast`, `create-ai-detect-anomalies` (in `flink-colors` / `flink-shapes`, on `colors-pool` / `shapes-pool`) | `CREATE FUNCTION IF NOT EXISTS ... USING JAR 'cmf://<env>/ai-functions.jar'` in catalog `_env_<env>` |
 
-Nothing else in the Application waits for the AI setup: topics, schemas, the
-catalog, database, pools, the `*-sql-enrich` statements (70) and the
-FlinkApplications (80) are applied first. A failed or stuck Job fails the sync at
-wave 82 and only the `CREATE FUNCTION` statements (85) wait; the Job's
-`activeDeadlineSeconds: 1800` bounds it.
+The Jobs write the statement defaults instead of the `FlinkEnvironment` CRs
+because CFK does not send `statementDefaults` to CMF, on create or on any later
+edit. They run the same script as `default`'s Job in `flink-resources`, kept
+byte-identical in both Applications. A failed Job fails the sync at wave 82 and
+only the `CREATE FUNCTION` statements (85) wait.
 
-The Jobs run the same script as the `default` environment's Job in
-`flink-resources` (`base/ai-functions/ai_functions_setup.py`, kept
-byte-identical in both Applications), from a ConfigMap named
-`ai-functions-setup-script-cs`. On the RBAC clusters the `rbac-oauth` component
-gives both Jobs a token for the `cmf` client (`cfk-cmf-oauth-client`); on
-`flink-demo` CMF is anonymous. The design, the artifact checks and which
-failures are retried are in
-[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
-
-After editing `colors-env` or `shapes-env`, sync this Application (not
-`flink-resources`) to restore the model endpoints. On the RBAC clusters this
-can happen without anyone meaning to: the `flink-developer` Role in
-`flink-colors` and `flink-shapes` has full access to `flinkenvironments`
-(`platform.confluent.io`) in its namespace, so a developer can edit that tenant's
-FlinkEnvironment. Any edit to the environment CR makes CFK post it to CMF again
-without statement defaults, which clears `ai.models.*.endpoint` until a sync of
-`colors-and-shapes` restores it; until then new statements that call a model
-fail with `has no model server URL in this environment`. The setup is
-sync-driven and does not repair itself
-([ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md)).
-
-**Teardown.** `colors-env` and `shapes-env` need their functions dropped and
-`ai-functions.jar` deleted before they can be deleted, while the compute pools
-still exist; see
+For setting up and calling the functions, see the Confluent documentation
+([set up AI functions](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/set-up-ai-functions.html),
+[forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
+[detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
+The design, failure behavior, exit codes, the effect of editing an environment
+CR and the teardown constraint are in
 [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 ## Demo Scenarios
