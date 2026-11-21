@@ -294,7 +294,7 @@ class MainTests(NetworkTestCase):
     def cmf(self, overrides=None):
         routes = {
             ("GET", ENV_PATH): [(200, self.environment)],
-            ("GET", ARTIFACT_PATH): [(404, {})],
+            ("GET", ARTIFACT_PATH): [(404, {}), (200, artifact_payload())],
             ("POST", ARTIFACTS_PATH): [(201, {})],
             ("POST", ENVS_PATH): [(200, self.environment)],
         }
@@ -388,9 +388,45 @@ class MainTests(NetworkTestCase):
             with self.subTest(body=body):
                 self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, "unexpected")
 
-    def test_main_treats_409_as_success(self):
-        cmf = self.cmf({("POST", ARTIFACTS_PATH): [(409, {})]})
-        self.assertEqual(self.run_main(self.environ(cmf)), 0)
+    def uploaded_then_read(self, upload_status, after):
+        """Run main with a missing artifact, an upload answering upload_status, then a re-read answering `after`."""
+        cmf = self.cmf(
+            {("POST", ARTIFACTS_PATH): [(upload_status, {})], ("GET", ARTIFACT_PATH): [(404, {}), after]}
+        )
+        return cmf, self.run_main(self.environ(cmf))
+
+    def test_main_accepts_409_when_the_competing_artifact_is_ready_and_matches(self):
+        cmf, code = self.uploaded_then_read(409, (200, artifact_payload()))
+        self.assertEqual(code, 0)
+        self.assertEqual(len(cmf.calls("GET", ARTIFACT_PATH)), 2, "re-read after the upload")
+
+    def test_main_refuses_409_when_the_competing_artifact_has_another_checksum(self):
+        other = "sha256:" + "ab" * 32
+        cmf, code = self.uploaded_then_read(409, (200, artifact_payload(checksum=other)))
+        self.assertEqual(code, 2)
+        self.assert_single_stderr_line_without("Traceback")
+        for text in (ENV_NAME, ARTIFACT, "READY", other):
+            self.assertIn(text, self.stderr)
+
+    def test_main_retries_409_when_the_competing_artifact_is_still_uploading(self):
+        cmf, code = self.uploaded_then_read(409, (200, artifact_payload(phase="UPLOADING", checksum=None)))
+        self.assertEqual(code, 1)
+        self.assertEqual(len(cmf.calls("PUT")), 0)
+        self.assert_single_stderr_line_without("Traceback")
+        self.assertIn("UPLOADING", self.stderr)
+
+    def test_main_retries_409_when_the_artifact_is_gone_on_re_read(self):
+        cmf, code = self.uploaded_then_read(409, (404, {}))
+        self.assertEqual(code, 1)
+        self.assert_single_stderr_line_without("Traceback")
+        self.assertIn(ARTIFACT, self.stderr)
+
+    def test_main_rechecks_the_artifact_after_a_successful_upload(self):
+        cmf, code = self.uploaded_then_read(201, (200, artifact_payload(phase="UPLOADING", checksum=None)))
+        self.assertEqual(code, 1)
+        self.assertIn("UPLOADING", self.stderr)
+        cmf, code = self.uploaded_then_read(201, (200, artifact_payload()))
+        self.assertEqual(code, 0)
 
     def test_main_returns_1_on_500(self):
         cmf = self.cmf({("POST", ARTIFACTS_PATH): [(500, {"error": "boom"})]})

@@ -10,8 +10,10 @@ Steps, in order:
      `ai.models.<name>.endpoint` key in the `interactive` and `detached` blocks:
      a key for a model not in MODEL_ENDPOINTS is removed.
   4. Check the artifact. If it is missing, download the JAR, verify its sha256,
-     and upload it. If it exists, its latest version must be READY with the
-     pinned sha256; otherwise the script fails and changes nothing.
+     and upload it, then read it back: its latest version must be READY with the
+     pinned sha256 (an upload answered with 409, because another run created the
+     artifact first, is accepted only on that condition). If it already exists,
+     the same rule applies and the script changes nothing.
 
 Environment variables:
   CMF_URL, ENVIRONMENT, ARTIFACT_NAME, JAR_URL, JAR_SHA256   required
@@ -437,7 +439,12 @@ def _run(environ, sleep):
         return 0
     jar = download_jar(environ["JAR_URL"], environ["JAR_SHA256"])
     client.upload_artifact(env, name, jar)
-    print(f"artifact {name} uploaded to {env}")
+    # A 409 means another run created the artifact first, so what is stored is not necessarily this JAR.
+    stored = client.get_artifact(env, name)
+    if stored is None:
+        raise CmfError(f"artifact {name} in environment {env} is not visible after the upload; the Job will retry")
+    check_existing_artifact(env, name, stored, environ["JAR_SHA256"])
+    print(f"artifact {name} uploaded to {env} (READY, sha256 matches)")
     return 0
 
 
