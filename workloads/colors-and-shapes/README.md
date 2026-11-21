@@ -171,6 +171,15 @@ delete artifact `ai-functions.jar` from the environment. The command shapes are
 in the [`flink-resources` README](../flink-resources/README.md#ai-functions-default-environment);
 substitute the environment, pool, namespace and catalog names above.
 
+Deleting the environment CR on its own, outside the Application, also stalls
+after those two steps: CFK cascade-deletes the environment's
+`FlinkEnvironmentSecretMapping`, which the `FlinkKafkaCatalog` still references,
+and the environment waits for its child CRs. Delete the `FlinkKafkaDatabase`
+(`colors-database` or `shapes-database`) and then the `FlinkKafkaCatalog`
+(`colors-catalog` or `shapes-catalog`) in the same namespace, and the
+environment finishes deleting within a few minutes. Verified live on
+`shapes-env`.
+
 ## Demo Scenarios
 
 - **UDF Demo (colors only)** — walkthrough of CMF user-defined functions,
