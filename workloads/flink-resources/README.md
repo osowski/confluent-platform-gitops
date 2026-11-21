@@ -328,10 +328,11 @@ kubectl --context <ctx> -n flink delete flinkstatement drop-ai-forecast drop-ai-
 ```
 
 What has been verified live: the token fetch through the port-forwarded
-Keycloak (CMF accepts the token), the artifact `GET` and `DELETE`, and
-`DROP FUNCTION` statements on `default` and `shapes-env`. The polling of
-`status.phase` through CMF and the `IF EXISTS` form on an existing function were
-not run as written.
+Keycloak (CMF accepts the token), the artifact `GET` and `DELETE`, the polling
+of `status.phase` through CMF (run under zsh against existing statements), and
+`DROP FUNCTION` statements on `default` and `shapes-env`. `DROP FUNCTION IF
+EXISTS` was run on a function that does not exist (it completes, where the plain
+form fails); it was not run against an existing function.
 
 ## Prerequisites
 
