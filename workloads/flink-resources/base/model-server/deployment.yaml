@@ -13,6 +13,7 @@ metadata:
     app: model-server-ttm
 spec:
   replicas: 1
+  progressDeadlineSeconds: 1200
   strategy:
     type: Recreate
   selector:
@@ -28,6 +29,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: model-server
           image: confluentinc/cp-flink-models:1.0.0@sha256:e5d5ea03d3a4bda9d8c52b0b3cfe89e2a139afc9f5fd36b69b184175404f18b9
@@ -38,13 +41,35 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          # Ready only after the model is downloaded and loaded: up to 10 minutes.
-          readinessProbe:
+          # The startup probe gives the model download and load up to 10
+          # minutes (120 checks, 5s apart); the other probes start after it
+          # passes. Readiness then removes the pod from the Service after 3
+          # failed checks. Liveness restarts the container after 6 failed
+          # checks, 10s apart. The Deployment's progress deadline (20 minutes)
+          # also covers the image pull and volume attach.
+          startupProbe:
             httpGet:
               path: /readyz
               port: http
             periodSeconds: 5
             failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            failureThreshold: 6
+          # BentoML writes under BENTOML_HOME, so the root filesystem stays writable.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests:
               cpu: 500m

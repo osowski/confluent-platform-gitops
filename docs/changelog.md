@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **`ttm` model server for the Flink AI functions** ([#574](https://github.com/osowski/confluent-platform-gitops/issues/574)): `flink-resources` runs `model-server-ttm` on every cluster, with its model download kept on a PVC and reachable only from Flink pods.
+- **`ttm` model server for the Flink AI functions** ([#574](https://github.com/osowski/confluent-platform-gitops/issues/574)): `flink-resources` runs `model-server-ttm` on every cluster, with its model download kept on a PVC and ingress limited to Flink pods where the CNI enforces NetworkPolicy.
   Flink SQL reaches it at `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`.
 - **AI functions in the `default` Flink environment** ([#575](https://github.com/osowski/confluent-platform-gitops/issues/575)): `AI_FORECAST` and `AI_DETECT_ANOMALIES` are registered in `default` as soon as `flink-resources` syncs, with the `ttm` model server's URL set, and calls work once the model server pod is Ready.
   A hook Job uploads the function JAR and two `CREATE FUNCTION` statements register it ([ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md)).

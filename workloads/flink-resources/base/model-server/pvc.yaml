@@ -1,5 +1,6 @@
 ---
-# Keeps the Hugging Face download across pod restarts.
+# Keeps the Hugging Face download across pod restarts. The cluster's default
+# storage class applies unless an overlay sets one.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -12,7 +13,6 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: standard
   resources:
     requests:
       storage: 5Gi

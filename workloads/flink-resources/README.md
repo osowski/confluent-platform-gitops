@@ -66,12 +66,16 @@ practice, confirmed by direct REST API testing during #349.
   that the `AI_FORECAST` and `AI_DETECT_ANOMALIES` functions call, at
   `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`. It is a
   one-replica Deployment with a Service, a NetworkPolicy and a 5Gi PVC
-  (`model-server-ttm-cache`, `gp3` on eks-demo, `standard` elsewhere) that
-  keeps the Hugging Face download across pod restarts. The pod is ready only
-  after the model is downloaded and loaded (the probe allows up to 10 minutes).
-  The NetworkPolicy admits only Flink pods (`type: flink-native-kubernetes`)
-  from the `flink`, `flink-colors` and `flink-shapes` namespaces. All four
-  resources sit in sync wave 90, after every other resource in this
+  (`model-server-ttm-cache`) that keeps the Hugging Face download across pod
+  restarts. The PVC uses the cluster's default storage class (`gp3` is set
+  explicitly on eks-demo; `standard` on kind). A startup probe on `/readyz`
+  allows up to 10 minutes for the model download and load, then readiness
+  (`/readyz`) and liveness (`/livez`) probes take over, and the Deployment's
+  progress deadline is 20 minutes. The NetworkPolicy admits only pods labeled
+  `type: flink-native-kubernetes` from the `flink`, `flink-colors` and
+  `flink-shapes` namespaces, and takes effect only where the cluster's CNI
+  enforces NetworkPolicy. All four resources sit in sync wave 90, after every
+  other resource in this
   Application, so a slow model download never holds up the Flink SQL chain.
 - **AI functions** (`base/ai-functions/`) — `AI_FORECAST` and
   `AI_DETECT_ANOMALIES` ready to use in `default`; see

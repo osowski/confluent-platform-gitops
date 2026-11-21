@@ -1,6 +1,8 @@
 ---
-# Only Flink JobManager and TaskManager pods (type: flink-native-kubernetes)
-# in the three Flink namespaces may call the server. The server has no auth.
+# Admits only pods labeled type: flink-native-kubernetes (Flink JobManagers and
+# TaskManagers) from the flink, flink-colors and flink-shapes namespaces. The
+# server has no auth. Takes effect only where the cluster's CNI enforces
+# NetworkPolicy.
 # namespaceSelector and podSelector share one `from` entry, so both must match.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
