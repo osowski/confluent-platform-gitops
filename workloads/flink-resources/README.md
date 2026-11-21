@@ -125,17 +125,19 @@ artifacts and statements.
 The JAR is `io.confluent.flink:cp-flink-ai-detect-anomalies:1.0.0` from
 `packages.confluent.io`, pinned by sha256 in the Job. The Job pod needs to
 reach that host. An existing `ai-functions.jar` counts only when its latest
-version is `READY` with the pinned sha256. The Job never replaces an artifact:
-if it is in another phase (for example `FILE_MISSING` after the artifact
-bucket was rebuilt) or has another checksum (for example after a new JAR pin),
-the Job fails with the observed and expected values. Drop the functions and
+version is `READY` with the pinned sha256. The Job never replaces an artifact.
+While it is `UPLOADING` or `STORE_UNREACHABLE` the Job fails and is retried.
+In any other phase (for example `FILE_MISSING` after the artifact bucket was
+rebuilt), or with another checksum (for example after a new JAR pin), the Job
+fails with the observed and expected values. Drop the functions and
 delete the artifact as in the teardown below, delete the `create-ai-forecast`
 and `create-ai-detect-anomalies` FlinkStatement CRs (a re-applied unchanged CR
 does not run again), then sync again.
 
 The script exits 2 for errors a retry cannot fix (a JAR or artifact that does
-not match the pin, an artifact that is not `READY`, a missing or malformed
-variable, HTTP 401 or 403 from the token endpoint or CMF), and the Job's
+not match the pin, an artifact in a phase that does not clear by itself, a
+missing or malformed variable, an OAuth file without its `clientId` or
+`clientSecret` line, HTTP 401 or 403 from the token endpoint or CMF), and the Job's
 `podFailurePolicy` fails the Job on the first such exit. Other failures
 (timeouts, 5xx, refused connections) are retried up to `backoffLimit`. A failed
 CMF call logs CMF's error message, truncated; the failed Job and its pod logs

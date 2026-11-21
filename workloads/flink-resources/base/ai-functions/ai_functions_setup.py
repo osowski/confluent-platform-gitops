@@ -22,10 +22,12 @@ Environment variables:
   WAIT_SECONDS               how long to wait for the environment (default 300)
 
 Every failure writes one line to stderr. The exit code is 2 for an error that
-running again cannot fix (a missing or malformed variable, a JAR or artifact
-that does not match the pinned sha256, an artifact that is not READY, HTTP 401
-or 403, an environment body that fails its safety check) and 1 for everything
-else. A failed CMF call includes CMF's error detail, truncated. Tokens, client
+running again cannot fix (a missing or malformed variable, an OAuth file without
+its clientId or clientSecret line, a JAR or artifact that does not match the
+pinned sha256, an artifact in a phase other than READY, UPLOADING or
+STORE_UNREACHABLE, HTTP 401 or 403, an environment body that fails its safety
+check) and 1 for everything else, including an artifact that is UPLOADING or
+STORE_UNREACHABLE. A failed CMF call includes CMF's error detail, truncated. Tokens, client
 secrets and the OAuth file contents are never printed.
 """
 
@@ -52,6 +54,7 @@ EXIT_NOT_RETRYABLE = 2
 SHA256_HEX = re.compile(r"[0-9a-fA-F]{64}")
 MODEL_KEY_PREFIX = "ai.models."
 MODEL_KEY_SUFFIX = ".endpoint"
+TRANSIENT_ARTIFACT_PHASES = ("UPLOADING", "STORE_UNREACHABLE")
 
 
 class NotRetryable(Exception):
@@ -71,11 +74,15 @@ class ChecksumMismatch(NotRetryable):
 
 
 class ArtifactMismatch(NotRetryable):
-    """The existing artifact is not READY, does not match the pin, or could not be read."""
+    """The existing artifact is in a phase that does not clear, does not match the pin, or could not be read."""
 
 
 class CmfError(Exception):
     """CMF (or the token endpoint) answered with an unexpected status."""
+
+
+class ArtifactPending(CmfError):
+    """The existing artifact is in a phase that can clear by itself."""
 
 
 class AuthError(CmfError, NotRetryable):
@@ -129,7 +136,7 @@ def parse_oauth_txt(text):
             values[key.strip()] = value.strip()
     for key in ("clientId", "clientSecret"):
         if not values.get(key):
-            raise ValueError(f"OAuth file has no {key} line")
+            raise ConfigError(f"OAuth file has no {key} line")
     return values["clientId"], values["clientSecret"]
 
 
@@ -331,10 +338,13 @@ class CmfClient:
 
 
 def check_existing_artifact(env, name, artifact, sha256_hex):
-    """Raise ArtifactMismatch unless the artifact's latest version is READY with the pinned sha256.
+    """Return if the artifact's latest version is READY with the pinned sha256, else raise.
 
-    The script never replaces an existing artifact: the functions registered
-    from it keep using the stored JAR, so a mismatch is resolved by hand.
+    A phase that can clear by itself (UPLOADING, STORE_UNREACHABLE) raises the
+    retryable ArtifactPending. Any other phase, a different checksum or an
+    unreadable status raises ArtifactMismatch. The script never replaces an
+    existing artifact: the functions registered from it keep using the stored
+    JAR, so a mismatch is resolved by hand.
     """
     status = artifact.get("status") if isinstance(artifact, dict) else None
     phase = status.get("phase") if isinstance(status, dict) else None
@@ -342,6 +352,8 @@ def check_existing_artifact(env, name, artifact, sha256_hex):
         raise ArtifactMismatch(
             f"artifact {name} in environment {env}: unexpected CMF response, no status.phase for its latest version"
         )
+    if phase in TRANSIENT_ARTIFACT_PHASES:
+        raise ArtifactPending(f"artifact {name} in environment {env} is {phase}; the Job will retry")
     checksum = status.get("checksum")
     expected = f"sha256:{sha256_hex.strip().lower()}"
     if phase == "READY" and isinstance(checksum, str) and checksum.lower() == expected:

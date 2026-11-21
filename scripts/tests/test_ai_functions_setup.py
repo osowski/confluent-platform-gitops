@@ -364,12 +364,21 @@ class MainTests(NetworkTestCase):
         cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(checksum=other))]})
         self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, "READY", other, f"sha256:{JAR_SHA}", "delete")
 
-    def test_main_refuses_existing_artifact_that_is_not_ready(self):
-        for phase in ("FILE_MISSING", "STORE_UNREACHABLE", "UPLOADING"):
-            checksum = None if phase == "UPLOADING" else f"sha256:{JAR_SHA}"
+    def test_main_refuses_existing_artifact_whose_file_is_missing(self):
+        cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(phase="FILE_MISSING"))]})
+        self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, "FILE_MISSING", f"sha256:{JAR_SHA}", "delete")
+
+    def test_main_retries_existing_artifact_in_a_transient_phase(self):
+        for phase, checksum in (("UPLOADING", None), ("STORE_UNREACHABLE", f"sha256:{JAR_SHA}")):
             cmf = self.cmf({("GET", ARTIFACT_PATH): [(200, artifact_payload(phase=phase, checksum=checksum))]})
             with self.subTest(phase=phase):
-                self.assert_artifact_refused(cmf, ENV_NAME, ARTIFACT, phase, f"sha256:{JAR_SHA}", "delete")
+                self.assertEqual(self.run_main(self.environ(cmf)), 1)
+                self.assertEqual(cmf.calls("POST"), [], "no upload")
+                self.assertEqual(cmf.calls("PUT"), [], "no replacement")
+                self.assertEqual(self.jar_host.requests, [], "no download")
+                self.assert_single_stderr_line_without("Traceback", "delete")
+                for text in (ENV_NAME, ARTIFACT, phase, "retry"):
+                    self.assertIn(text, self.stderr)
 
     def test_main_refuses_unexpected_artifact_response(self):
         no_phase = artifact_payload()
@@ -526,10 +535,14 @@ class MainTests(NetworkTestCase):
         cmf = self.cmf()
         oauth = Path(self.tmp.name) / "oauth.txt"
         oauth.write_text("clientId=cmf\n")
-        environ = self.environ(cmf, TOKEN_URL=self.jar_host.url + "/token", OAUTH_FILE=str(oauth))
-        self.assertNotEqual(self.run_main(environ), 0)
-        self.assertEqual(cmf.requests, [])
-        self.assert_single_stderr_line_without("clientId=cmf")
+        for text in ("clientId=cmf\n", "clientSecret=cmf-secret\n", ""):
+            oauth.write_text(text)
+            environ = self.environ(cmf, TOKEN_URL=self.jar_host.url + "/token", OAUTH_FILE=str(oauth))
+            with self.subTest(text=text):
+                self.assertEqual(self.run_main(environ), 2)
+                self.assertEqual(cmf.requests, [])
+                self.assertEqual(self.jar_host.requests, [], "no token request")
+                self.assert_single_stderr_line_without("clientId=cmf", "cmf-secret")
 
     # ordering and model endpoints
 
