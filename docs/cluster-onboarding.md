@@ -306,6 +306,8 @@ To decommission a cluster:
 
 ### Step 1: Remove Applications
 
+Environments with the AI functions registered (`default`, `colors-env`, `shapes-env`) need their functions dropped and `ai-functions.jar` deleted first, while the compute pools still exist: [Tear down the AI functions](../workloads/flink-resources/README.md#tear-down-the-ai-functions).
+
 Delete all Application manifests:
 
 ```bash
@@ -323,6 +325,8 @@ kubectl get applications -n argocd -w
 ```
 
 ### Step 3: Remove Bootstrap
+
+If Step 1 was skipped, tear down the AI functions before this step: [Tear down the AI functions](../workloads/flink-resources/README.md#tear-down-the-ai-functions).
 
 Delete the bootstrap Application (will cascade to parent and child Applications):
 

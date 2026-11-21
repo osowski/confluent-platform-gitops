@@ -105,8 +105,8 @@ above) is Ready. Three pieces make the functions usable:
 | 55 | FlinkStatement `create-ai-detect-anomalies` | The same for `AI_DETECT_ANOMALIES` |
 
 The Job writes the statement defaults instead of the `FlinkEnvironment` CR
-because CFK does not send `statementDefaults` to CMF when it creates an
-environment. CMF's environment update (`POST /cmf/api/v1/environments`)
+because CFK 0.1718.99 does not send `statementDefaults` to CMF, on create or on
+any later edit (verified by request capture). CMF's environment update (`POST /cmf/api/v1/environments`)
 replaces every default it omits, so the Job reads the environment first and
 changes only the `ai.models.*` keys. The Job owns every
 `ai.models.<name>.endpoint` key in the `interactive` and `detached` blocks: it
@@ -129,10 +129,13 @@ version is `READY` with the pinned sha256. The Job never replaces an artifact.
 While it is `UPLOADING` or `STORE_UNREACHABLE` the Job fails and is retried.
 In any other phase (for example `FILE_MISSING` after the artifact bucket was
 rebuilt), or with another checksum (for example after a new JAR pin), the Job
-fails with the observed and expected values. Drop the functions and
-delete the artifact as in the teardown below, delete the `create-ai-forecast`
-and `create-ai-detect-anomalies` FlinkStatement CRs (a re-applied unchanged CR
-does not run again), then sync again.
+fails with the observed and expected values. To recover, drop the functions and
+delete the artifact with the commands in
+[Tear down the AI functions](#tear-down-the-ai-functions) (steps 1 to 3, not the
+environment or the Application), delete the `create-ai-forecast` and
+`create-ai-detect-anomalies` FlinkStatement CRs, then sync again. The sync
+re-applies the two CRs, and re-applying an unchanged CR is a no-op while the old
+CR exists, which is why they go first. Deleting them is not verified live.
 
 The script exits 2 for errors a retry cannot fix (a JAR or artifact that does
 not match the pin, an artifact in a phase that does not clear by itself, a
@@ -158,6 +161,8 @@ Running and Ready (for example while it downloads the model), a call fails at
 runtime because the Service `model-server-ttm` has no ready endpoint or is
 unavailable, which is a different error.
 
+### Tear down the AI functions
+
 CMF refuses to delete an environment that still holds an artifact or a
 registered function (`Environment '<env>' cannot be deleted because it has 1
 artifact ('ai-functions.jar') that must be deleted first.` and `... it has 2
@@ -170,8 +175,15 @@ so the Application can stay in Deleting until then; see
 
 Remove them before deleting the Application or any of its resources, while the
 compute pool still exists, because dropping a function runs a statement on the
-pool. Use an explicit `--context`, with that cluster's context in place of
-`<ctx>`. First drop the two functions and wait for both statements to complete:
+pool. Run the steps once per environment: `default` here, and `colors-env` and
+`shapes-env` with the names in the
+[`colors-and-shapes` README](../colors-and-shapes/README.md#ai-functions).
+Use an explicit kube context, with that cluster's context in place of `<ctx>`.
+
+**1. Drop the two functions.** `IF EXISTS` lets you run this again after a
+partial teardown: `DROP FUNCTION IF EXISTS` on a function that is already gone
+ends `COMPLETED`, while a plain `DROP FUNCTION` ends `FAILED` with `Function
+default.<name> does not exist in Catalog _env_<env>`.
 
 ```bash
 kubectl --context <ctx> -n flink apply -f - <<'EOF'
@@ -186,7 +198,7 @@ spec:
   properties:
     sql.current-catalog: _env_default
     sql.current-database: default
-  statement: DROP FUNCTION AI_FORECAST;
+  statement: DROP FUNCTION IF EXISTS AI_FORECAST;
   parallelism: 1
   stopped: false
   cmfRestClassRef:
@@ -204,36 +216,122 @@ spec:
   properties:
     sql.current-catalog: _env_default
     sql.current-database: default
-  statement: DROP FUNCTION AI_DETECT_ANOMALIES;
+  statement: DROP FUNCTION IF EXISTS AI_DETECT_ANOMALIES;
   parallelism: 1
   stopped: false
   cmfRestClassRef:
     name: cmf-rest-class
     namespace: flink
 EOF
-kubectl --context <ctx> -n flink wait --for=jsonpath='{.status.phase}'=COMPLETED \
-  flinkstatement/drop-ai-forecast flinkstatement/drop-ai-detect-anomalies --timeout=180s
+```
+
+**2. Wait for both statements, then delete the artifact.** Both go through CMF
+on a port-forward, because the CR's `status.phase` can stay `PENDING` in this
+CFK version, so `kubectl wait` on it does not work. The block polls
+`status.phase` of each statement until it is `COMPLETED` or `FAILED` (about 3
+minutes at most), then deletes artifact `ai-functions.jar`. Read the printed
+phases before relying on the delete: on `FAILED`, look at the statement with
+`kubectl --context <ctx> -n flink describe flinkstatement <name>` and fix that
+first.
+
+On `flink-demo-rbac`, `flink-demo-rbac-mtls` and `eks-demo` (OAuth) the block
+fetches a token for the `cmf` client, the way the Job does. The client id and
+secret are read from Secret `cfk-cmf-oauth-client` into shell variables that are
+never printed. Set `ENV_NAME` to `default`, `colors-env` or `shapes-env` and the
+statement names to the ones you applied in step 1:
+
+```bash
+CTX="<ctx>"
+ENV_NAME=default
+ARTIFACT=ai-functions.jar
+CMF="http://localhost:18080/cmf/api/v1/environments/$ENV_NAME"
+
+kubectl --context "$CTX" -n keycloak port-forward svc/keycloak 18081:8080 >/dev/null 2>&1 &
+KC_PF=$!
+kubectl --context "$CTX" -n operator port-forward svc/cmf-service 18080:80 >/dev/null 2>&1 &
+CMF_PF=$!
+for i in $(seq 1 60); do
+  nc -z localhost 18081 && nc -z localhost 18080 && break
+  sleep 1
+done >/dev/null 2>&1
+
+OAUTH=$(kubectl --context "$CTX" -n flink get secret cfk-cmf-oauth-client -o jsonpath='{.data.oauth\.txt}' | base64 --decode)
+CLIENT_ID=$(printf '%s\n' "$OAUTH" | sed -n 's/^clientId=//p')
+CLIENT_SECRET=$(printf '%s\n' "$OAUTH" | sed -n 's/^clientSecret=//p')
+TOKEN=$(curl -s --fail-with-body \
+  -d grant_type=client_credentials \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET" \
+  http://localhost:18081/realms/confluent/protocol/openid-connect/token |
+  python3 -I -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+unset OAUTH CLIENT_ID CLIENT_SECRET
+
+for STMT in drop-ai-forecast drop-ai-detect-anomalies; do
+  for i in $(seq 1 60); do
+    PHASE=$(curl -s --fail-with-body -H "Authorization: Bearer $TOKEN" "$CMF/statements/$STMT" |
+      python3 -I -c 'import json,sys; print(json.load(sys.stdin)["status"]["phase"])' 2>/dev/null)
+    echo "$STMT: ${PHASE:-unknown}"
+    case "$PHASE" in COMPLETED|FAILED) break ;; esac
+    sleep 3
+  done
+done
+
+curl -s --fail-with-body -w '\nDELETE %{http_code}\n' -X DELETE \
+  -H "Authorization: Bearer $TOKEN" "$CMF/artifacts/$ARTIFACT"
+
+kill "$KC_PF" "$CMF_PF"
+unset TOKEN KC_PF CMF_PF PHASE STMT
+```
+
+The block cleans up at its end instead of with `trap ... EXIT`, because in an
+interactive shell that trap fires only when the shell itself exits. If you
+interrupt the block, run the `kill` and `unset` lines by hand. A `DELETE` of an
+artifact that is already gone prints `404` and curl exits 22 (`--fail-with-body`
+turns an HTTP error into a non-zero exit), which on a re-run after a partial
+teardown means the artifact is gone.
+
+On `flink-demo` (anonymous CMF) there is no Keycloak and no token:
+
+```bash
+CTX="<ctx>"
+ENV_NAME=default
+ARTIFACT=ai-functions.jar
+CMF="http://localhost:18080/cmf/api/v1/environments/$ENV_NAME"
+
+kubectl --context "$CTX" -n operator port-forward svc/cmf-service 18080:80 >/dev/null 2>&1 &
+CMF_PF=$!
+for i in $(seq 1 60); do
+  nc -z localhost 18080 && break
+  sleep 1
+done >/dev/null 2>&1
+
+for STMT in drop-ai-forecast drop-ai-detect-anomalies; do
+  for i in $(seq 1 60); do
+    PHASE=$(curl -s --fail-with-body "$CMF/statements/$STMT" |
+      python3 -I -c 'import json,sys; print(json.load(sys.stdin)["status"]["phase"])' 2>/dev/null)
+    echo "$STMT: ${PHASE:-unknown}"
+    case "$PHASE" in COMPLETED|FAILED) break ;; esac
+    sleep 3
+  done
+done
+
+curl -s --fail-with-body -w '\nDELETE %{http_code}\n' -X DELETE "$CMF/artifacts/$ARTIFACT"
+
+kill "$CMF_PF"
+unset CMF_PF PHASE STMT
+```
+
+**3. Delete the drop statements.**
+
+```bash
 kubectl --context <ctx> -n flink delete flinkstatement drop-ai-forecast drop-ai-detect-anomalies
 ```
 
-Then delete the artifact. On `flink-demo` (anonymous CMF), use two terminals. In
-the first, keep a port-forward running:
-
-```bash
-kubectl --context <ctx> -n operator port-forward svc/cmf-service 18080:80
-```
-
-In the second, delete the artifact, then stop the port-forward with Ctrl-C in
-the first:
-
-```bash
-curl -X DELETE http://localhost:18080/cmf/api/v1/environments/default/artifacts/ai-functions.jar
-```
-
-On the OAuth clusters (`flink-demo-rbac`, `flink-demo-rbac-mtls`, `eks-demo`),
-send the same `DELETE` with an `Authorization: Bearer` header, using a token
-obtained the way the Job does: a client-credentials grant against the
-`TOKEN_URL` with the client id and secret from Secret `cfk-cmf-oauth-client`.
+What has been verified live: the token fetch through the port-forwarded
+Keycloak (CMF accepts the token), the artifact `GET` and `DELETE`, and
+`DROP FUNCTION` statements on `default` and `shapes-env`. The polling of
+`status.phase` through CMF and the `IF EXISTS` form on an existing function were
+not run as written.
 
 ## Prerequisites
 
