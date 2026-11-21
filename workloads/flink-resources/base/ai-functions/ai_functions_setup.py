@@ -25,9 +25,11 @@ Every failure writes one line to stderr. The exit code is 2 for an error that
 running again cannot fix (a missing or malformed variable, an OAuth file without
 its clientId or clientSecret line, a JAR or artifact that does not match the
 pinned sha256, an artifact in a phase other than READY, UPLOADING or
-STORE_UNREACHABLE, HTTP 401 or 403, an environment body that fails its safety
-check) and 1 for everything else, including an artifact that is UPLOADING or
-STORE_UNREACHABLE. A failed CMF call includes CMF's error detail, truncated. Tokens, client
+STORE_UNREACHABLE, HTTP 401 or 403 from the token endpoint, an environment body
+that fails its safety check) and 1 for everything else, including an artifact
+that is UPLOADING or STORE_UNREACHABLE and any HTTP error status from CMF, 401
+and 403 included (CMF also answers 401 when a role binding is not effective
+yet). A failed CMF call includes CMF's error detail, truncated. Tokens, client
 secrets and the OAuth file contents are never printed.
 """
 
@@ -86,7 +88,7 @@ class ArtifactPending(CmfError):
 
 
 class AuthError(CmfError, NotRetryable):
-    """CMF or the token endpoint answered HTTP 401 or 403."""
+    """The token endpoint answered HTTP 401 or 403."""
 
 
 def error_detail(body):
@@ -124,7 +126,9 @@ def cmf_error(what, status, body):
     detail = error_detail(body)
     if detail:
         message = f"{message}: {detail}"
-    return (AuthError if status in (401, 403) else CmfError)(message)
+    # Every CMF status is retryable, 401 and 403 included: CMF answers 401 for an
+    # authorization denial too, and a new role binding can take a while to apply.
+    return CmfError(message)
 
 
 def parse_oauth_txt(text):
@@ -360,8 +364,8 @@ def check_existing_artifact(env, name, artifact, sha256_hex):
         return
     raise ArtifactMismatch(
         f"artifact {name} in environment {env} is {phase} with checksum {checksum or 'none'}, expected READY "
-        f"with {expected}; delete the registered functions and the artifact (see the Application README's "
-        "AI functions teardown), then sync again"
+        f"with {expected}; drop the registered functions, delete the artifact and the create-ai-* FlinkStatement "
+        "CRs (see ADR-0026, teardown), then sync again"
     )
 
 

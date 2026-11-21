@@ -13,7 +13,10 @@
 # exists, is READY and matches JAR_SHA256. An existing artifact that is not
 # READY or has another checksum is never replaced: the Job fails. A CMF that has
 # not created the environment yet (HTTP 404) is waited for, up to WAIT_SECONDS.
-# A refused connection or a 5xx fails the pod, and backoffLimit retries it.
+# A refused connection, a timeout or any HTTP error from CMF (401 and 403
+# included: CMF also answers 401 while a new role binding takes effect) fails
+# the pod, and backoffLimit retries it. A 401 or 403 from the token endpoint
+# exits 2.
 #
 # Each Job runs as a Sync hook at wave 82: after the FlinkApplications (80) are
 # Healthy, before the CREATE FUNCTION statements (85). The AI setup needs

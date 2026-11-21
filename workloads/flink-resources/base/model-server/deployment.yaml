@@ -42,28 +42,33 @@ spec:
               containerPort: 8080
               protocol: TCP
           # The startup probe gives the model download and load up to 10
-          # minutes (120 checks, 5s apart); the other probes start after it
-          # passes. Readiness then removes the pod from the Service after 3
-          # failed checks. Liveness restarts the container after 6 failed
-          # checks, 10s apart. The Deployment's progress deadline (20 minutes)
-          # also covers the image pull and volume attach.
+          # minutes (120 checks, 5s apart) and restarts the container if it is
+          # not ready by then; the other probes start after it passes.
+          # Readiness then removes the pod from the Service after 3 failed
+          # checks. Liveness restarts the container after 6 failed checks, 10s
+          # apart. Each check may take 5s, so a server busy with inference is
+          # not counted as failing. The Deployment's progress deadline (20
+          # minutes) also covers the image pull and volume attach.
           startupProbe:
             httpGet:
               path: /readyz
               port: http
             periodSeconds: 5
+            timeoutSeconds: 5
             failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /readyz
               port: http
             periodSeconds: 5
+            timeoutSeconds: 5
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /livez
               port: http
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 6
           # BentoML writes under BENTOML_HOME, so the root filesystem stays writable.
           securityContext:

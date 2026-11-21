@@ -412,7 +412,9 @@ class MainTests(NetworkTestCase):
 
     # exit codes: 2 for errors a retry cannot fix, 1 for the rest
 
-    def test_main_returns_2_on_cmf_401_or_403(self):
+    def test_main_returns_1_on_cmf_401_or_403(self):
+        # CMF answers 401 for an authorization denial too, which a role binding
+        # that is not yet effective clears, so CMF's 401 and 403 are retried.
         cases = [
             ("GET", ENV_PATH, {}),
             ("POST", ENVS_PATH, {"MODEL_ENDPOINTS": json.dumps({"ttm": ENDPOINT})}),
@@ -421,11 +423,21 @@ class MainTests(NetworkTestCase):
         ]
         for method, path, extra in cases:
             for status in (401, 403):
-                cmf = self.cmf({(method, path): [(status, {"errors": [{"message": "denied"}]})]})
-                with self.subTest(method=method, path=path, status=status):
-                    self.assertEqual(self.run_main(self.environ(cmf, **extra)), 2)
-                    self.assertIn(f"HTTP {status}", self.stderr)
-                    self.assert_single_stderr_line_without("Traceback")
+                for with_token in (False, True):
+                    cmf = self.cmf({(method, path): [(status, {"errors": [{"message": "denied"}]})]})
+                    environ = self.environ(cmf, **extra)
+                    if with_token:
+                        environ.update(self.token_setup())
+                    with self.subTest(method=method, path=path, status=status, with_token=with_token):
+                        self.assertEqual(self.run_main(environ), 1)
+                        self.assertIn(f"HTTP {status}", self.stderr)
+                        self.assert_single_stderr_line_without("Traceback", "tok-secret-1", "cmf-secret")
+
+    def test_main_does_not_upload_after_cmf_401_on_artifact_check(self):
+        cmf = self.cmf({("GET", ARTIFACT_PATH): [(401, b"")]})
+        self.assertEqual(self.run_main(self.environ(cmf)), 1)
+        self.assertEqual(cmf.calls("POST", ARTIFACTS_PATH), [])
+        self.assertEqual(self.jar_host.requests, [])
 
     def test_main_returns_2_on_token_401_or_403(self):
         for status in (401, 403):
