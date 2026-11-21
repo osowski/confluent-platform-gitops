@@ -353,7 +353,7 @@ kubectl delete appproject workloads -n argocd
 
 **Note**: Deleting the bootstrap Application will delete parent Applications, which will cascade to child Applications. Due to the finalizers, ArgoCD will clean up managed resources. This process may take several minutes.
 
-**AI function artifact and functions**: CMF will not delete a Flink environment while it holds an artifact or a registered function. The AI functions are set up in `default` (`flink-resources`) and in `colors-env` and `shapes-env` (`colors-and-shapes`), so those Applications can stay in Deleting until `ai-functions.jar` is deleted through the CMF API and both functions are dropped in each environment. Do this before deleting the Applications, while the compute pools still exist. See [Tear down the AI functions](../workloads/flink-resources/README.md#tear-down-the-ai-functions) for the commands and the [colors-and-shapes AI functions](../workloads/colors-and-shapes/README.md#ai-functions) section (Teardown) for the environment, pool and namespace names.
+**AI function artifact and functions**: environments with the AI functions registered (`default`, `colors-env`, `shapes-env`) need both functions dropped and `ai-functions.jar` deleted before they can be deleted, while the compute pools still exist; otherwise `flink-resources` and `colors-and-shapes` stay in Deleting. See [ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 ## Deploying a Specific Version
 

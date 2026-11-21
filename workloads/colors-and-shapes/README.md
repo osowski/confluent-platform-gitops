@@ -157,13 +157,9 @@ The Jobs run the same script as the `default` environment's Job in
 byte-identical in both Applications), from a ConfigMap named
 `ai-functions-setup-script-cs`. On the RBAC clusters the `rbac-oauth` component
 gives both Jobs a token for the `cmf` client (`cfk-cmf-oauth-client`); on
-`flink-demo` CMF is anonymous. Each Job owns every `ai.models.<name>.endpoint`
-key in its environment's `interactive` and `detached` blocks, so a key added by
-hand is removed on the next sync. The mechanism, the artifact checks, which
-failures are retried, and why the Job rather than the `FlinkEnvironment` CR
-sets the statement defaults, are in the
-[`flink-resources` README](../flink-resources/README.md#ai-functions-default-environment)
-and [ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
+`flink-demo` CMF is anonymous. The design, the artifact checks and which
+failures are retried are in
+[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md).
 
 After editing `colors-env` or `shapes-env`, sync this Application (not
 `flink-resources`) to restore the model endpoints. On the RBAC clusters this
@@ -177,29 +173,10 @@ fail with `has no model server URL in this environment`. The setup is
 sync-driven and does not repair itself
 ([ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md)).
 
-**Teardown.** CMF refuses to delete an environment that still holds an
-artifact or a registered function, so deleting `colors-env` or `shapes-env`
-(directly, or by deleting the Application) leaves the CR in CFK state `ERROR`
-until both are removed. Before deleting the Application or any of its
-resources, while the compute pools still exist: drop `AI_FORECAST` and
-`AI_DETECT_ANOMALIES` with `DROP FUNCTION IF EXISTS` statements on the
-environment's pool (`colors-pool` in `flink-colors` for `colors-env`,
-`shapes-pool` in `flink-shapes` for `shapes-env`, catalog `_env_<env>`, database
-`default`), then delete artifact `ai-functions.jar` from the environment. The
-commands are in
-[Tear down the AI functions](../flink-resources/README.md#tear-down-the-ai-functions);
-run them once per environment with `ENV_NAME` set to `colors-env` or
-`shapes-env`, and substitute the namespace, pool and catalog names above in the
-statement manifests.
-
-Deleting the environment CR on its own, outside the Application, also stalls
-after those two steps: CFK cascade-deletes the environment's
-`FlinkEnvironmentSecretMapping`, which the `FlinkKafkaCatalog` still references,
-and the environment waits for its child CRs. Delete the `FlinkKafkaDatabase`
-(`colors-database` or `shapes-database`) and then the `FlinkKafkaCatalog`
-(`colors-catalog` or `shapes-catalog`) in the same namespace, and the
-environment finishes deleting within a few minutes. Verified live on
-`shapes-env`.
+**Teardown.** `colors-env` and `shapes-env` need their functions dropped and
+`ai-functions.jar` deleted before they can be deleted, while the compute pools
+still exist; see
+[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 ## Demo Scenarios
 
