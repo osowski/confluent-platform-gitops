@@ -306,6 +306,8 @@ To decommission a cluster:
 
 ### Step 1: Remove Applications
 
+Environments with the AI functions registered (`default`, `colors-env`, `shapes-env`) need their functions dropped and `ai-functions.jar` deleted before deletion, while the compute pools still exist; see [ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
+
 Delete all Application manifests:
 
 ```bash
@@ -323,6 +325,8 @@ kubectl get applications -n argocd -w
 ```
 
 ### Step 3: Remove Bootstrap
+
+If Step 1 was skipped, drop the AI functions and delete `ai-functions.jar` in each environment that has them before this step; see [ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 Delete the bootstrap Application (will cascade to parent and child Applications):
 

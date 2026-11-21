@@ -72,6 +72,9 @@ operator itself authenticates successfully (Layer 2).
   `FlinkStatement` per tenant): a continuous `INSERT INTO` reading the same
   `*-input` topic and writing enriched records to a dedicated `*-sql-output`
   topic — demonstrating JAR/SQL parity from one input stream
+- **AI functions** (`base/ai-functions/`): `AI_FORECAST` and
+  `AI_DETECT_ANOMALIES` registered in `colors-env` and `shapes-env`; see
+  [AI functions](#ai-functions)
 - **Producers** (`shapes-producer`, `colors-producer`): `replicas: 0` by
   default; scale to 1 to generate traffic
 - **Topics**: `*-input`, `*-output`, `*-state` (compacted), `*-sql-output`
@@ -80,7 +83,7 @@ operator itself authenticates successfully (Layer 2).
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+)
 forming a dependency chain applied in order and deleted in reverse. On
-`flink-demo` (base only) sync waves are 5/40/50/60/70/80; on the RBAC
+`flink-demo` (base only) sync waves are 5/40/50/60/70/80/82/85; on the RBAC
 clusters, the `rbac-oauth` component reintroduces the Secret/FlinkSecret/
 mapping chain at waves 10/20/30. See
 [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources)
@@ -130,6 +133,32 @@ SQL pipeline (→ `*-sql-output`), demonstrating JAR/SQL parity. It does
 > the bad record. If a non-Avro producer has ever written to an input
 > topic, purge the topic (delete and re-create the `KafkaTopic` CR) before
 > scaling a producer back up.
+
+## AI functions
+
+`AI_FORECAST` and `AI_DETECT_ANOMALIES` work in `colors-env` and `shapes-env`
+with no manual steps, once the `ttm` model server is Ready. The model server is
+deployed by the `flink-resources` Application, so sync that Application too.
+Per environment, three pieces make the functions usable:
+
+| Wave | Resource | What it does |
+|---|---|---|
+| 82 | Job `ai-functions-setup-colors` / `ai-functions-setup-shapes` (Sync hooks in `flink`, after the wave-80 FlinkApplications are Healthy) | Waits for CMF to have the environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
+| 85 | FlinkStatements `create-ai-forecast`, `create-ai-detect-anomalies` (in `flink-colors` / `flink-shapes`, on `colors-pool` / `shapes-pool`) | `CREATE FUNCTION IF NOT EXISTS ... USING JAR 'cmf://<env>/ai-functions.jar'` in catalog `_env_<env>` |
+
+The Jobs write the statement defaults instead of the `FlinkEnvironment` CRs
+because CFK does not send `statementDefaults` to CMF, on create or on any later
+edit. They run the same script as `default`'s Job in `flink-resources`, kept
+byte-identical in both Applications. A failed Job fails the sync at wave 82 and
+only the `CREATE FUNCTION` statements (85) wait.
+
+For setting up and calling the functions, see the Confluent documentation
+([set up AI functions](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/set-up-ai-functions.html),
+[forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
+[detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
+The design, failure behavior, exit codes, the effect of editing an environment
+CR and the teardown constraint are in
+[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 ## Demo Scenarios
 

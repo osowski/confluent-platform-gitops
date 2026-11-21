@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# AI function setup for the `default` FlinkEnvironment: an upload Job (artifact
+# plus model-server URLs) and the CREATE FUNCTION statements that register the
+# functions from that artifact. The Job and its ConfigMap live in the `flink`
+# namespace, next to the OAuth Secret the Job reads on the OAuth clusters.
+
+resources:
+  - job.yaml
+  - create-functions.yaml
+
+# Not a hook: the ConfigMap syncs with the resources before the wave-52 Job, so
+# the script is in place when the Job's pod starts. The fixed name lets the Job
+# mount it by name.
+configMapGenerator:
+  - name: ai-functions-setup-script
+    namespace: flink
+    files:
+      - ai_functions_setup.py
+
+generatorOptions:
+  disableNameSuffixHash: true

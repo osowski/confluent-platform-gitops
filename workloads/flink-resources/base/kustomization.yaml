@@ -12,6 +12,8 @@ resources:
   - flink-kafka-catalog.yaml
   - flink-kafka-database.yaml
   - flink-compute-pool.yaml
+  - ai-functions
+  - model-server
 
 # Common labels applied to all resources
 labels:

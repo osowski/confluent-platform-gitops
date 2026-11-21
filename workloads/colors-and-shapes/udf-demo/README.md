@@ -13,6 +13,15 @@ This directory is local tooling only — a Maven module you build and a
 manifest, and nothing is applied through ArgoCD; the demo lives entirely
 outside GitOps by design, submitted as ad-hoc statements through the CMF UI.
 
+> [!NOTE]
+> The manual upload-and-register flow below is for your own UDFs. The AI
+> functions (`AI_FORECAST`, `AI_DETECT_ANOMALIES`) are set up automatically in
+> `colors-env` and `shapes-env` by `colors-and-shapes` (see its
+> [README](../README.md#ai-functions)) and in `default` by `flink-resources`,
+> with no JAR to upload; see that
+> [README](../../flink-resources/README.md#ai-functions-default-environment).
+> They use their own artifact, `ai-functions.jar`, not `udfs.jar`.
+
 ## Prerequisites
 
 Already satisfied on `flink-demo` — no infrastructure changes needed:

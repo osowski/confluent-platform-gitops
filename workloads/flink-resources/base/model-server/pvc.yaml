@@ -1,0 +1,18 @@
+---
+# Keeps the Hugging Face download across pod restarts. The cluster's default
+# storage class applies unless an overlay sets one.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-server-ttm-cache
+  namespace: flink
+  annotations:
+    argocd.argoproj.io/sync-wave: "90"
+  labels:
+    app: model-server-ttm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

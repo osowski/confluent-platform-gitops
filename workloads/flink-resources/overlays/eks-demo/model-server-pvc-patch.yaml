@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-server-ttm-cache
+  namespace: flink
+spec:
+  storageClassName: gp3

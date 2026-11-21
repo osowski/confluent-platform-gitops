@@ -62,16 +62,61 @@ practice, confirmed by direct REST API testing during #349.
   `FlinkKafkaCatalog` (`kafka-cat`) bound to Schema Registry, a
   `FlinkKafkaDatabase` (`main-kafka-cluster`) bound to the Kafka cluster, and a
   `FlinkComputePool` (`pool`, DEDICATED) with S3 checkpoint/savepoint storage.
+- **Model server** (`model-server-ttm`) — serves the `ttm` time series model
+  that the `AI_FORECAST` and `AI_DETECT_ANOMALIES` functions call, at
+  `http://model-server-ttm.flink.svc.cluster.local:8080/v1/forecast`. It is a
+  one-replica Deployment with a Service, a NetworkPolicy and a 5Gi PVC
+  (`model-server-ttm-cache`) that keeps the Hugging Face download across pod
+  restarts. The PVC uses the cluster's default storage class (`gp3` is set
+  explicitly on eks-demo; `standard` on kind). A startup probe on `/readyz`
+  allows up to 10 minutes for the model download and load and restarts the
+  container if it has not become ready within that window; after it passes,
+  readiness (`/readyz`) and liveness (`/livez`) probes take over (every probe
+  allows 5 seconds per check), and the Deployment's
+  progress deadline is 20 minutes. The NetworkPolicy admits only pods labeled
+  `type: flink-native-kubernetes` from the `flink`, `flink-colors` and
+  `flink-shapes` namespaces, and takes effect only where the cluster's CNI
+  enforces NetworkPolicy. All four resources sit in sync wave 90, after every
+  other resource in this
+  Application, so a slow model download never holds up the Flink SQL chain.
+- **AI functions** (`base/ai-functions/`) — `AI_FORECAST` and
+  `AI_DETECT_ANOMALIES` ready to use in `default`; see
+  [AI functions](#ai-functions-default-environment).
 
 The Flink SQL resources are declarative CFK custom resources (CFK 3.3.0+),
 not imperative CMF API calls. They form a dependency chain that must be
-applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50
-enforce both directions (RBAC clusters additionally use waves 10/20/30 for
+applied in order and deleted in reverse; sync waves 5/10/30/35/40/45/50/52/55
+enforce both directions (the model server's wave 90 sits after the chain,
+outside it; RBAC clusters additionally use waves 10/20/30 for
 the `default`-env Secret/FlinkSecret/mapping chain, alongside the reference
 `FlinkApplication` at wave 10 — the two don't depend on each other, so
 sharing a wave number is harmless). See
 [architecture.md](../../docs/architecture.md#intra-application-sync-waves-flink-sql-resources)
 for the constraints that apply to the whole chain.
+
+## AI functions (`default` environment)
+
+`AI_FORECAST` and `AI_DETECT_ANOMALIES` work in the `default` environment with
+no manual steps, once the `ttm` model server (deployed by this Application, see
+above) is Ready. Three pieces make the functions usable:
+
+| Wave | Resource | What it does |
+|---|---|---|
+| 52 | Job `ai-functions-setup-default` (Sync hook, after the compute pool) | Waits for CMF to have the `default` environment, writes `ai.models.ttm.endpoint` into its `interactive` and `detached` statement defaults, and uploads the function JAR as artifact `ai-functions.jar` unless it exists; an existing artifact must be `READY` with the pinned sha256 |
+| 55 | FlinkStatement `create-ai-forecast` | `CREATE FUNCTION IF NOT EXISTS AI_FORECAST ... USING JAR 'cmf://default/ai-functions.jar'` |
+| 55 | FlinkStatement `create-ai-detect-anomalies` | The same for `AI_DETECT_ANOMALIES` |
+
+The Job writes the statement defaults instead of the `FlinkEnvironment` CR
+because CFK does not send `statementDefaults` to CMF, on create or on any later
+edit. CMF's environment update replaces every default it omits, so the Job reads
+the environment first and changes only the `ai.models.*` keys.
+
+For setting up and calling the functions, see the Confluent documentation
+([set up AI functions](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/set-up-ai-functions.html),
+[forecast](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/forecast.html),
+[detect anomalies](https://docs.confluent.io/cp-flink/current/jobs/sql-statements/ai/detect-anomalies.html)).
+The design, failure behavior, exit codes and the teardown constraint are in
+[ADR-0026](../../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
 
 ## Prerequisites
 

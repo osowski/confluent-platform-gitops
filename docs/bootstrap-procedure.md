@@ -353,6 +353,8 @@ kubectl delete appproject workloads -n argocd
 
 **Note**: Deleting the bootstrap Application will delete parent Applications, which will cascade to child Applications. Due to the finalizers, ArgoCD will clean up managed resources. This process may take several minutes.
 
+**AI function artifact and functions**: environments with the AI functions registered (`default`, `colors-env`, `shapes-env`) need both functions dropped and `ai-functions.jar` deleted before they can be deleted, while the compute pools still exist; otherwise `flink-resources` and `colors-and-shapes` stay in Deleting. See [ADR-0026](../adrs/0026-cmf-ai-functions-in-owning-applications.md#consequences).
+
 ## Deploying a Specific Version
 
 To deploy a known-good release instead of tracking `HEAD`, set `targetRevision` to a release tag in the bootstrap Application:

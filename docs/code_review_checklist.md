@@ -64,6 +64,7 @@ This checklist contains all checks for the confluent-platform-gitops repository 
 - [ ] Patches target the correct resources (group, version, kind, name)
 - [ ] Base manifests are cluster-agnostic; cluster-specific values are in overlays
 - [ ] Labels and annotations are applied consistently
+- [ ] No object (kind, namespace, name) is owned by both `flink-resources` and `colors-and-shapes`, and the two `ai_functions_setup.py` copies stay identical
 
 ### Helm
 
